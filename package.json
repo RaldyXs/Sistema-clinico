@@ -1,0 +1,26 @@
+{
+  "name": "sistema-clinico",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma de gestión clínica multi-consultorio y multi-especialidad.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=@sistema-clinico/web",
+    "dev:api": "npm run start:dev --workspace=@sistema-clinico/api",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=12.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RaldyXs/Sistema-clinico.git"
+  },
+  "license": "UNLICENSED"
+}
