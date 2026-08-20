@@ -355,3 +355,213 @@ En este punto se ha completado:
 
 El siguiente paso será configurar la aplicación web con React, TypeScript y
 Vite.
+
+---
+
+# 17. Configuración del Frontend Web
+
+## 17.1 Tecnologías
+
+La aplicación web utiliza:
+
+- React;
+- TypeScript;
+- Vite.
+
+El proyecto se encuentra en:
+
+apps/web/
+
+---
+
+## 17.2 React
+
+React se utiliza para construir la interfaz del sistema mediante componentes.
+
+Cada componente representa una parte de la interfaz.
+
+Ejemplos futuros:
+
+- Login;
+- Dashboard;
+- Pacientes;
+- Citas;
+- Consultas;
+- Recetas.
+
+La aplicación comienza en el componente:
+
+src/App.tsx
+
+---
+
+## 17.3 TypeScript
+
+TypeScript agrega un sistema de tipos sobre JavaScript.
+
+Permite detectar numerosos errores durante el desarrollo antes de ejecutar
+el código.
+
+Será especialmente útil para representar estructuras como:
+
+- pacientes;
+- médicos;
+- consultas;
+- citas;
+- recetas;
+- respuestas de la API.
+
+Ejemplo conceptual:
+
+interface Patient {
+  id: string
+  name: string
+  birthDate: string
+}
+
+De esta forma TypeScript puede verificar que los datos utilizados por la
+aplicación tengan la estructura esperada.
+
+---
+
+## 17.4 Vite
+
+Vite es la herramienta utilizada para ejecutar y compilar la aplicación web.
+
+Durante desarrollo proporciona:
+
+- servidor local;
+- compilación rápida;
+- actualización automática;
+- integración con TypeScript y React.
+
+El servidor de desarrollo puede iniciarse desde la raíz del monorepo mediante:
+
+npm run dev:web
+
+---
+
+## 17.5 Punto de entrada
+
+El archivo:
+
+apps/web/src/main.tsx
+
+es el punto de entrada de la aplicación React.
+
+Busca el elemento:
+
+<div id="root"></div>
+
+definido en index.html.
+
+Después monta el componente principal App dentro de ese elemento.
+
+El flujo es:
+
+index.html
+    |
+    v
+#root
+    |
+    v
+main.tsx
+    |
+    v
+App.tsx
+    |
+    v
+Aplicación React
+
+---
+
+## 17.6 StrictMode
+
+La aplicación utiliza React StrictMode durante desarrollo.
+
+StrictMode ayuda a detectar:
+
+- efectos secundarios inesperados;
+- patrones problemáticos;
+- determinadas prácticas inseguras.
+
+No representa ningún elemento visual para el usuario.
+
+---
+
+## 17.7 Workspace
+
+La aplicación web se identifica dentro del monorepo como:
+
+@sistema-clinico/web
+
+Esto permite ejecutar sus comandos desde la raíz.
+
+Ejemplos:
+
+npm run dev --workspace=@sistema-clinico/web
+
+npm run build --workspace=@sistema-clinico/web
+
+npm run lint --workspace=@sistema-clinico/web
+
+También existe el comando simplificado:
+
+npm run dev:web
+
+definido en el package.json raíz.
+
+---
+
+## 17.8 Build
+
+El comando:
+
+npm run build --workspace=@sistema-clinico/web
+
+ejecuta:
+
+tsc -b && vite build
+
+Primero TypeScript comprueba el proyecto.
+
+Si no existen errores de tipado, Vite genera el build de producción.
+
+El resultado se almacena en:
+
+apps/web/dist/
+
+El directorio dist no se guarda en Git porque es un resultado generado
+automáticamente.
+
+---
+
+## 17.9 ESLint
+
+ESLint analiza el código fuente buscando errores y patrones problemáticos.
+
+Se ejecuta mediante:
+
+npm run lint --workspace=@sistema-clinico/web
+
+El objetivo es mantener un estándar consistente de código durante todo el
+desarrollo.
+
+---
+
+## 17.10 Estado actual del frontend
+
+Actualmente se ha comprobado correctamente:
+
+- instalación de React;
+- instalación de TypeScript;
+- instalación de Vite;
+- integración con npm workspaces;
+- servidor de desarrollo;
+- compilación de producción;
+- validación TypeScript;
+- análisis ESLint.
+
+La aplicación muestra temporalmente una pantalla básica de confirmación.
+
+La interfaz clínica se desarrollará en fases posteriores.

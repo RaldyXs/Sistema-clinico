@@ -1,0 +1,80 @@
+/*
+ * Estilos globales del Sistema Clínico.
+ *
+ * Por ahora mantenemos solamente una base sencilla.
+ * La interfaz visual completa se diseñará posteriormente.
+ */
+
+/*
+ * box-sizing: border-box hace que padding y bordes formen parte
+ * del tamaño total calculado de los elementos.
+ */
+* {
+  box-sizing: border-box;
+}
+
+/*
+ * Eliminamos márgenes predeterminados del navegador.
+ */
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+/*
+ * Configuración tipográfica global.
+ */
+body {
+  min-width: 320px;
+  min-height: 100vh;
+
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  line-height: 1.5;
+}
+
+/*
+ * Contenedor principal de la aplicación.
+ */
+.app {
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 2rem;
+}
+
+/*
+ * Pantalla temporal utilizada mientras configuramos
+ * la infraestructura inicial.
+ */
+.welcome {
+  width: 100%;
+  max-width: 720px;
+}
+
+.welcome h1 {
+  margin-bottom: 0.5rem;
+  font-size: 2.5rem;
+}
+
+.welcome p {
+  margin-top: 0.5rem;
+}
+
+/*
+ * Indicador temporal que confirma que el frontend está funcionando.
+ */
+.status {
+  font-weight: 600;
+}
