@@ -560,7 +560,8 @@ Actualmente se ha comprobado correctamente:
 - servidor de desarrollo;
 - compilación de producción;
 - validación TypeScript;
-- análisis ESLint.
+- análisis ESLint;
+- limpieza completa de código y recursos de demostración (boilerplate).
 
 La aplicación muestra temporalmente una pantalla básica de confirmación.
 
