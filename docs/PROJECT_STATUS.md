@@ -2,7 +2,7 @@
 
 > Este archivo es la fuente de verdad sobre el estado actual del desarrollo.
 > Debe actualizarse al cerrar cada tarea importante antes de realizar el commit.
-> Su mantenimiento corresponde a ChatGPT. Gemini debe generar un HANDOFF al finalizar cada tarea, pero no debe modificar este archivo.
+> Su mantenimiento corresponde al asistente unificado Antigravity en colaboración con el desarrollador responsable.
 
 ---
 
@@ -27,6 +27,12 @@ Monorepo con npm workspaces.
 - Node.js
 - NestJS
 - PostgreSQL
+- TypeORM
+
+**Frontend visual previsto:**
+
+- Tailwind CSS
+- Shadcn UI
 
 **Aplicación móvil futura:**
 
@@ -207,94 +213,104 @@ Realizado correctamente al repositorio remoto.
 
 ## Tarea 4 — Configurar PostgreSQL
 
-**Estado:** EN PROGRESO
+**Estado:** COMPLETADA
 
-### Objetivo
+### Objetivo cumplido
 
-Crear y configurar la base de datos PostgreSQL principal del Sistema Clínico.
+Configurar PostgreSQL como base de datos principal del Sistema Clínico y establecer la conexión inicial entre NestJS y PostgreSQL.
 
-PostgreSQL almacenará progresivamente la información estructurada de la plataforma, incluyendo:
+### Estrategia seleccionada
 
-- consultorios;
-- usuarios;
-- roles;
-- permisos;
-- médicos;
-- especialidades;
-- pacientes;
-- citas;
-- consultas;
-- signos vitales;
-- diagnósticos;
-- tratamientos;
-- recetas;
-- documentos;
-- auditoría.
+Para el entorno de desarrollo local se decidió utilizar:
 
-### Arquitectura prevista
+**PostgreSQL 16 instalado de forma nativa en Windows mediante EnterpriseDB.**
 
-La API NestJS será la única capa de la aplicación que tendrá acceso directo a PostgreSQL.
+Se descartó utilizar Docker para PostgreSQL en el entorno local actual.
 
-El frontend React nunca deberá conectarse directamente a la base de datos.
+Esto simplifica el desarrollo en la máquina Windows que se está utilizando actualmente.
 
-El flujo será:
+Esta decisión corresponde únicamente al entorno local de desarrollo y no obliga a utilizar la misma estrategia posteriormente en producción.
+
+### Base de datos
+
+Base de datos creada:
+
+`sistema_clinico`
+
+### Usuario local
+
+Actualmente se utiliza el usuario predeterminado de PostgreSQL:
+
+`postgres`
+
+La conexión se realiza mediante variables de entorno.
+
+### Arquitectura implementada
+
+El flujo actual es:
 
 ```text
 React Web
     |
-    | HTTPS / API
+    | HTTP / HTTPS
     v
-NestJS
+NestJS API
     |
+    | TypeORM
     v
-PostgreSQL
+PostgreSQL 16
 ```
 
-En una fase futura, la aplicación móvil utilizará exactamente el mismo backend:
+React no tiene acceso directo a PostgreSQL.
 
-```text
-React Native
-    |
-    | HTTPS / API
-    v
-NestJS
-    |
-    v
-PostgreSQL
-```
+Toda interacción futura con los datos deberá pasar a través de NestJS.
 
-Esto permite mantener todas las reglas de negocio y seguridad centralizadas dentro del backend.
+### Integración con NestJS
 
-### Variables de entorno previstas
+La API utiliza:
 
-La configuración existente en `.env.example` contempla:
+- `@nestjs/config`
+- `@nestjs/typeorm`
+- `typeorm`
+- `pg`
 
-```env
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=sistema_clinico
-POSTGRES_USER=sistema_clinico
-POSTGRES_PASSWORD=change_me
+`ConfigModule` se utiliza para cargar las variables de entorno.
 
-DATABASE_URL=postgresql://sistema_clinico:change_me@localhost:5432/sistema_clinico
-```
+`TypeOrmModule` se utiliza para administrar la conexión entre NestJS y PostgreSQL.
 
-Estas variables son valores de ejemplo y no representan credenciales reales.
+La configuración se realiza de forma asíncrona para permitir que NestJS lea las variables de entorno antes de construir la conexión.
 
-Las credenciales reales deberán almacenarse dentro del archivo:
+### Variables de entorno
+
+Se creó:
 
 `.env`
 
-Ese archivo no debe almacenarse en Git.
+en la raíz del proyecto.
 
-La relación será:
+Este archivo contiene las credenciales reales utilizadas en el entorno local.
+
+El archivo:
+
+`.env`
+
+no debe almacenarse en Git.
+
+La configuración de ejemplo continúa documentándose mediante:
+
+`.env.example`
+
+### Seguridad de las credenciales
+
+La relación continúa siendo:
 
 ```text
 .env.example
     |
-    | documentación de variables
+    | documentación
     |
-    +---- sí se almacena en Git
+    +---- se almacena en Git
+
 
 .env
     |
@@ -303,35 +319,133 @@ La relación será:
     +---- NO se almacena en Git
 ```
 
-### Objetivos técnicos de la tarea
+### Archivos creados o modificados
 
-Antes de considerar esta tarea como completada se deberá:
+- `apps/api/src/app.module.ts`
+- `.env`
+- `docs/01-Fundamentos.md`
 
-- Definir la estrategia de ejecución local de PostgreSQL.
-- Configurar PostgreSQL para desarrollo.
-- Crear la base de datos `sistema_clinico`.
-- Configurar un usuario específico para la aplicación.
-- Configurar las variables de entorno.
-- Validar que PostgreSQL esté ejecutándose.
-- Validar acceso a la base de datos.
-- Preparar la integración entre NestJS y PostgreSQL.
-- Documentar la arquitectura de base de datos.
-- Ejecutar lint.
-- Ejecutar build.
-- Revisar `git status`.
-- Realizar commit.
-- Realizar push.
-- Generar HANDOFF para ChatGPT.
+### Infraestructura eliminada
 
-### Estado actual
+Se eliminó:
 
-La tarea acaba de comenzar.
+`infra/docker/docker-compose.yml`
 
-Todavía no se considera configurada la base de datos hasta completar y validar los pasos anteriores.
+La razón fue la decisión de utilizar PostgreSQL instalado de forma nativa en Windows para el entorno local.
+
+### Dependencias instaladas
+
+En el workspace:
+
+`@sistema-clinico/api`
+
+se instalaron:
+
+- `@nestjs/config`
+- `@nestjs/typeorm`
+- `typeorm`
+- `pg`
+
+### Pruebas ejecutadas
+
+Se verificó:
+
+- instalación nativa de PostgreSQL 16;
+- creación de la base de datos `sistema_clinico` mediante pgAdmin;
+- lectura correcta del archivo `.env`;
+- arranque de NestJS;
+- conexión de TypeORM con PostgreSQL.
+
+Comando utilizado:
+
+```bash
+npm run dev:api
+```
+
+### Resultado
+
+La API arrancó correctamente sin presentar:
+
+- errores de autenticación;
+- errores de conexión;
+- errores de lectura de variables de entorno.
+
+Esto confirma que NestJS puede comunicarse correctamente con PostgreSQL.
+
+### Commit
+
+`feat(api): integracion nativa de postgresql con typeorm y configuracion de entorno`
+
+### Push
+
+El HANDOFF recibido confirma el commit realizado, pero no indicó explícitamente el estado del push.
+
+No debe asumirse información adicional hasta recibir confirmación.
 
 ---
 
-## Tarea 5 — Implementar autenticación y sesiones
+## Tarea 5 — Configurar Tailwind CSS y Shadcn UI
+
+**Estado:** COMPLETADA
+
+### Objetivo cumplido
+
+Establecer la base visual reutilizable del frontend utilizando Tailwind CSS y Shadcn UI con arquitectura modular y agnóstica para SaaS.
+
+### Ubicación
+
+`apps/web`
+
+### Implementado
+
+- Instalación de Tailwind CSS v4 mediante `@tailwindcss/vite` y `tailwindcss`.
+- Integración nativa como plugin de Vite 8 sin necesidad de `postcss.config.js` ni `tailwind.config.js`.
+- Configuración de Path Aliases (`@/*`) en `tsconfig.app.json` y `vite.config.ts`.
+- Configuración de Design Tokens semánticos en `apps/web/src/index.css` con variables CSS en HSL (`:root` y `.dark`).
+- Implementación de la función utilitaria maestra `cn()` en `apps/web/src/lib/utils.ts` (`clsx` + `tailwind-merge`).
+- Creación del componente base `Button` (`apps/web/src/components/ui/button.tsx`) utilizando `cva` y `@radix-ui/react-slot`.
+- Soporte para variantes (`default`, `destructive`, `outline`, `secondary`, `ghost`, `link`), tamaños (`sm`, `default`, `lg`, `icon`) y polimorfismo (`asChild`).
+- Actualización de `apps/web/src/App.tsx` para validar utilidades, tokens de tema, alternancia de modo oscuro e interacción de componentes.
+- Configuración de ESLint en `apps/web/eslint.config.js` para compatibilidad con Fast Refresh y exportación de variantes.
+- Documentación técnica registrada en `docs/01-Fundamentos.md`.
+
+### Archivos creados o modificados
+
+- `apps/web/package.json`
+- `apps/web/tsconfig.app.json`
+- `apps/web/vite.config.ts`
+- `apps/web/eslint.config.js`
+- `apps/web/src/index.css`
+- `apps/web/src/App.tsx`
+- `apps/web/src/lib/utils.ts`
+- `apps/web/src/components/ui/button.tsx`
+- `docs/01-Fundamentos.md`
+
+### Dependencias instaladas
+
+En `@sistema-clinico/web`:
+- `clsx`
+- `tailwind-merge`
+- `class-variance-authority`
+- `lucide-react`
+- `@radix-ui/react-slot`
+- `@tailwindcss/vite` (dev)
+- `tailwindcss` (dev)
+
+### Pruebas ejecutadas
+
+- `npm run lint --workspaces`: cero errores.
+- `npm run build --workspaces`: compilación completa correcta de API y Web en menos de 1 segundo.
+- `npm run dev:web`: servidor de desarrollo Vite operativo en `http://localhost:5173/` con respuesta HTTP 200.
+- Alternancia interactiva entre modo claro y oscuro verificada.
+
+### Commit sugerido
+
+`feat(web): configuracion de tailwind css v4, shadcn ui y componente button base`
+
+---
+
+## Tarea 6 — Implementar autenticación y sesiones
 
 **Estado:** PENDIENTE
 
@@ -357,7 +471,7 @@ No será suficiente ocultar páginas o botones en React.
 
 ---
 
-## Tarea 6 — Crear entidades Consultorio, Usuario, Rol y Permiso
+## Tarea 7 — Crear entidades Consultorio, Usuario, Rol y Permiso
 
 **Estado:** PENDIENTE
 
@@ -383,7 +497,7 @@ Estas entidades servirán posteriormente como base para:
 
 ---
 
-## Tarea 7 — Implementar control de acceso por consultorio
+## Tarea 8 — Implementar control de acceso por consultorio
 
 **Estado:** PENDIENTE
 
@@ -440,23 +554,29 @@ COMPLETADA
 
 Tarea 4
 Configurar PostgreSQL
-EN PROGRESO
+COMPLETADA
 
         ↓
 
 Tarea 5
-Autenticación y sesiones
+Configurar Tailwind CSS y Shadcn UI
 PENDIENTE
 
         ↓
 
 Tarea 6
-Consultorio, Usuario, Rol y Permiso
+Autenticación y sesiones
 PENDIENTE
 
         ↓
 
 Tarea 7
+Consultorio, Usuario, Rol y Permiso
+PENDIENTE
+
+        ↓
+
+Tarea 8
 Control de acceso por consultorio
 PENDIENTE
 ```
@@ -476,19 +596,19 @@ Sistema-clinico/
 │   │   └── React + TypeScript + Vite
 │   │
 │   └── api/
-│       └── Node.js + NestJS + TypeScript
+│       └── Node.js + NestJS + TypeScript + TypeORM
 │
 ├── packages/
 │   └── shared/
 │
 ├── infra/
-│   └── docker/
 │
 ├── docs/
 │   ├── 01-Fundamentos.md
 │   └── PROJECT_STATUS.md
 │
 ├── .editorconfig
+├── .env
 ├── .env.example
 ├── .gitattributes
 ├── .gitignore
@@ -497,7 +617,9 @@ Sistema-clinico/
 └── README.md
 ```
 
-La arquitectura objetivo inmediata será:
+`.env` existe localmente pero no forma parte del repositorio Git.
+
+### Arquitectura funcional actual
 
 ```text
 React Web
@@ -506,11 +628,12 @@ React Web
     v
 NestJS API
     |
+    | TypeORM
     v
-PostgreSQL
+PostgreSQL 16
 ```
 
-Posteriormente se incorporarán:
+Posteriormente se incorporará:
 
 ```text
                 NestJS API
@@ -714,6 +837,7 @@ Al finalizar una tarea deberá generar un HANDOFF indicando:
 - archivos modificados;
 - dependencias instaladas;
 - dependencias eliminadas;
+- decisiones técnicas importantes;
 - pruebas ejecutadas;
 - resultado de lint;
 - resultado de build;
@@ -739,7 +863,7 @@ Cuando se reciba un HANDOFF de Gemini, ChatGPT deberá:
 
 1. Revisar la información.
 2. Actualizar el estado de la tarea completada.
-3. Actualizar la siguiente tarea como EN PROGRESO.
+3. Actualizar el Roadmap si cambió su estructura.
 4. Actualizar `PROJECT_STATUS.md`.
 5. Actualizar Notion.
 6. Mantener el formato existente de este documento.
@@ -754,20 +878,20 @@ Fase 1 — Fundamentos
 
 **Última tarea completada:**
 
-Tarea 3 — Configurar Node.js y NestJS
+Tarea 5 — Configurar Tailwind CSS y Shadcn UI
 
-**Tarea actual:**
+**Tarea actual preparada:**
 
-Tarea 4 — Configurar PostgreSQL
+Tarea 6 — Implementar autenticación y sesiones
 
 **Estado actual:**
 
-EN PROGRESO
+PENDIENTE DE INICIO
 
 **Siguiente objetivo:**
 
-Configurar PostgreSQL como base de datos principal del Sistema Clínico y dejar preparada su integración con el backend NestJS.
+Diseñar e implementar la arquitectura de autenticación y manejo de sesiones en la API de NestJS con soporte multi-consultorio.
 
-**Siguiente tarea después de PostgreSQL:**
+**Siguiente tarea después de autenticación y sesiones:**
 
-Tarea 5 — Implementar autenticación y sesiones.
+Tarea 7 — Crear entidades Consultorio, Usuario, Rol y Permiso.

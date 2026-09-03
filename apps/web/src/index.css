@@ -1,80 +1,128 @@
-/*
- * Estilos globales del Sistema Clínico.
+/**
+ * Sistema Clínico — Estilos Globales y Design Tokens
  *
- * Por ahora mantenemos solamente una base sencilla.
- * La interfaz visual completa se diseñará posteriormente.
+ * Arquitectura de Estilos:
+ * 1. `@import "tailwindcss";`: Carga el motor completo de Tailwind CSS v4.
+ * 2. Design Tokens (`:root` y `.dark`): Variables CSS semánticas (HSL).
+ *    En lugar de hardcodear colores como `#3b82f6`, usamos nombres de rol
+ *    (primary, secondary, destructive, muted, etc.). Esto permite:
+ *    - Soporte nativo y automático para Modo Claro y Modo Oscuro.
+ *    - Reutilización total: cambiar de marca o sector comercial solo requiere
+ *      cambiar estas variables sin tocar un solo componente de React.
+ * 3. `@theme`: Mapea las variables CSS semánticas a las utilidades de Tailwind
+ *    (bg-primary, text-foreground, border-border, etc.).
  */
 
-/*
- * box-sizing: border-box hace que padding y bordes formen parte
- * del tamaño total calculado de los elementos.
- */
-* {
-  box-sizing: border-box;
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Superficie y fondos */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    /* Tarjetas y paneles */
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    /* Popovers, tooltips y modales */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Color de marca principal (Acción primaria / Botones principales) */
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    /* Color secundario (Botones secundarios / Badges) */
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    /* Elementos atenuados (Texto secundario, placeholders, fondos suaves) */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Elementos destacados (Hover en menús, selecciones) */
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    /* Acciones destructivas o alertas (Eliminar, cancelar, errores) */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Bordes e inputs */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+
+    /* Radio de bordes redondeados estándar */
+    --radius: 0.5rem;
+  }
+
+  /* Modo oscuro automático o manual mediante clase .dark */
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
 }
 
-/*
- * Eliminamos márgenes predeterminados del navegador.
- */
-html,
-body,
-#root {
-  min-height: 100%;
-  margin: 0;
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
 }
 
-/*
- * Configuración tipográfica global.
- */
-body {
-  min-width: 320px;
-  min-height: 100vh;
-
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    sans-serif;
-
-  line-height: 1.5;
-}
-
-/*
- * Contenedor principal de la aplicación.
- */
-.app {
-  min-height: 100vh;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  padding: 2rem;
-}
-
-/*
- * Pantalla temporal utilizada mientras configuramos
- * la infraestructura inicial.
- */
-.welcome {
-  width: 100%;
-  max-width: 720px;
-}
-
-.welcome h1 {
-  margin-bottom: 0.5rem;
-  font-size: 2.5rem;
-}
-
-.welcome p {
-  margin-top: 0.5rem;
-}
-
-/*
- * Indicador temporal que confirma que el frontend está funcionando.
- */
-.status {
-  font-weight: 600;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
 }

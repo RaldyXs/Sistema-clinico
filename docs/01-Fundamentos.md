@@ -629,3 +629,52 @@ El backend utiliza el módulo `@nestjs/config` configurado con la propiedad `env
 El acceso a datos se gestiona a través de TypeORM (`@nestjs/typeorm` y el driver `pg`). La conexión se inicializa de forma asíncrona mediante `TypeOrmModule.forRootAsync`, inyectando el `ConfigService` para leer la variable `DATABASE_URL`.
 
 *Nota de Arquitectura:* Durante el desarrollo local, la propiedad `synchronize: true` está habilitada para agilizar la creación de tablas. Esta propiedad deberá deshabilitarse estrictamente en entornos de producción, donde se implementará un sistema formal de migraciones.
+
+---
+
+# 20. Infraestructura Visual (Tailwind CSS y Shadcn UI)
+
+## 20.1 Tecnologías y Filosofía de Diseño
+
+Para construir una interfaz escalable, modular y reutilizable para cualquier tipo de SaaS (no solo clínico), se seleccionó la combinación de **Tailwind CSS v4** y **Shadcn UI**.
+
+Ubicación del código:
+`apps/web/`
+
+Principios aplicados:
+- **Componentes Agnósticos:** Los componentes de la UI (botones, modales, tarjetas, tablas) no conocen el dominio clínico; son piezas universales reutilizables para cualquier negocio.
+- **Design Tokens Semánticos:** Se definieron variables CSS semánticas en HSL (`--primary`, `--secondary`, `--background`, `--card`, `--destructive`, `--muted`, `--border`, etc.) con soporte automático para Modo Claro y Modo Oscuro. Cambiar de marca o adaptar el sistema para otro cliente no requiere tocar componentes React.
+- **Propiedad del Código:** Siguiendo la filosofía Shadcn, los componentes residen en `apps/web/src/components/ui/` y son 100% editables por el equipo.
+
+## 20.2 Path Aliases (@/*)
+
+Se configuraron aliases en Vite y TypeScript para evitar rutas relativas frágiles (`../../../`):
+- `tsconfig.app.json`: Mapea `@/*` a `./src/*` (respetando la deprecación de `baseUrl` en TypeScript 6).
+- `vite.config.ts`: Resuelve `@` hacia `./src` mediante `path.resolve`.
+
+## 20.3 Integración con Vite 8
+
+Se utilizó el plugin oficial `@tailwindcss/vite`, eliminando la necesidad de archivos de configuración intermedios (`postcss.config.js` o `tailwind.config.js`). El motor de Tailwind compila directamente desde `apps/web/src/index.css`.
+
+## 20.4 Utilidad Maestra `cn()`
+
+Ubicación: `apps/web/src/lib/utils.ts`
+
+Combina:
+- `clsx`: Manejo de clases condicionales.
+- `tailwind-merge`: Resolución inteligente de conflictos de clases CSS.
+
+## 20.5 Componentes Implementados
+
+- `Button` (`apps/web/src/components/ui/button.tsx`):
+  - Variantes declarativas con `class-variance-authority` (`cva`): `default`, `destructive`, `outline`, `secondary`, `ghost`, `link`.
+  - Tamaños: `default`, `sm`, `lg`, `icon`.
+  - Polimorfismo con `@radix-ui/react-slot` (`asChild` para botones enlace sin anidaciones HTML inválidas).
+
+## 20.6 Validación
+
+Se ejecutaron y pasaron exitosamente:
+- `npm run lint --workspaces`: 0 errores.
+- `npm run build --workspaces`: compilación de API y Web en menos de 1 segundo.
+- Validación del servidor de desarrollo Vite (`npm run dev:web` en `http://localhost:5173/`).
+- Cambio dinámico de tema claro/oscuro verificado.

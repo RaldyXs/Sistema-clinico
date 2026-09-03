@@ -18,5 +18,15 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      /**
+       * Permite exportar constantes (como `buttonVariants` de CVA) junto con el componente
+       * sin romper Fast Refresh en Vite. Es el estándar recomendado para Shadcn UI.
+       */
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+    },
   },
 ])
