@@ -1,0 +1,29 @@
+# Especificamos una versión reciente de la especificación de Docker Compose
+services:
+  postgres:
+    # Utilizamos la imagen oficial de PostgreSQL (versión 16 basada en Alpine por ser más ligera)
+    image: postgres:16-alpine
+    
+    # Nombre del contenedor para identificarlo fácilmente
+    container_name: sistema_clinico_db
+    
+    # Reiniciar automáticamente si el contenedor falla, pero no si lo detenemos manualmente
+    restart: unless-stopped
+    
+    # Mapeamos el puerto interno de PostgreSQL (5432) al puerto de tu máquina (5432)
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+      
+    # Inyectamos las credenciales directamente para que Docker cree la base de datos y el usuario
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      
+    # Configuramos un volumen para que los datos no se pierdan si el contenedor se destruye
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+# Declaramos el volumen que persistirá los datos
+volumes:
+  postgres_data:

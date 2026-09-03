@@ -566,3 +566,66 @@ Actualmente se ha comprobado correctamente:
 La aplicación muestra temporalmente una pantalla básica de confirmación.
 
 La interfaz clínica se desarrollará en fases posteriores.
+
+---
+
+# 18. Configuración del Backend API
+
+## 18.1 Tecnologías
+
+El backend de la plataforma utiliza:
+
+- Node.js
+- NestJS
+- TypeScript
+
+El código base se encuentra ubicado en:
+
+apps/api/
+
+## 18.2 Integración al Monorepo
+
+El backend fue generado utilizando el CLI de NestJS, pero configurado específicamente para convivir dentro de la arquitectura del monorepo. 
+
+Se identifica en el workspace como:
+
+@sistema-clinico/api
+
+Esto permite instalar y gestionar sus dependencias directamente desde el package.json de la raíz del proyecto.
+
+## 18.3 Limpieza y Privacidad
+
+Para garantizar la privacidad de los datos, evitar consumo de red innecesario y mantener la consola limpia de advertencias (como errores 401), se purgó la dependencia predeterminada de telemetría:
+
+- Se desinstaló el paquete @nestjs/observe.
+- Se eliminó la configuración de ObserveModule en el archivo app.module.ts.
+
+## 18.4 Punto de entrada
+
+El archivo principal del backend es:
+
+apps/api/src/main.ts
+
+Este archivo contiene la función bootstrap que inicializa la aplicación NestJS y levanta el servidor web escuchando en el puerto definido en las variables de entorno (por defecto el puerto 3000).
+
+---
+
+# 19. Base de Datos (PostgreSQL)
+
+## 19.1 Infraestructura Local
+
+Para el entorno de desarrollo local, se optó por una instalación nativa de PostgreSQL directamente en el sistema operativo (Windows) para optimizar el consumo de recursos, descartando la orquestación con Docker en esta fase. 
+
+La base de datos principal del proyecto ha sido creada bajo el nombre `sistema_clinico`.
+
+## 19.2 Gestión de Credenciales
+
+Las credenciales de acceso no se exponen en el código fuente. Se gestionan estrictamente a través de un archivo `.env` ubicado en la raíz del monorepo (ignorado por Git). 
+
+El backend utiliza el módulo `@nestjs/config` configurado con la propiedad `envFilePath: '../../.env'` para localizar y cargar estas variables correctamente desde su posición en el workspace (`apps/api/`).
+
+## 19.3 Integración con NestJS
+
+El acceso a datos se gestiona a través de TypeORM (`@nestjs/typeorm` y el driver `pg`). La conexión se inicializa de forma asíncrona mediante `TypeOrmModule.forRootAsync`, inyectando el `ConfigService` para leer la variable `DATABASE_URL`.
+
+*Nota de Arquitectura:* Durante el desarrollo local, la propiedad `synchronize: true` está habilitada para agilizar la creación de tablas. Esta propiedad deberá deshabilitarse estrictamente en entornos de producción, donde se implementará un sistema formal de migraciones.
