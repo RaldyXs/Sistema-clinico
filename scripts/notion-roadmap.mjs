@@ -117,22 +117,34 @@ async function main() {
         console.log('\n🎉 ¡Todas las tareas están completadas!');
       }
     } else if (command === 'set') {
-      // e.g.: node notion-roadmap.js set --order 5 --status "En progreso"
+      // e.g.: node notion-roadmap.js set --order 8 --title "Diseñar módulo" --status "En progreso"
       const orderIdx = args.indexOf('--order');
       const statusIdx = args.indexOf('--status');
-      if (orderIdx === -1 || statusIdx === -1) {
-        console.error('Uso: node scripts/notion-roadmap.js set --order <num> --status "<Pendiente|En progreso|Completado|Bloqueado>"');
+      const titleIdx = args.indexOf('--title');
+      const phaseIdx = args.indexOf('--phase');
+
+      if (statusIdx === -1 || (orderIdx === -1 && titleIdx === -1)) {
+        console.error('Uso: node scripts/notion-roadmap.js set [--order <num>] [--title "<nombre>"] [--phase "<fase>"] --status "<Pendiente|En progreso|Completado|Bloqueado>"');
         process.exit(1);
       }
-      const orderNum = parseInt(args[orderIdx + 1], 10);
+      const orderNum = orderIdx !== -1 ? parseInt(args[orderIdx + 1], 10) : null;
+      const titleSearch = titleIdx !== -1 ? args[titleIdx + 1].toLowerCase() : null;
+      const phaseSearch = phaseIdx !== -1 ? args[phaseIdx + 1].toLowerCase() : null;
       const newStatus = args[statusIdx + 1];
-      const target = tasks.find(t => t.orden === orderNum);
+
+      const target = tasks.find(t => {
+        if (orderNum !== null && t.orden !== orderNum) return false;
+        if (titleSearch && !t.tarea.toLowerCase().includes(titleSearch)) return false;
+        if (phaseSearch && !t.fase.toLowerCase().includes(phaseSearch)) return false;
+        return true;
+      });
+
       if (!target) {
-        console.error(`❌ No se encontró ninguna tarea con el orden ${orderNum}`);
+        console.error(`❌ No se encontró ninguna tarea con los criterios especificados`);
         process.exit(1);
       }
       await updateTaskStatus(target.id, newStatus);
-      console.log(`\n✅ Tarea actualizada en Notion: [Orden ${target.orden}] "${target.tarea}" -> ${newStatus}`);
+      console.log(`\n✅ Tarea actualizada en Notion: [Orden ${target.orden}] "${target.tarea}" (${target.fase}) -> ${newStatus}`);
     } else {
       console.log('Comandos disponibles: list, current, set --order <n> --status <status>');
     }

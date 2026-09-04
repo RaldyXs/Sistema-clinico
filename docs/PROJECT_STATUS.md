@@ -693,6 +693,50 @@ COMPLETADA
 
 ---
 
+# Fase 2 — Pacientes
+
+## Tarea 1 (Roadmap 8) — Diseñar módulo de pacientes
+
+**Estado:** COMPLETADA
+
+### Objetivo cumplido
+
+Diseñar la arquitectura técnica, modelo relacional e índices en PostgreSQL para el módulo de Pacientes, aplicando herencia de `TenantBaseEntity`, reglas de soft-delete y aislamiento multi-tenant.
+
+### Ubicación
+
+`apps/api/src/modules/pacientes/` y `docs/02-Pacientes.md`
+
+### Implementado
+
+- Creación del documento de arquitectura clínica `docs/02-Pacientes.md`.
+- Creación de la entidad `Paciente` (`apps/api/src/modules/pacientes/entities/paciente.entity.ts`) con 20 campos de filiación y datos clínicos esenciales (alergias, grupo sanguíneo, antecedentes).
+- Índices especializados:
+  - Índice compuesto único en `[consultorio_id, documento_identidad]` para validar duplicidad únicamente dentro de la misma clínica.
+  - Índice compuesto en `[consultorio_id, apellido, nombre]` para autocompletado y búsqueda instantánea.
+- Creación de `PacientesModule` y registro en `AppModule`.
+- Sincronización automática con PostgreSQL 18 verificada.
+
+### Archivos creados o modificados
+
+- `docs/02-Pacientes.md` (nuevo)
+- `apps/api/src/modules/pacientes/entities/paciente.entity.ts` (nuevo)
+- `apps/api/src/modules/pacientes/pacientes.module.ts` (nuevo)
+- `apps/api/src/app.module.ts`
+- `docs/PROJECT_STATUS.md`
+
+### Pruebas ejecutadas
+
+- `npm run lint`: 0 errores y 0 advertencias.
+- `npm run build`: compilación limpia en 1.23s.
+- Verificación directa en PostgreSQL 18: tabla `pacientes` creada con sus 20 columnas y 3 índices (PK, unicidad de documento multi-tenant y búsqueda).
+
+### Commit sugerido
+
+`feat(api): diseño del modulo de pacientes, entidad paciente con tenantbaseentity e indices de busqueda`
+
+---
+
 # Arquitectura actual del proyecto
 
 La estructura principal actualmente es:
@@ -982,22 +1026,22 @@ Cuando se reciba un HANDOFF de Gemini, ChatGPT deberá:
 
 # Última actualización
 
-**Fase completada:**
-
-Fase 1 — Fundamentos (100% COMPLETADA: Tareas 1 a 8)
-
-**Última tarea completada:**
-
-Tarea 8 — Implementar control de acceso por consultorio
-
-**Siguiente fase:**
+**Fase actual:**
 
 Fase 2 — Pacientes
 
+**Última tarea completada:**
+
+[Fase 2] Tarea 1 (Roadmap 8) — Diseñar módulo de pacientes
+
+**Tarea actual preparada:**
+
+[Fase 2] Tarea 2 (Roadmap 9) — Crear registro y edición de pacientes
+
 **Estado actual:**
 
-LISTO PARA INICIAR FASE 2
+PENDIENTE DE INICIO
 
 **Siguiente objetivo:**
 
-Iniciar la Fase 2 (Pacientes) con el modelado de datos clínicos, fichas médicas, historias clínicas y endpoints seguros con herencia de `TenantBaseEntity`.
+Implementar endpoints `POST /pacientes` y `PATCH /pacientes/:id` con DTOs de validación estricta, servicios y vinculación multi-tenant automática.
