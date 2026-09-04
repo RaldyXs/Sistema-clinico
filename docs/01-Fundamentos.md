@@ -713,3 +713,40 @@ Se verificó mediante peticiones HTTP reales a la API:
 - Login con contraseña incorrecta: Rechazado con `401 Unauthorized`.
 - Acceso a `/auth/perfil` sin token: Rechazado con `401 Unauthorized`.
 - Acceso a `/auth/perfil` con Bearer Token: Exitoso con perfil del usuario descifrado (200).
+
+---
+
+# 22. Modelo de Roles y Permisos (RBAC Multi-Tenant)
+
+## 22.1 Filosofía de Diseño: Núcleo SaaS vs. Dominio Específico
+
+Para garantizar que el sistema funcione como base reutilizable para cualquier tipo de negocio (clínicas, colegios, despachos legales, etc.), se implementó un sistema de **Control de Acceso Basado en Roles (RBAC)** desacoplado:
+
+- **Rol Universal del Núcleo (`ADMIN`):** Administrador de la organización/tenant con acceso total, aplicable a cualquier industria.
+- **Plantillas de Dominio (*Domain Presets*):** Roles operativos como `PROFESIONAL_SALUD` y `RECEPCION` no están quemados en el código como enums fijos, sino registrados como plantillas en la base de datos que pueden adaptarse a cada rubro comercial.
+- **Permisos Granulares:** Siguen la convención `recurso:accion` (ej. `pacientes:crear`, `citas:agendar`, `usuarios:editar`), agrupados por módulo.
+
+## 22.2 Entidades TypeORM y Estructura en PostgreSQL
+
+Se crearon las entidades relacionales:
+- **`Permiso` (`permisos`):** ID UUID, `codigo` único, `nombre`, `modulo` (`CORE_USUARIOS`, `CORE_SEGURIDAD`, `CLINICA_PACIENTES`, etc.) y descripción.
+- **`Rol` (`roles`):** ID UUID, `codigo`, `nombre`, `es_sistema` (booleano para evitar eliminación accidental) y `consultorio_id` (nullable: `null` = rol global del sistema; UUID = rol personalizado de esa clínica).
+- **Tabla Intermedia `roles_permisos`:** Relación Muchos a Muchos gestionada por TypeORM con claves foráneas cruzadas.
+- **Vinculación con `Usuario`:** La entidad `Usuario` ahora incluye `rol_id` (`ManyToOne` con carga automática de permisos en `eager: true`).
+
+## 22.3 Módulo y Semillero Automático (`RolesModule`)
+
+- `RolesService` implementa `OnModuleInit` para inicializar automáticamente:
+  - 14 permisos base catalogados.
+  - El rol universal `ADMIN` con el 100% de los permisos asociados.
+  - Las plantillas de roles `PROFESIONAL_SALUD` (9 permisos) y `RECEPCION` (6 permisos).
+- `RolesController`: Expone `GET /roles` y `GET /roles/permisos` protegidos por `JwtAuthGuard`.
+- `AuthModule` marcado con `@Global()` para que los guards y estrategias JWT estén disponibles en toda la API sin re-importaciones redundantes.
+
+## 22.4 Validación Funcional
+
+- Compilación y linters: Cero errores en todo el monorepo.
+- PostgreSQL: 5 tablas sincronizadas (`consultorios`, `usuarios`, `roles`, `permisos`, `roles_permisos`).
+- Seeding verificado en vivo con 14 permisos y 3 roles enlazados.
+- Token JWT generado para nuevos registros incluye el array completo de permisos del rol asignado.
+- Endpoints `GET /roles` y `GET /roles/permisos` verificados con HTTP 200 y serialización correcta.

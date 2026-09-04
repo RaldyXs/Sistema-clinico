@@ -7,6 +7,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity.js';
+import { Rol } from '../../roles/entities/rol.entity.js';
 
 /**
  * Entidad Consultorio (Tenant / Organización).
@@ -45,6 +46,12 @@ export class Consultorio {
    */
   @OneToMany(() => Usuario, (usuario) => usuario.consultorio)
   usuarios: Usuario[];
+
+  /**
+   * Roles personalizados definidos específicamente para este consultorio.
+   */
+  @OneToMany(() => Rol, (rol) => rol.consultorio)
+  roles: Rol[];
 
   @CreateDateColumn({ name: 'creado_en' })
   creadoEn: Date;

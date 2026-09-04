@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { RolesModule } from './modules/roles/roles.module.js';
 
 /**
  * AppModule es el módulo raíz de la aplicación backend.
@@ -30,6 +31,9 @@ import { AuthModule } from './modules/auth/auth.module.js';
 
     // 3. Módulo de Autenticación y Seguridad
     AuthModule,
+
+    // 4. Módulo de Roles y Permisos (RBAC)
+    RolesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

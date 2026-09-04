@@ -9,6 +9,7 @@ import {
   Index,
 } from 'typeorm';
 import { Consultorio } from '../../consultorios/entities/consultorio.entity.js';
+import { Rol } from '../../roles/entities/rol.entity.js';
 
 /**
  * Roles disponibles en el sistema.
@@ -51,12 +52,28 @@ export class Usuario {
   @Column({ type: 'varchar', length: 100, nullable: true })
   apellido: string | null;
 
-  @Column({
-    type: 'enum',
-    enum: RolUsuario,
-    default: RolUsuario.MEDICO,
+  @Column({ name: 'rol_id', type: 'uuid', nullable: true })
+  rolId: string | null;
+
+  /**
+   * Relación con la entidad Rol.
+   * `eager: true` carga automáticamente el rol y sus permisos al buscar un usuario.
+   */
+  @ManyToOne(() => Rol, (rol) => rol.usuarios, {
+    nullable: true,
+    eager: true,
+    onDelete: 'SET NULL',
   })
-  rol: RolUsuario;
+  @JoinColumn({ name: 'rol_id' })
+  rol: Rol | null;
+
+  @Column({
+    name: 'rol_codigo',
+    type: 'varchar',
+    length: 50,
+    default: 'ADMIN',
+  })
+  rolCodigo: string;
 
   @Column({ type: 'boolean', default: true })
   activo: boolean;

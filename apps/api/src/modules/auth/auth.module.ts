@@ -1,28 +1,27 @@
-import { Module } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Usuario } from '../usuarios/entities/usuario.entity.js';
 import { Consultorio } from '../consultorios/entities/consultorio.entity.js';
+import { Rol } from '../roles/entities/rol.entity.js';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 
 /**
- * Módulo de Autenticación (AuthModule).
+ * Módulo de Autenticación Global (AuthModule).
  *
- * En la arquitectura modular de NestJS, un módulo agrupa:
- * - `imports`: Módulos externos necesarios (TypeOrm para los repositorios,
- *   Passport para estrategias, JwtModule para emitir tokens con clave asíncrona de .env).
- * - `controllers`: AuthController (endpoints HTTP).
- * - `providers`: AuthService (lógica de negocio) y JwtStrategy (validación de tokens).
- * - `exports`: Permite que otros módulos (como Pacientes, Citas, Consultas)
- *   puedan importar AuthModule y usar `JwtAuthGuard` para proteger sus propias rutas.
+ * Al marcarse con `@Global()`:
+ * Todos los demás módulos (Roles, Pacientes, Citas, Consultas) pueden utilizar
+ * `@UseGuards(JwtAuthGuard)` y acceder a la estrategia JWT sin tener que re-importar
+ * Passport en cada módulo individual.
  */
+@Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario, Consultorio]),
+    TypeOrmModule.forFeature([Usuario, Consultorio, Rol]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -37,6 +36,6 @@ import { JwtStrategy } from './strategies/jwt.strategy.js';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule, PassportModule],
+  exports: [AuthService, JwtModule, PassportModule, JwtStrategy],
 })
 export class AuthModule {}

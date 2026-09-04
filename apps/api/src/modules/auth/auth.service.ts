@@ -7,8 +7,9 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import bcrypt from 'bcryptjs';
-import { Usuario, RolUsuario } from '../usuarios/entities/usuario.entity.js';
+import { Usuario } from '../usuarios/entities/usuario.entity.js';
 import { Consultorio } from '../consultorios/entities/consultorio.entity.js';
+import { Rol } from '../roles/entities/rol.entity.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegistroDto } from './dto/registro.dto.js';
 
@@ -18,7 +19,7 @@ import { RegistroDto } from './dto/registro.dto.js';
  * Contiene la lógica de negocio central para:
  * 1. Registro de nuevas clínicas y usuarios administradores.
  * 2. Validación de credenciales con hashing (bcryptjs).
- * 3. Emisión de tokens firmados (JWT).
+ * 3. Emisión de tokens firmados (JWT) con roles y permisos asociados.
  */
 @Injectable()
 export class AuthService {
@@ -28,6 +29,9 @@ export class AuthService {
 
     @InjectRepository(Consultorio)
     private readonly consultorioRepo: Repository<Consultorio>,
+
+    @InjectRepository(Rol)
+    private readonly rolRepo: Repository<Rol>,
 
     private readonly jwtService: JwtService,
   ) {}
@@ -58,19 +62,24 @@ export class AuthService {
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(dto.password, saltRounds);
 
-    // 4. Creamos el usuario administrador vinculado al nuevo consultorio
+    // 4. Obtenemos el rol ADMIN universal del sistema
+    const rolAdmin = await this.rolRepo.findOne({ where: { codigo: 'ADMIN' } });
+
+    // 5. Creamos el usuario administrador vinculado al nuevo consultorio y con el rol ADMIN
     const nuevoUsuario = this.usuarioRepo.create({
       nombre: dto.nombre.trim(),
       apellido: dto.apellido ? dto.apellido.trim() : null,
       email: emailNormalizado,
       passwordHash,
-      rol: RolUsuario.ADMIN,
+      rolId: rolAdmin?.id ?? null,
+      rol: rolAdmin ?? null,
+      rolCodigo: 'ADMIN',
       consultorioId: consultorioGuardado.id,
       activo: true,
     });
     const usuarioGuardado = await this.usuarioRepo.save(nuevoUsuario);
 
-    // 5. Emitimos la pulsera (Token JWT)
+    // 6. Emitimos la pulsera (Token JWT)
     const token = this.generarToken(usuarioGuardado);
 
     return {
@@ -81,7 +90,7 @@ export class AuthService {
         nombre: usuarioGuardado.nombre,
         apellido: usuarioGuardado.apellido,
         email: usuarioGuardado.email,
-        rol: usuarioGuardado.rol,
+        rol: usuarioGuardado.rol?.codigo ?? usuarioGuardado.rolCodigo,
         consultorio: {
           id: consultorioGuardado.id,
           nombre: consultorioGuardado.nombre,
@@ -96,14 +105,18 @@ export class AuthService {
   async login(dto: LoginDto) {
     const emailNormalizado = dto.email.toLowerCase().trim();
 
-    // 1. Buscamos el usuario por su email incluyendo los datos de su consultorio
+    // 1. Buscamos el usuario por su email incluyendo consultorio, rol y sus permisos
     const usuario = await this.usuarioRepo.findOne({
       where: { email: emailNormalizado },
-      relations: { consultorio: true },
+      relations: {
+        consultorio: true,
+        rol: {
+          permisos: true,
+        },
+      },
     });
 
     // 2. Si no existe o está desactivado, rechazamos con 401
-    // (Por seguridad, no decimos si el email existe o no para evitar enumeración)
     if (!usuario || !usuario.activo) {
       throw new UnauthorizedException('Correo electrónico o contraseña incorrectos');
     }
@@ -130,7 +143,12 @@ export class AuthService {
         nombre: usuario.nombre,
         apellido: usuario.apellido,
         email: usuario.email,
-        rol: usuario.rol,
+        rol: {
+          id: usuario.rol?.id,
+          nombre: usuario.rol?.nombre ?? 'Administrador',
+          codigo: usuario.rol?.codigo ?? usuario.rolCodigo,
+        },
+        permisos: usuario.rol?.permisos?.map(p => p.codigo) ?? [],
         consultorio: {
           id: usuario.consultorio.id,
           nombre: usuario.consultorio.nombre,
@@ -146,8 +164,9 @@ export class AuthService {
     const payload = {
       sub: usuario.id,
       email: usuario.email,
-      rol: usuario.rol,
+      rol: usuario.rol?.codigo ?? usuario.rolCodigo ?? 'ADMIN',
       consultorioId: usuario.consultorioId,
+      permisos: usuario.rol?.permisos?.map(p => p.codigo) ?? [],
     };
 
     return this.jwtService.sign(payload);

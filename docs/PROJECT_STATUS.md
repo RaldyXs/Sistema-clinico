@@ -518,27 +518,60 @@ Implementar una arquitectura de autenticación segura, sin estado (*stateless*) 
 
 ## Tarea 7 — Crear entidades Consultorio, Usuario, Rol y Permiso
 
-**Estado:** PENDIENTE
+**Estado:** COMPLETADA
 
-### Objetivo
+### Objetivo cumplido
 
-Crear las entidades fundamentales que permitirán construir la arquitectura multi-consultorio.
+Construir la arquitectura de entidades relacionales para un sistema de control de acceso basado en roles (RBAC) multi-tenant desacoplado del dominio médico, separando roles universales del núcleo SaaS de plantillas de industria.
 
-Las entidades iniciales serán:
+### Ubicación
 
-- Consultorio.
-- Usuario.
-- Rol.
-- Permiso.
+`apps/api/src/modules/roles/`, `apps/api/src/modules/usuarios/` y `apps/api/src/modules/consultorios/`
 
-Estas entidades servirán posteriormente como base para:
+### Implementado
 
-- médicos;
-- secretarias;
-- administradores;
-- autorización;
-- control de acceso;
-- separación entre consultorios.
+- Creación de la entidad `Permiso` (`apps/api/src/modules/roles/entities/permiso.entity.ts`) con IDs UUID y formato atómico `recurso:accion` agrupado por módulos.
+- Creación de la entidad `Rol` (`apps/api/src/modules/roles/entities/rol.entity.ts`) con relación Muchos a Muchos (`roles_permisos`), protección de roles de sistema (`es_sistema`) y soporte multi-tenant (`consultorio_id`).
+- Actualización de la entidad `Usuario` para vincularla directamente a `Rol` mediante clave foránea `rol_id` y relación `ManyToOne` con carga automática (`eager: true`).
+- Actualización de `Consultorio` con relación `OneToMany` a roles personalizados.
+- Creación de `RolesModule` y `RolesService` con semillero automático (`onModuleInit`):
+  - Inicialización automática de 14 permisos (Core SaaS + Dominio Clínico).
+  - Creación del rol universal del núcleo: `ADMIN` (con el 100% de los permisos).
+  - Creación de plantillas de industria: `PROFESIONAL_SALUD` (9 permisos) y `RECEPCION` (6 permisos).
+- Exposición de endpoints protegidos en `RolesController`: `GET /roles` y `GET /roles/permisos`.
+- Declaración de `AuthModule` como módulo `@Global()` para acceso universal a `JwtAuthGuard` y `JwtStrategy`.
+- Documentación técnica registrada en `docs/01-Fundamentos.md`.
+
+### Archivos creados o modificados
+
+- `apps/api/src/app.module.ts`
+- `apps/api/src/modules/consultorios/entities/consultorio.entity.ts`
+- `apps/api/src/modules/usuarios/entities/usuario.entity.ts`
+- `apps/api/src/modules/roles/entities/permiso.entity.ts` (nuevo)
+- `apps/api/src/modules/roles/entities/rol.entity.ts` (nuevo)
+- `apps/api/src/modules/roles/roles.service.ts` (nuevo)
+- `apps/api/src/modules/roles/roles.controller.ts` (nuevo)
+- `apps/api/src/modules/roles/roles.module.ts` (nuevo)
+- `apps/api/src/modules/auth/auth.module.ts`
+- `apps/api/src/modules/auth/auth.service.ts`
+- `docs/01-Fundamentos.md`
+- `docs/PROJECT_STATUS.md`
+
+### Pruebas ejecutadas
+
+- `npm run lint`: cero errores en todo el monorepo.
+- `npm run build`: compilación de producción exitosa de todo el monorepo en 824 ms.
+- Inspección directa en PostgreSQL 18:
+  - 5 tablas relacionales verificadas: `consultorios`, `usuarios`, `roles`, `roles_permisos`, `permisos`.
+  - 14 permisos catalogados y 3 roles vinculados en la tabla intermedia.
+- Pruebas HTTP en vivo:
+  - Registro de nuevo consultorio con asignación automática de rol `ADMIN` y retorno de JWT con permisos embebidos.
+  - `GET /roles` con Bearer Token: Retorna HTTP 200 y catálogo de roles con conteo de permisos.
+  - `GET /roles/permisos` con Bearer Token: Retorna HTTP 200 y lista agrupada de permisos.
+
+### Commit sugerido
+
+`feat(api): entidades rol y permiso rbac desacopladas, semillero automatico y modulo de roles`
 
 ---
 
@@ -923,11 +956,11 @@ Fase 1 — Fundamentos
 
 **Última tarea completada:**
 
-Tarea 6 — Implementar autenticación y sesiones
+Tarea 7 — Crear entidades Consultorio, Usuario, Rol y Permiso
 
 **Tarea actual preparada:**
 
-Tarea 7 — Crear entidades Consultorio, Usuario, Rol y Permiso
+Tarea 8 — Implementar control de acceso por consultorio
 
 **Estado actual:**
 
@@ -935,8 +968,8 @@ PENDIENTE DE INICIO
 
 **Siguiente objetivo:**
 
-Expandir el modelo de autorización con roles granulares, permisos específicos y relaciones clínicas complementarias.
+Garantizar el aislamiento multi-tenant mediante interceptores/guards que impidan a un usuario acceder o modificar datos de otro consultorio.
 
-**Siguiente tarea después de entidades y roles:**
+**Siguiente tarea después de control de acceso:**
 
-Tarea 8 — Implementar control de acceso por consultorio.
+Fase 2 — Pacientes (Diseñar módulo de pacientes).
