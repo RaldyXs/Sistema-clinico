@@ -203,4 +203,73 @@ export class PacientesService {
       },
     };
   }
+
+  /**
+   * Genera la Ficha Clínica Integral 360° del paciente.
+   * Procesa en tiempo real:
+   * - Edad exacta (años, meses, días).
+   * - Alertas clínicas visuales (alergias destacadas, grupo sanguíneo).
+   * - Consolidación de contactos de emergencia.
+   * - Resumen para futuras fases (citas, consultas, recetas).
+   */
+  async obtenerFichaCompleta(consultorioId: string, id: string) {
+    const paciente = await this.obtenerPorId(consultorioId, id);
+
+    const edadCalculada = this.calcularEdadDetallada(paciente.fechaNacimiento);
+
+    return {
+      paciente,
+      edad: edadCalculada,
+      alertasMedicas: {
+        tieneAlergias: Boolean(paciente.alergias && paciente.alergias.trim() !== ''),
+        alergias: paciente.alergias,
+        grupoSanguineo: paciente.grupoSanguineo,
+        tieneAntecedentesMedicos: Boolean(paciente.antecedentesMedicos && paciente.antecedentesMedicos.trim() !== ''),
+        tieneAntecedentesFamiliares: Boolean(paciente.antecedentesFamiliares && paciente.antecedentesFamiliares.trim() !== ''),
+      },
+      contactoEmergencia: {
+        nombre: paciente.contactoEmergenciaNombre,
+        telefono: paciente.contactoEmergenciaTelefono,
+        registrado: Boolean(paciente.contactoEmergenciaNombre || paciente.contactoEmergenciaTelefono),
+      },
+      resumenHistorial: {
+        totalCitas: 0,       // Se conectará en la Fase 3
+        totalConsultas: 0,   // Se conectará en la Fase 4
+        totalRecetas: 0,     // Se conectará en la Fase 5
+      },
+    };
+  }
+
+  /**
+   * Algoritmo de cálculo clínico de edad exacta.
+   * Maneja variaciones de días de mes y años bisiestos.
+   */
+  private calcularEdadDetallada(fechaNacimiento: Date | string) {
+    const hoy = new Date();
+    const nacimiento = new Date(fechaNacimiento);
+
+    let anios = hoy.getFullYear() - nacimiento.getFullYear();
+    let meses = hoy.getMonth() - nacimiento.getMonth();
+    let dias = hoy.getDate() - nacimiento.getDate();
+
+    if (dias < 0) {
+      meses -= 1;
+      const diasEnMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0).getDate();
+      dias += diasEnMesAnterior;
+    }
+
+    if (meses < 0) {
+      anios -= 1;
+      meses += 12;
+    }
+
+    let texto: string;
+    if (anios === 0) {
+      texto = meses === 0 ? `${dias} días` : `${meses} meses y ${dias} días`;
+    } else {
+      texto = meses > 0 ? `${anios} años y ${meses} meses` : `${anios} años`;
+    }
+
+    return { anios, meses, dias, texto };
+  }
 }

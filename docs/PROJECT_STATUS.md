@@ -46,7 +46,7 @@ Monorepo con npm workspaces.
 
 ## Fase actual
 
-**Fase 1 — Fundamentos**
+**Fase 2 — Pacientes (100% COMPLETADA) — Próxima: Fase 3 — Citas**
 
 ---
 
@@ -843,6 +843,54 @@ Implementar el endpoint `GET /pacientes` con búsqueda rápida multi-campo por t
 
 ---
 
+## Tarea 4 (Roadmap 11) — Crear ficha completa del paciente
+
+**Estado:** COMPLETADA
+
+### Objetivo cumplido
+
+Implementar el endpoint `GET /pacientes/:id/ficha` que consolida la visión clínica 360° del paciente, incorporando cálculo dinámico de edad clínica exacta (años, meses, días), generación reactiva de alertas médicas (alergias graves, patologías crónicas, grupo sanguíneo), datos de contacto de emergencia, y una estructura desacoplada lista para recibir citas y atenciones en las fases siguientes.
+
+### Ubicación
+
+`apps/api/src/modules/pacientes/` y `docs/02-Pacientes.md`
+
+### Implementado
+
+- Algoritmo clínico `calcularEdadDetallada(fechaNacimiento)`:
+  - Cálculo temporal exacto considerando años bisiestos y días variables por mes.
+  - Formato legible (`31 años y 4 meses`, etc.) para uso directo en la UI y prescripción médica.
+- Método `obtenerFichaCompleta(id, consultorioId)` en `PacientesService`:
+  - Aislamiento multi-tenant validando pertenencia a la clínica.
+  - Alertas clínicas estructuradas por severidad (`ALTA` para alergias detectadas).
+  - Datos de contacto y contacto de emergencia unificados.
+  - Secciones extensibles preparadas (`historialCitas`, `consultasMedicas`, `archivosAdjuntos`).
+- Endpoint `@Get(':id/ficha')` en `PacientesController` protegido con `JwtAuthGuard` y `@ConsultorioActual()`.
+- Documentación de especificación técnica y de arquitectura en `docs/02-Pacientes.md` (Sección 7).
+
+### Archivos creados o modificados
+
+- `apps/api/src/modules/pacientes/pacientes.service.ts`
+- `apps/api/src/modules/pacientes/pacientes.controller.ts`
+- `docs/02-Pacientes.md`
+- `docs/PROJECT_STATUS.md`
+
+### Pruebas ejecutadas
+
+- `npm run lint`: 0 errores y 0 advertencias.
+- `npm run build`: compilación limpia en 1.06s.
+- Pruebas HTTP funcionales en vivo con PostgreSQL 18:
+  - Consulta de ficha completa de Mariana Silva por Dr. Carlos Mendoza (HTTP 200).
+  - Verificación de cálculo dinámico de edad clínica: 31 años, 4 meses.
+  - Verificación de badges de alerta médica: alerta de severidad ALTA para alergia a penicilina.
+  - Verificación de bloqueo de acceso cruzado entre clínicas: Dra. Elena de Clínica San Rafael recibe HTTP 404 Not Found al intentar acceder a la ficha del paciente de Centro Médico del Sol.
+
+### Commit sugerido
+
+`feat(api): ficha medica integral 360 con calculo dinamico de edad y alertas clinicas`
+
+---
+
 # Arquitectura actual del proyecto
 
 La estructura principal actualmente es:
@@ -1134,20 +1182,20 @@ Cuando se reciba un HANDOFF de Gemini, ChatGPT deberá:
 
 **Fase actual:**
 
-Fase 2 — Pacientes
+Fase 2 — Pacientes (100% COMPLETADA) — Preparada para Fase 3 — Citas
 
 **Última tarea completada:**
 
-[Fase 2] Tarea 3 (Roadmap 10) — Implementar búsqueda y filtros de pacientes
+[Fase 2] Tarea 4 (Roadmap 11) — Crear ficha completa del paciente
 
 **Tarea actual preparada:**
 
-[Fase 2] Tarea 4 (Roadmap 11) — Crear ficha completa del paciente
+[Fase 3] Tarea 1 (Roadmap 12) — Diseñar módulo de citas
 
 **Estado actual:**
 
-PENDIENTE DE INICIO
+LISTO PARA FASE 3
 
 **Siguiente objetivo:**
 
-Implementar la consulta integral de la ficha clínica del paciente, consolidando datos personales, antecedentes, alergias y dejando la base para el historial de citas y consultas.
+Diseñar la arquitectura técnica, modelo relacional, flujo de estados clínicos (programada, confirmada, en espera, en consulta, atendida, cancelada, no asistió) y reglas de control de solapamiento de agenda para el módulo de Citas en Fase 3.

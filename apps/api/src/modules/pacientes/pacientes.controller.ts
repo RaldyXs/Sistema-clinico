@@ -50,7 +50,19 @@ export class PacientesController {
   }
 
   /**
-   * Obtiene la ficha de un paciente por su ID, validando que pertenezca a la clínica.
+   * Obtiene la Ficha Médica Integral 360° del paciente con cálculos clínicos
+   * en tiempo real (edad exacta, alertas de alergias, antecedentes y contactos).
+   */
+  @Get(':id/ficha')
+  async obtenerFicha(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+  ) {
+    return this.pacientesService.obtenerFichaCompleta(consultorioId, id);
+  }
+
+  /**
+   * Obtiene los datos base de un paciente por su ID, validando que pertenezca a la clínica.
    */
   @Get(':id')
   async obtenerPorId(

@@ -128,5 +128,25 @@ La entidad `Paciente` hereda de `TenantBaseEntity`, garantizando automáticament
 - **Listado general:** Retornó correctamente los 4 pacientes del consultorio con metadatos de paginación.
 - **Búsqueda por texto (`termino=Silva`):** Filtró con precisión a Mariana Silva y María Fernanda Silva.
 - **Búsqueda por cédula (`termino=20111222`):** Retornó únicamente a Pedro Gómez.
-- **Filtro por género (`genero=MASCULINO`):** Retornó los pacientes masculinos registrados.
 - **Aislamiento Multi-Tenant:** Dra. Elena en Policlínico Sur solo visualiza su único paciente, sin filtración de datos de San Rafael.
+
+---
+
+## 7. Ficha Médica Integral 360° (`GET /pacientes/:id/ficha`)
+
+### 7.1 Algoritmo Clínico de Cálculo de Edad Dinámica
+Para cumplir con las normativas y buenas prácticas de software médico, la edad no se guarda estática en la base de datos. Se calcula al vuelo a partir de `fechaNacimiento`:
+- Considera años bisiestos y días por mes.
+- Retorna desglose exacto: `anios`, `meses`, `dias` y un texto amigable (`"31 años y 4 meses"` o `"4 meses y 12 días"` en pacientes pediátricos).
+
+### 7.2 Alertas Médicas en Cabecera (*Clinical Badges*)
+La ficha consolida y destaca:
+- `tieneAlergias: true` con el detalle de las alergias (ej: Penicilina, AINES) para prevenir errores de prescripción.
+- Grupo sanguíneo visible.
+- Presencia de antecedentes médicos o quirúrgicos.
+- Datos de contacto ante emergencias.
+- Marcadores preparados para futuras fases: contadores de citas (Fase 3), consultas (Fase 4) y recetas emitidas (Fase 5).
+
+### 7.3 Validación Funcional
+- Solicitud de ficha por el consultorio propietario: HTTP 200 OK con edad, alergias y datos consolidados.
+- Intento de consulta de ficha ajena desde otro consultorio: HTTP 404 Not Found (aislamiento multi-tenant estricto).
