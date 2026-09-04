@@ -65,8 +65,31 @@ La entidad `Paciente` hereda de `TenantBaseEntity`, garantizando automáticament
 
 ---
 
-## 4. Próximas Tareas de la Fase 2
-
-1. **Creación y Edición de Pacientes:** Endpoints `POST /pacientes` y `PATCH /pacientes/:id` con validación DTO de entrada.
+1. **Creación y Edición de Pacientes:** COMPLETADA (`POST /pacientes` y `PATCH /pacientes/:id`).
 2. **Búsqueda y Filtros:** Endpoint `GET /pacientes` con paginación, filtros por texto, documento y orden alfabético.
 3. **Ficha Completa del Paciente:** Endpoint `GET /pacientes/:id` con historial de citas, consultas y resumen clínico.
+
+---
+
+## 5. Implementación de Endpoints (Registro y Edición)
+
+### 5.1 Endpoints Disponibles
+
+- `POST /pacientes`:
+  - Protegido por `JwtAuthGuard`.
+  - Recibe `CrearPacienteDto` con validaciones de tipo, longitud y enums.
+  - Inyecta de forma segura el `consultorioId` del usuario autenticado mediante `@ConsultorioActual()`.
+  - Valida unicidad del documento dentro de la misma clínica (retorna `409 Conflict` si ya existe).
+- `GET /pacientes/:id`:
+  - Obtiene la ficha individual validando que pertenezca al consultorio activo (retorna `404 Not Found` en caso contrario).
+- `PATCH /pacientes/:id`:
+  - Recibe `ActualizarPacienteDto` para actualización parcial de datos o modificación de estado `activo`.
+  - Impide que una clínica modifique pacientes ajenos.
+
+### 5.2 Validación Funcional y Pruebas Reales
+
+1. **Creación:** Paciente registrado exitosamente con datos clínicos y filiación completa (HTTP 201).
+2. **Prevención de Duplicados:** Rechazo con HTTP 409 Conflict al intentar registrar dos veces el mismo documento en la misma clínica.
+3. **Multi-Tenancy:** Creación permitida del mismo documento en consultorios distintos (aislamiento verificado).
+4. **Edición:** Actualización exitosa de campos clínicos (alergias, teléfono) con HTTP 200 OK.
+5. **Aislamiento Cruzado:** Rechazo con HTTP 404 Not Found al intentar modificar un paciente desde otra clínica.

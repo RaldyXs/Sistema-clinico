@@ -737,6 +737,60 @@ Diseñar la arquitectura técnica, modelo relacional e índices en PostgreSQL pa
 
 ---
 
+## Tarea 2 (Roadmap 9) — Crear registro y edición de pacientes
+
+**Estado:** COMPLETADA
+
+### Objetivo cumplido
+
+Implementar los endpoints y servicios de registro y edición de pacientes con validación preventiva de DTOs, inyección segura de organización mediante `@ConsultorioActual()`, prevención de duplicación de documentos por clínica y blindaje multi-tenant.
+
+### Ubicación
+
+`apps/api/src/modules/pacientes/`
+
+### Implementado
+
+- DTOs de validación con `class-validator`:
+  - `CrearPacienteDto` (`apps/api/src/modules/pacientes/dto/crear-paciente.dto.ts`): Validación de campos obligatorios, fechas (`@IsDateString`), enums (`TipoDocumento`, `Genero`, `GrupoSanguineo`) y sanitización.
+  - `ActualizarPacienteDto` (`apps/api/src/modules/pacientes/dto/actualizar-paciente.dto.ts`): Soporte de actualización parcial (PATCH) y control de estado `activo`.
+- `PacientesService` (`apps/api/src/modules/pacientes/pacientes.service.ts`):
+  - `crear()`: Valida no duplicidad de documento dentro de la misma clínica y asigna `consultorioId`.
+  - `obtenerPorId()`: Retorna la ficha validando pertenencia al consultorio.
+  - `actualizar()`: Actualiza campos opcionales verificando aislamiento de organización.
+- `PacientesController` (`apps/api/src/modules/pacientes/pacientes.controller.ts`):
+  - `POST /pacientes`: Registro con `@ConsultorioActual()`.
+  - `GET /pacientes/:id`: Consulta individual segura.
+  - `PATCH /pacientes/:id`: Edición segura.
+- Documentación técnica registrada en `docs/02-Pacientes.md`.
+
+### Archivos creados o modificados
+
+- `apps/api/src/modules/pacientes/dto/crear-paciente.dto.ts` (nuevo)
+- `apps/api/src/modules/pacientes/dto/actualizar-paciente.dto.ts` (nuevo)
+- `apps/api/src/modules/pacientes/pacientes.service.ts` (nuevo)
+- `apps/api/src/modules/pacientes/pacientes.controller.ts` (nuevo)
+- `apps/api/src/modules/pacientes/pacientes.module.ts`
+- `docs/02-Pacientes.md`
+- `docs/PROJECT_STATUS.md`
+
+### Pruebas ejecutadas
+
+- `npm run lint`: 0 errores y 0 advertencias.
+- `npm run build`: compilación limpia en 889 ms.
+- Pruebas HTTP funcionales en vivo con PostgreSQL 18:
+  - Registro de paciente con filiación completa y alergias (HTTP 201).
+  - Rechazo de documento duplicado dentro del mismo consultorio (HTTP 409 Conflict).
+  - Admisión del mismo documento en otro consultorio distinto (HTTP 201).
+  - Actualización de alergias y teléfono en paciente propio (HTTP 200).
+  - Bloqueo de modificación cruzada entre diferentes consultorios (HTTP 404 Not Found).
+
+### Commit sugerido
+
+`feat(api): endpoints de creacion y edicion de pacientes con validacion dtos y proteccion multi-tenant`
+
+---
+
 # Arquitectura actual del proyecto
 
 La estructura principal actualmente es:
@@ -1032,11 +1086,11 @@ Fase 2 — Pacientes
 
 **Última tarea completada:**
 
-[Fase 2] Tarea 1 (Roadmap 8) — Diseñar módulo de pacientes
+[Fase 2] Tarea 2 (Roadmap 9) — Crear registro y edición de pacientes
 
 **Tarea actual preparada:**
 
-[Fase 2] Tarea 2 (Roadmap 9) — Crear registro y edición de pacientes
+[Fase 2] Tarea 3 (Roadmap 10) — Implementar búsqueda y filtros de pacientes
 
 **Estado actual:**
 
@@ -1044,4 +1098,4 @@ PENDIENTE DE INICIO
 
 **Siguiente objetivo:**
 
-Implementar endpoints `POST /pacientes` y `PATCH /pacientes/:id` con DTOs de validación estricta, servicios y vinculación multi-tenant automática.
+Implementar endpoint `GET /pacientes` con búsqueda rápida por texto, filtros por documento, estado activo y paginación para el listado médico.
