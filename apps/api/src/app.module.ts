@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { AuthModule } from './modules/auth/auth.module.js';
 
 /**
  * AppModule es el módulo raíz de la aplicación backend.
@@ -26,6 +27,9 @@ import { AppService } from './app.service.js';
         synchronize: true, // Sincroniza los modelos con la DB (solo para desarrollo local)
       }),
     }),
+
+    // 3. Módulo de Autenticación y Seguridad
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

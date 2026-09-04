@@ -447,27 +447,72 @@ En `@sistema-clinico/web`:
 
 ## Tarea 6 — Implementar autenticación y sesiones
 
-**Estado:** PENDIENTE
+**Estado:** COMPLETADA
 
-### Objetivo
+### Objetivo cumplido
 
-Implementar el sistema que permitirá identificar de forma segura a los usuarios de la plataforma.
+Implementar una arquitectura de autenticación segura, sin estado (*stateless*) y multi-consultorio en NestJS utilizando JSON Web Tokens (JWT) y hashing con bcryptjs.
 
-Posteriormente deberá contemplar:
+### Ubicación
 
-- inicio de sesión;
-- cierre de sesión;
-- almacenamiento seguro de contraseñas;
-- sesiones;
-- expiración;
-- recuperación de contraseña;
-- protección de rutas;
-- validación desde NestJS;
-- seguridad de tokens o mecanismo de sesión seleccionado.
+`apps/api/src/modules/auth/` y `apps/api/src/modules/`
 
-La autenticación deberá implementarse en el backend.
+### Implementado
 
-No será suficiente ocultar páginas o botones en React.
+- Instalación de `@nestjs/jwt`, `@nestjs/passport`, `passport-jwt`, `bcryptjs`, `class-validator` y `class-transformer`.
+- Modelado de las entidades fundamentales de persistencia en TypeORM:
+  - `Consultorio` (`apps/api/src/modules/consultorios/entities/consultorio.entity.ts`) con claves primarias UUID para protección anti-enumeración.
+  - `Usuario` (`apps/api/src/modules/usuarios/entities/usuario.entity.ts`) con email indexado, hash seguro de contraseñas y enum tipado `RolUsuario`.
+- Creación de DTOs con validación estricta:
+  - `LoginDto` (`apps/api/src/modules/auth/dto/login.dto.ts`): validación de email y longitud mínima de contraseña.
+  - `RegistroDto` (`apps/api/src/modules/auth/dto/registro.dto.ts`): onboarding de nuevo consultorio y usuario administrador.
+- Implementación de `AuthService` (`apps/api/src/modules/auth/auth.service.ts`):
+  - Hashing seguro de contraseñas con 10 rondas de salt mediante `bcryptjs`.
+  - Emisión de tokens firmados mediante `JwtService` con payload multi-tenant (`sub`, `email`, `rol`, `consultorioId`).
+  - Validación de credenciales con prevención de fuga de información (mensajes homogéneos en errores 401).
+- Implementación de `JwtStrategy` (`apps/api/src/modules/auth/strategies/jwt.strategy.ts`):
+  - Extracción automática desde cabecera `Authorization: Bearer <token>`.
+  - Validación de firma y expiración con la clave secreta `JWT_SECRET`.
+  - Inyección del usuario autenticado en `req.user`.
+- Creación de `JwtAuthGuard` (`apps/api/src/modules/auth/guards/jwt-auth.guard.ts`) para proteger rutas privadas.
+- Endpoints en `AuthController` (`apps/api/src/modules/auth/auth.controller.ts`):
+  - `POST /auth/registro` (público)
+  - `POST /auth/login` (público)
+  - `GET /auth/perfil` (privado, protegido por `JwtAuthGuard`)
+- Configuración global de `ValidationPipe` (con `whitelist` y `forbidNonWhitelisted`) y CORS en `apps/api/src/main.ts`.
+- Documentación técnica registrada en `docs/01-Fundamentos.md`.
+
+### Archivos creados o modificados
+
+- `apps/api/package.json`
+- `apps/api/src/main.ts`
+- `apps/api/src/app.module.ts`
+- `apps/api/src/modules/consultorios/entities/consultorio.entity.ts` (nuevo)
+- `apps/api/src/modules/usuarios/entities/usuario.entity.ts` (nuevo)
+- `apps/api/src/modules/auth/auth.module.ts` (nuevo)
+- `apps/api/src/modules/auth/auth.service.ts` (nuevo)
+- `apps/api/src/modules/auth/auth.controller.ts` (nuevo)
+- `apps/api/src/modules/auth/guards/jwt-auth.guard.ts` (nuevo)
+- `apps/api/src/modules/auth/strategies/jwt.strategy.ts` (nuevo)
+- `apps/api/src/modules/auth/dto/login.dto.ts` (nuevo)
+- `apps/api/src/modules/auth/dto/registro.dto.ts` (nuevo)
+- `.env` y `.env.example` (variables `JWT_SECRET` y `JWT_EXPIRES_IN`)
+- `docs/01-Fundamentos.md`
+
+### Pruebas ejecutadas
+
+- `npm run lint`: cero errores en backend y frontend.
+- `npm run build`: compilación de producción exitosa en menos de 1 segundo.
+- Pruebas HTTP funcionales en vivo con PostgreSQL 16:
+  - `POST /auth/registro`: Registro de consultorio y admin correcto con UUIDs y retorno de JWT.
+  - `POST /auth/login`: Login exitoso con credenciales correctas devolviendo token JWT.
+  - `POST /auth/login`: Rechazado con HTTP 401 ante contraseña incorrecta.
+  - `GET /auth/perfil` sin token: Rechazado con HTTP 401 Unauthorized.
+  - `GET /auth/perfil` con token: Retorna HTTP 200 y datos del usuario y consultorio autenticados.
+
+### Commit sugerido
+
+`feat(api): arquitectura de autenticacion jwt, hashing bcryptjs y entidades base multi-tenant`
 
 ---
 
@@ -878,11 +923,11 @@ Fase 1 — Fundamentos
 
 **Última tarea completada:**
 
-Tarea 5 — Configurar Tailwind CSS y Shadcn UI
+Tarea 6 — Implementar autenticación y sesiones
 
 **Tarea actual preparada:**
 
-Tarea 6 — Implementar autenticación y sesiones
+Tarea 7 — Crear entidades Consultorio, Usuario, Rol y Permiso
 
 **Estado actual:**
 
@@ -890,8 +935,8 @@ PENDIENTE DE INICIO
 
 **Siguiente objetivo:**
 
-Diseñar e implementar la arquitectura de autenticación y manejo de sesiones en la API de NestJS con soporte multi-consultorio.
+Expandir el modelo de autorización con roles granulares, permisos específicos y relaciones clínicas complementarias.
 
-**Siguiente tarea después de autenticación y sesiones:**
+**Siguiente tarea después de entidades y roles:**
 
-Tarea 7 — Crear entidades Consultorio, Usuario, Rol y Permiso.
+Tarea 8 — Implementar control de acceso por consultorio.

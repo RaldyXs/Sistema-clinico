@@ -678,3 +678,38 @@ Se ejecutaron y pasaron exitosamente:
 - `npm run build --workspaces`: compilación de API y Web en menos de 1 segundo.
 - Validación del servidor de desarrollo Vite (`npm run dev:web` en `http://localhost:5173/`).
 - Cambio dinámico de tema claro/oscuro verificado.
+
+---
+
+# 21. Arquitectura de Autenticación y Sesiones (Backend)
+
+## 21.1 Tecnologías y Seguridad
+
+Para proteger la plataforma SaaS y gestionar la identidad de los usuarios de forma segura y multi-tenant, se implementó el módulo de autenticación en **NestJS**:
+
+- **Tokens JWT:** `@nestjs/jwt`, `@nestjs/passport`, `passport-jwt` para emitir y validar credenciales sin estado (stateless) portables entre web y móvil.
+- **Hashing Criptográfico:** `bcryptjs` con 10 rondas de salt para almacenar de forma irreversible las contraseñas en PostgreSQL.
+- **Validación Preventiva de DTOs:** `class-validator` y `class-transformer` con `ValidationPipe` global configurado con `whitelist: true` y `forbidNonWhitelisted: true` para prevenir ataques de asignación masiva (*Mass Assignment*).
+- **CORS:** Habilitado en la API para permitir comunicación directa con el frontend de Vite.
+
+## 21.2 Modelado de Datos Inicial (Tenants y Usuarios)
+
+Se crearon las entidades base en TypeORM conectadas a PostgreSQL nativo:
+- **`Consultorio` (`consultorios`):** Representa al inquilino (*tenant*) con clave primaria UUID v4 para prevenir ataques de enumeración.
+- **`Usuario` (`usuarios`):** Cuenta con `email` único e indexado, `password_hash`, enum tipado `RolUsuario` (`ADMIN`, `MEDICO`, `RECEPCION`) y relación foránea vinculante con `Consultorio`.
+
+## 21.3 Endpoints Implementados
+
+Bajo la ruta `/auth`:
+- `POST /auth/registro`: Creación simultánea del Consultorio (Tenant) y su primer usuario Administrador con contraseña hasheada y retorno de JWT.
+- `POST /auth/login`: Validación de credenciales contra PostgreSQL mediante bcrypt y retorno de JWT con payload `{ sub, email, rol, consultorioId }`.
+- `GET /auth/perfil`: Endpoint protegido mediante `JwtAuthGuard`. Rechaza solicitudes sin token o con token alterado con `401 Unauthorized`. Inyecta el usuario autenticado en `req.user`.
+
+## 21.4 Validación Funcional
+
+Se verificó mediante peticiones HTTP reales a la API:
+- Registro de consultorio y admin con UUIDs: Exitoso (201).
+- Login con credenciales válidas: Exitoso con retorno de token JWT (200).
+- Login con contraseña incorrecta: Rechazado con `401 Unauthorized`.
+- Acceso a `/auth/perfil` sin token: Rechazado con `401 Unauthorized`.
+- Acceso a `/auth/perfil` con Bearer Token: Exitoso con perfil del usuario descifrado (200).
