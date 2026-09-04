@@ -750,3 +750,35 @@ Se crearon las entidades relacionales:
 - Seeding verificado en vivo con 14 permisos y 3 roles enlazados.
 - Token JWT generado para nuevos registros incluye el array completo de permisos del rol asignado.
 - Endpoints `GET /roles` y `GET /roles/permisos` verificados con HTTP 200 y serialización correcta.
+
+---
+
+# 23. Aislamiento Multi-Tenant y Control de Acceso por Consultorio
+
+## 23.1 Principios de Aislamiento en Base de Datos Compartida
+
+El sistema opera bajo el modelo **Shared Database, Shared Schema** (Base de datos compartida con esquema compartido). Para prevenir vulnerabilidades de acceso cruzado (*Cross-Tenant Data Leakage* o *IDOR*), se implementaron tres capas de defensa en el backend:
+
+1. **La Organización proviene únicamente del Token JWT:** El cliente no puede falsear a qué consultorio pertenece mediante el cuerpo o parámetros de la petición; el `consultorioId` se extrae de la firma criptográfica verificada por el servidor.
+2. **Decorador `@ConsultorioActual()`:** Permite a los controladores inyectar de forma transparente y tipada el `consultorioId` del usuario autenticado para filtrar las consultas en PostgreSQL (`WHERE consultorio_id = :consultorioId`).
+3. **Guard de Seguridad `TenantGuard`:** Intercepta peticiones dirigidas a recursos con identificador de organización (`:id` o `:consultorioId`) y valida que coincidan con la del usuario activo. Si detecta un intento de acceso a otra organización, responde inmediatamente con `403 Forbidden`.
+4. **Entidad Base `TenantBaseEntity`:** Clase abstracta que estandariza las columnas `id` (UUID v4), `consultorioId` (clave foránea vinculante con eliminación en cascada), `creadoEn` y `actualizadoEn` para todas las entidades de negocio presentes y futuras.
+
+## 23.2 Módulo de Gestión de Consultorios (`ConsultoriosModule`)
+
+Se implementó el módulo encargado de la organización:
+- `ConsultoriosService`: Métodos para consulta y actualización de la información corporativa.
+- `ConsultoriosController`:
+  - `GET /consultorios/mi-consultorio`: Retorna la información de la clínica del usuario autenticado mediante `@ConsultorioActual()`.
+  - `GET /consultorios/:id`: Protegido por `TenantGuard`. Permite al consultorio ver sus propios datos y bloquea a cualquier otra clínica.
+  - `PATCH /consultorios/:id`: Protegido por `TenantGuard`. Permite actualizar teléfono, dirección o nombre con validación de DTO.
+
+## 23.3 Validación Funcional y Pruebas de Seguridad en Vivo
+
+Se ejecutó una batería de pruebas de penetración y acceso cruzado en vivo:
+- Dr. Carlos (`Centro Médico San Rafael`) consulta `mi-consultorio`: ✅ **HTTP 200 OK**.
+- Dra. Elena (`Policlínico Sur`) consulta `mi-consultorio`: ✅ **HTTP 200 OK**.
+- Dr. Carlos intenta consultar el ID del consultorio de Elena: ⛔ **HTTP 403 Forbidden** (Bloqueado por `TenantGuard`).
+- Dra. Elena intenta consultar el ID del consultorio de Carlos: ⛔ **HTTP 403 Forbidden** (Bloqueado por `TenantGuard`).
+- Dr. Carlos actualiza el teléfono de su propio consultorio: ✅ **HTTP 200 OK**.
+- Dr. Carlos intenta modificar los datos del consultorio de Elena: ⛔ **HTTP 403 Forbidden**.

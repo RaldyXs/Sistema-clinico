@@ -577,31 +577,63 @@ Construir la arquitectura de entidades relacionales para un sistema de control d
 
 ## Tarea 8 — Implementar control de acceso por consultorio
 
-**Estado:** PENDIENTE
+## Tarea 8 — Implementar control de acceso por consultorio
 
-### Objetivo
+**Estado:** COMPLETADA
 
-Garantizar que cada consultorio solamente pueda acceder a la información que le pertenece.
+### Objetivo cumplido
 
-Ejemplo:
+Garantizar el aislamiento estricto multi-tenant (*Multi-Tenant Data Isolation*) mediante decoradores, guards de seguridad y entidades base abstractas, impidiendo cualquier acceso o modificación de datos entre organizaciones ajenas (*Cross-Tenant Data Leakage*).
 
-```text
-Consultorio A
-    |
-    +---- Pacientes A
-    +---- Médicos A
-    +---- Consultas A
+### Ubicación
 
-Consultorio B
-    |
-    +---- Pacientes B
-    +---- Médicos B
-    +---- Consultas B
-```
+`apps/api/src/common/` y `apps/api/src/modules/consultorios/`
 
-Un usuario perteneciente al Consultorio A no deberá poder consultar datos pertenecientes al Consultorio B.
+### Implementado
 
-Esta regla deberá ser validada principalmente por NestJS y no únicamente por React.
+- Creación de la clase abstracta `TenantBaseEntity` (`apps/api/src/common/entities/tenant-base.entity.ts`) con columnas estándar `consultorio_id` (clave foránea con eliminación en cascada), `creado_en` y `actualizado_en` para herencia en todos los módulos de negocio futuros.
+- Creación del decorador de parámetro `@ConsultorioActual()` (`apps/api/src/common/decorators/consultorio-actual.decorator.ts`) para inyectar de forma segura el ID de la organización desde la firma del JWT sin confiar en parámetros del cliente.
+- Implementación de `TenantGuard` (`apps/api/src/common/guards/tenant.guard.ts`):
+  - Verifica que el usuario tenga un consultorio activo.
+  - Compara el parámetro solicitado (`:id` o `:consultorioId`) contra el consultorio del usuario autenticado.
+  - Bloquea accesos cruzados respondiendo de inmediato con HTTP 403 Forbidden.
+- Módulo `ConsultoriosModule`:
+  - `ConsultoriosService`: Métodos para consulta y actualización de la organización tenant.
+  - `ConsultoriosController`:
+    - `GET /consultorios/mi-consultorio` (acceso propio seguro vía `@ConsultorioActual()`).
+    - `GET /consultorios/:id` (protegido por `TenantGuard`).
+    - `PATCH /consultorios/:id` (actualización protegida por `TenantGuard` con DTO validado).
+- Registro del módulo en `AppModule`.
+- Documentación técnica registrada en `docs/01-Fundamentos.md`.
+
+### Archivos creados o modificados
+
+- `apps/api/src/common/entities/tenant-base.entity.ts` (nuevo)
+- `apps/api/src/common/decorators/consultorio-actual.decorator.ts` (nuevo)
+- `apps/api/src/common/guards/tenant.guard.ts` (nuevo)
+- `apps/api/src/modules/consultorios/dto/actualizar-consultorio.dto.ts` (nuevo)
+- `apps/api/src/modules/consultorios/consultorios.service.ts` (nuevo)
+- `apps/api/src/modules/consultorios/consultorios.controller.ts` (nuevo)
+- `apps/api/src/modules/consultorios/consultorios.module.ts` (nuevo)
+- `apps/api/src/app.module.ts`
+- `docs/01-Fundamentos.md`
+- `docs/PROJECT_STATUS.md`
+
+### Pruebas ejecutadas
+
+- `npm run lint`: cero errores y cero advertencias en todo el monorepo.
+- `npm run build`: compilación limpia en 830 ms.
+- Pruebas de seguridad multi-tenant en vivo:
+  - Dr. Carlos (`Centro Médico San Rafael`) consulta `mi-consultorio`: HTTP 200 OK.
+  - Dra. Elena (`Policlínico Sur`) consulta `mi-consultorio`: HTTP 200 OK.
+  - Dr. Carlos intenta consultar consultorio de Dra. Elena: HTTP 403 Forbidden ("Acceso denegado: no tienes permiso para acceder o modificar los datos de otra organización").
+  - Dra. Elena intenta consultar consultorio de Dr. Carlos: HTTP 403 Forbidden.
+  - Dr. Carlos actualiza datos de su propio consultorio: HTTP 200 OK.
+  - Dr. Carlos intenta modificar datos del consultorio de Dra. Elena: HTTP 403 Forbidden.
+
+### Commit sugerido
+
+`feat(api): aislamiento multi-tenant con TenantGuard, decorador ConsultorioActual y modulo consultorios`
 
 ---
 
@@ -610,7 +642,7 @@ Esta regla deberá ser validada principalmente por NestJS y no únicamente por R
 Actualmente:
 
 ```text
-Fase 1 — Fundamentos
+Fase 1 — Fundamentos (100% COMPLETADA)
 
 Tarea 1
 Configurar repositorio y estructura
@@ -638,25 +670,25 @@ COMPLETADA
 
 Tarea 5
 Configurar Tailwind CSS y Shadcn UI
-PENDIENTE
+COMPLETADA
 
         ↓
 
 Tarea 6
 Autenticación y sesiones
-PENDIENTE
+COMPLETADA
 
         ↓
 
 Tarea 7
 Consultorio, Usuario, Rol y Permiso
-PENDIENTE
+COMPLETADA
 
         ↓
 
 Tarea 8
 Control de acceso por consultorio
-PENDIENTE
+COMPLETADA
 ```
 
 ---
@@ -950,26 +982,22 @@ Cuando se reciba un HANDOFF de Gemini, ChatGPT deberá:
 
 # Última actualización
 
-**Fase actual:**
+**Fase completada:**
 
-Fase 1 — Fundamentos
+Fase 1 — Fundamentos (100% COMPLETADA: Tareas 1 a 8)
 
 **Última tarea completada:**
 
-Tarea 7 — Crear entidades Consultorio, Usuario, Rol y Permiso
-
-**Tarea actual preparada:**
-
 Tarea 8 — Implementar control de acceso por consultorio
+
+**Siguiente fase:**
+
+Fase 2 — Pacientes
 
 **Estado actual:**
 
-PENDIENTE DE INICIO
+LISTO PARA INICIAR FASE 2
 
 **Siguiente objetivo:**
 
-Garantizar el aislamiento multi-tenant mediante interceptores/guards que impidan a un usuario acceder o modificar datos de otro consultorio.
-
-**Siguiente tarea después de control de acceso:**
-
-Fase 2 — Pacientes (Diseñar módulo de pacientes).
+Iniciar la Fase 2 (Pacientes) con el modelado de datos clínicos, fichas médicas, historias clínicas y endpoints seguros con herencia de `TenantBaseEntity`.

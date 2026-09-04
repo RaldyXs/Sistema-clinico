@@ -5,6 +5,7 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
+import { ConsultoriosModule } from './modules/consultorios/consultorios.module.js';
 
 /**
  * AppModule es el módulo raíz de la aplicación backend.
@@ -34,6 +35,9 @@ import { RolesModule } from './modules/roles/roles.module.js';
 
     // 4. Módulo de Roles y Permisos (RBAC)
     RolesModule,
+
+    // 5. Módulo de Consultorios (Gestión de Organización y Aislamiento Multi-Tenant)
+    ConsultoriosModule,
   ],
   controllers: [AppController],
   providers: [AppService],

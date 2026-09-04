@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PassportModule } from '@nestjs/passport';
 import { Permiso } from './entities/permiso.entity.js';
 import { Rol } from './entities/rol.entity.js';
 import { RolesService } from './roles.service.js';
