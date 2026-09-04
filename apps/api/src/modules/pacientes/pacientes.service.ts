@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Paciente } from './entities/paciente.entity.js';
 import { CrearPacienteDto } from './dto/crear-paciente.dto.js';
 import { ActualizarPacienteDto } from './dto/actualizar-paciente.dto.js';
+import { FiltrosPacienteDto } from './dto/filtros-paciente.dto.js';
 
 /**
  * Servicio de Pacientes (PacientesService).
@@ -133,5 +134,73 @@ export class PacientesService {
     const actualizado = await this.pacienteRepo.save(paciente);
     this.logger.log(`Paciente actualizado: ${actualizado.id}`);
     return actualizado;
+  }
+
+  /**
+   * Lista los pacientes del consultorio aplicando búsqueda libre, filtros y paginación.
+   */
+  async listar(consultorioId: string, filtros: FiltrosPacienteDto) {
+    const {
+      termino,
+      genero,
+      grupoSanguineo,
+      activo,
+      pagina = 1,
+      limite = 10,
+      ordenarPor = 'apellido',
+      direccion = 'ASC',
+    } = filtros;
+
+    const qb = this.pacienteRepo.createQueryBuilder('p')
+      .where('p.consultorioId = :consultorioId', { consultorioId });
+
+    // 1. Filtro por término de búsqueda (nombre, apellido, documento o teléfono)
+    if (termino && termino.trim() !== '') {
+      const limpio = termino.trim();
+      qb.andWhere(
+        '(LOWER(p.nombre) LIKE :term OR LOWER(p.apellido) LIKE :term OR LOWER(CONCAT(p.nombre, \' \', p.apellido)) LIKE :term OR p.documentoIdentidad LIKE :termDoc OR p.telefono LIKE :termDoc)',
+        {
+          term: `%${limpio.toLowerCase()}%`,
+          termDoc: `%${limpio}%`,
+        },
+      );
+    }
+
+    // 2. Filtro por género
+    if (genero) {
+      qb.andWhere('p.genero = :genero', { genero });
+    }
+
+    // 3. Filtro por grupo sanguíneo
+    if (grupoSanguineo) {
+      qb.andWhere('p.grupoSanguineo = :grupoSanguineo', { grupoSanguineo });
+    }
+
+    // 4. Filtro por estado activo (si no se envía, busca activos por defecto)
+    if (activo !== undefined) {
+      qb.andWhere('p.activo = :activo', { activo });
+    } else {
+      qb.andWhere('p.activo = true');
+    }
+
+    // 5. Ordenamiento y Paginación
+    const dirNormalizada = (direccion.toUpperCase() === 'DESC' ? 'DESC' : 'ASC') as 'ASC' | 'DESC';
+    const campoColumna = `p.${ordenarPor}`;
+
+    qb.orderBy(campoColumna, dirNormalizada)
+      .skip((pagina - 1) * limite)
+      .take(limite);
+
+    const [datos, total] = await qb.getManyAndCount();
+
+    return {
+      datos,
+      meta: {
+        total,
+        pagina,
+        limite,
+        totalPaginas: Math.ceil(total / limite) || 1,
+      },
+    };
   }
 }

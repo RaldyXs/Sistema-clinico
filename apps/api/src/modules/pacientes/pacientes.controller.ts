@@ -5,11 +5,13 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { PacientesService } from './pacientes.service.js';
 import { CrearPacienteDto } from './dto/crear-paciente.dto.js';
 import { ActualizarPacienteDto } from './dto/actualizar-paciente.dto.js';
+import { FiltrosPacienteDto } from './dto/filtros-paciente.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 
@@ -24,6 +26,17 @@ import { ConsultorioActual } from '../../common/decorators/consultorio-actual.de
 @Controller('pacientes')
 export class PacientesController {
   constructor(private readonly pacientesService: PacientesService) {}
+
+  /**
+   * Lista los pacientes de la clínica aplicando búsqueda rápida, filtros y paginación.
+   */
+  @Get()
+  async listar(
+    @ConsultorioActual() consultorioId: string,
+    @Query() filtros: FiltrosPacienteDto,
+  ) {
+    return this.pacientesService.listar(consultorioId, filtros);
+  }
 
   /**
    * Registra un nuevo paciente en la clínica del usuario autenticado.

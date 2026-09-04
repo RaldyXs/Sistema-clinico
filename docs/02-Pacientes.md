@@ -66,7 +66,7 @@ La entidad `Paciente` hereda de `TenantBaseEntity`, garantizando automáticament
 ---
 
 1. **Creación y Edición de Pacientes:** COMPLETADA (`POST /pacientes` y `PATCH /pacientes/:id`).
-2. **Búsqueda y Filtros:** Endpoint `GET /pacientes` con paginación, filtros por texto, documento y orden alfabético.
+2. **Búsqueda y Filtros:** COMPLETADA (`GET /pacientes` con búsqueda multi-campo, filtros y paginación).
 3. **Ficha Completa del Paciente:** Endpoint `GET /pacientes/:id` con historial de citas, consultas y resumen clínico.
 
 ---
@@ -93,3 +93,40 @@ La entidad `Paciente` hereda de `TenantBaseEntity`, garantizando automáticament
 3. **Multi-Tenancy:** Creación permitida del mismo documento en consultorios distintos (aislamiento verificado).
 4. **Edición:** Actualización exitosa de campos clínicos (alergias, teléfono) con HTTP 200 OK.
 5. **Aislamiento Cruzado:** Rechazo con HTTP 404 Not Found al intentar modificar un paciente desde otra clínica.
+
+---
+
+## 6. Implementación de Búsqueda, Filtros y Paginación
+
+### 6.1 Endpoint y Parámetros (`GET /pacientes`)
+
+- **Búsqueda Libre (`termino`):** Coincidencia parcial insensible a mayúsculas/minúsculas en `nombre`, `apellido`, `nombre + apellido`, `documentoIdentidad` y `telefono`.
+- **Filtros Específicos:**
+  - `genero`: `FEMENINO`, `MASCULINO`, `OTRO`.
+  - `grupoSanguineo`: `A+`, `O-`, etc.
+  - `activo`: `true` (por defecto), `false` o `todos`.
+- **Paginación y Orden:**
+  - `pagina`: Número de página (1-indexed).
+  - `limite`: Cantidad de resultados por página (por defecto 10, máximo 100).
+  - `ordenarPor`: `apellido` (defecto), `nombre`, `creadoEn`, `fechaNacimiento`.
+  - `direccion`: `ASC` (defecto) o `DESC`.
+- **Estructura de Respuesta:**
+  ```json
+  {
+    "datos": [ ... ],
+    "meta": {
+      "total": 4,
+      "pagina": 1,
+      "limite": 10,
+      "totalPaginas": 1
+    }
+  }
+  ```
+
+### 6.2 Pruebas en Vivo Verificadas
+
+- **Listado general:** Retornó correctamente los 4 pacientes del consultorio con metadatos de paginación.
+- **Búsqueda por texto (`termino=Silva`):** Filtró con precisión a Mariana Silva y María Fernanda Silva.
+- **Búsqueda por cédula (`termino=20111222`):** Retornó únicamente a Pedro Gómez.
+- **Filtro por género (`genero=MASCULINO`):** Retornó los pacientes masculinos registrados.
+- **Aislamiento Multi-Tenant:** Dra. Elena en Policlínico Sur solo visualiza su único paciente, sin filtración de datos de San Rafael.

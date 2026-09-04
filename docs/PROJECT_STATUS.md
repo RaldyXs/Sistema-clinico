@@ -791,6 +791,58 @@ Implementar los endpoints y servicios de registro y edición de pacientes con va
 
 ---
 
+## Tarea 3 (Roadmap 10) — Implementar búsqueda y filtros de pacientes
+
+**Estado:** COMPLETADA
+
+### Objetivo cumplido
+
+Implementar el endpoint `GET /pacientes` con búsqueda rápida multi-campo por término, filtros clínicos (género, grupo sanguíneo, estado activo) y paginación con metadatos garantizando el aislamiento multi-tenant.
+
+### Ubicación
+
+`apps/api/src/modules/pacientes/`
+
+### Implementado
+
+- `FiltrosPacienteDto` (`apps/api/src/modules/pacientes/dto/filtros-paciente.dto.ts`):
+  - Búsqueda por `termino` libre.
+  - Filtros por `genero` y `grupoSanguineo`.
+  - Transformación booleana para `activo`.
+  - Paginación tipada (`pagina`, `limite`, `ordenarPor`, `direccion`).
+- `PacientesService`:
+  - Método `listar()` con `createQueryBuilder`: búsqueda insensible a mayúsculas/minúsculas en nombres, apellidos, documento y teléfono.
+  - Filtro estricto por `consultorioId` del token JWT.
+  - Cálculo de metadatos de paginación (`total`, `pagina`, `limite`, `totalPaginas`).
+- `PacientesController`:
+  - `GET /pacientes` expuesto y protegido con `JwtAuthGuard` y `@ConsultorioActual()`.
+- Documentación técnica registrada en `docs/02-Pacientes.md`.
+
+### Archivos creados o modificados
+
+- `apps/api/src/modules/pacientes/dto/filtros-paciente.dto.ts` (nuevo)
+- `apps/api/src/modules/pacientes/pacientes.service.ts`
+- `apps/api/src/modules/pacientes/pacientes.controller.ts`
+- `docs/02-Pacientes.md`
+- `docs/PROJECT_STATUS.md`
+
+### Pruebas ejecutadas
+
+- `npm run lint`: 0 errores y 0 advertencias.
+- `npm run build`: compilación limpia en 908 ms.
+- Pruebas HTTP funcionales en vivo con PostgreSQL 18:
+  - Listado general paginado de pacientes de la clínica (HTTP 200).
+  - Búsqueda por término parcial de apellido (`termino=Silva`) retornando únicamente coincidencias (HTTP 200).
+  - Búsqueda por número de documento de identidad (`termino=20111222`) retornando coincidencia exacta (HTTP 200).
+  - Filtro específico por género masculino (`genero=MASCULINO`) (HTTP 200).
+  - Aislamiento multi-tenant en búsqueda: clientes de otra clínica solo ven sus propios pacientes.
+
+### Commit sugerido
+
+`feat(api): busqueda multi-campo, filtros clinicos y paginacion de pacientes`
+
+---
+
 # Arquitectura actual del proyecto
 
 La estructura principal actualmente es:
@@ -1086,11 +1138,11 @@ Fase 2 — Pacientes
 
 **Última tarea completada:**
 
-[Fase 2] Tarea 2 (Roadmap 9) — Crear registro y edición de pacientes
+[Fase 2] Tarea 3 (Roadmap 10) — Implementar búsqueda y filtros de pacientes
 
 **Tarea actual preparada:**
 
-[Fase 2] Tarea 3 (Roadmap 10) — Implementar búsqueda y filtros de pacientes
+[Fase 2] Tarea 4 (Roadmap 11) — Crear ficha completa del paciente
 
 **Estado actual:**
 
@@ -1098,4 +1150,4 @@ PENDIENTE DE INICIO
 
 **Siguiente objetivo:**
 
-Implementar endpoint `GET /pacientes` con búsqueda rápida por texto, filtros por documento, estado activo y paginación para el listado médico.
+Implementar la consulta integral de la ficha clínica del paciente, consolidando datos personales, antecedentes, alergias y dejando la base para el historial de citas y consultas.
