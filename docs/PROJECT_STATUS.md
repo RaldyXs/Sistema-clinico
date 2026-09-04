@@ -46,7 +46,7 @@ Monorepo con npm workspaces.
 
 ## Fase actual
 
-**Fase 2 — Pacientes (100% COMPLETADA) — Próxima: Fase 3 — Citas**
+**Fase 3 — Citas**
 
 ---
 
@@ -891,6 +891,59 @@ Implementar el endpoint `GET /pacientes/:id/ficha` que consolida la visión clí
 
 ---
 
+# Fase 3 — Citas
+
+## Tarea 1 (Roadmap 12) — Diseñar módulo de citas
+
+**Estado:** COMPLETADA
+
+### Objetivo cumplido
+
+Diseñar la arquitectura técnica, el modelo relacional e índices en PostgreSQL 18 para el módulo de Citas, incorporando herencia de `TenantBaseEntity`, relaciones de integridad `RESTRICT` con `Paciente` y `Usuario`, definición de la máquina de estados clínicos (`PROGRAMADA` a `ATENDIDA`) y reglas de control de solapamiento de agenda.
+
+### Ubicación
+
+`apps/api/src/modules/citas/` y `docs/03-Citas.md`
+
+### Implementado
+
+- Creación del documento de arquitectura clínica y flujos de agenda `docs/03-Citas.md`.
+- Creación de la entidad `Cita` (`apps/api/src/modules/citas/entities/cita.entity.ts`):
+  - Herencia de `TenantBaseEntity` para aislamiento estricto por consultorio.
+  - Relación `@ManyToOne` con `Paciente` (`onDelete: 'RESTRICT'`).
+  - Relación `@ManyToOne` con `Usuario` (`onDelete: 'RESTRICT'`).
+  - Columnas temporales con zona horaria (`fecha_hora_inicio`, `fecha_hora_fin`).
+  - Control de duración (`duracion_minutos`, default: 30).
+  - Enum `EstadoCita` con 7 estados (`PROGRAMADA`, `CONFIRMADA`, `EN_ESPERA`, `EN_CONSULTA`, `ATENDIDA`, `CANCELADA`, `NO_ASISTIO`).
+  - Campos de motivo, notas y motivo de cancelación.
+- Índices de alto rendimiento en PostgreSQL 18:
+  - `idx_citas_consultorio_inicio`: `[consultorio_id, fecha_hora_inicio]` para agenda diaria/semanal.
+  - `idx_citas_profesional_agenda`: `[consultorio_id, profesional_id, fecha_hora_inicio, fecha_hora_fin]` para detección rápida de solapamientos.
+  - `idx_citas_paciente_historial`: `[consultorio_id, paciente_id, fecha_hora_inicio]` para el historial cronológico del paciente.
+  - `idx_citas_consultorio_estado`: `[consultorio_id, estado]` para filtros de recepción y sala de espera.
+- Creación de `CitasModule` y registro en `AppModule`.
+- Sincronización automática de la tabla `citas` verificada en PostgreSQL 18.
+
+### Archivos creados o modificados
+
+- `docs/03-Citas.md` (nuevo)
+- `apps/api/src/modules/citas/entities/cita.entity.ts` (nuevo)
+- `apps/api/src/modules/citas/citas.module.ts` (nuevo)
+- `apps/api/src/app.module.ts`
+- `docs/PROJECT_STATUS.md`
+
+### Pruebas ejecutadas
+
+- `npm run lint`: 0 errores y 0 advertencias.
+- `npm run build`: compilación limpia en 853 ms.
+- Verificación directa en PostgreSQL 18: tabla `citas` creada con sus 13 columnas, claves foráneas con reglas `RESTRICT` y `CASCADE`, y los 4 índices especializados.
+
+### Commit sugerido
+
+`feat(api): diseño del modulo de citas, entidad cita con tenantbaseentity, maquina de estados e indices`
+
+---
+
 # Arquitectura actual del proyecto
 
 La estructura principal actualmente es:
@@ -1182,20 +1235,20 @@ Cuando se reciba un HANDOFF de Gemini, ChatGPT deberá:
 
 **Fase actual:**
 
-Fase 2 — Pacientes (100% COMPLETADA) — Preparada para Fase 3 — Citas
+Fase 3 — Citas
 
 **Última tarea completada:**
 
-[Fase 2] Tarea 4 (Roadmap 11) — Crear ficha completa del paciente
+[Fase 3] Tarea 1 (Roadmap 12) — Diseñar módulo de citas
 
 **Tarea actual preparada:**
 
-[Fase 3] Tarea 1 (Roadmap 12) — Diseñar módulo de citas
+[Fase 3] Tarea 2 (Roadmap 13) — Implementar creación, edición y reprogramación de citas
 
 **Estado actual:**
 
-LISTO PARA FASE 3
+PENDIENTE DE INICIO
 
 **Siguiente objetivo:**
 
-Diseñar la arquitectura técnica, modelo relacional, flujo de estados clínicos (programada, confirmada, en espera, en consulta, atendida, cancelada, no asistió) y reglas de control de solapamiento de agenda para el módulo de Citas en Fase 3.
+Implementar los DTOs de validación, servicio y endpoints `POST /citas` y `PATCH /citas/:id` con control estricto de disponibilidad y algoritmo anti-solapamiento de agenda para profesionales.

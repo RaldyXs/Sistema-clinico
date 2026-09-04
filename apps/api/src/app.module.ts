@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module.js';
 import { RolesModule } from './modules/roles/roles.module.js';
 import { ConsultoriosModule } from './modules/consultorios/consultorios.module.js';
 import { PacientesModule } from './modules/pacientes/pacientes.module.js';
+import { CitasModule } from './modules/citas/citas.module.js';
 
 /**
  * AppModule es el módulo raíz de la aplicación backend.
@@ -42,6 +43,9 @@ import { PacientesModule } from './modules/pacientes/pacientes.module.js';
 
     // 6. Módulo Clínico: Pacientes (Fase 2)
     PacientesModule,
+
+    // 7. Módulo Clínico: Citas y Agenda (Fase 3)
+    CitasModule,
   ],
   controllers: [AppController],
   providers: [AppService],
