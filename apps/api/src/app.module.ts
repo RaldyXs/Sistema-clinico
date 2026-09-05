@@ -9,6 +9,7 @@ import { ConsultoriosModule } from './modules/consultorios/consultorios.module.j
 import { PacientesModule } from './modules/pacientes/pacientes.module.js';
 import { CitasModule } from './modules/citas/citas.module.js';
 import { ConsultasModule } from './modules/consultas/consultas.module.js';
+import { RecetasModule } from './modules/recetas/recetas.module.js';
 
 /**
  * AppModule es el módulo raíz de la aplicación backend.
@@ -18,7 +19,7 @@ import { ConsultasModule } from './modules/consultas/consultas.module.js';
     // 1. Cargamos las variables de entorno desde la raíz del monorepo
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../../.env', // Subimos dos niveles: api -> apps -> raíz
+      envFilePath: ['.env', '../../.env', '../.env'],
     }),
     
     // 2. Configuramos la conexión a PostgreSQL usando TypeORM
@@ -50,6 +51,9 @@ import { ConsultasModule } from './modules/consultas/consultas.module.js';
 
     // 8. Módulo Clínico: Consultas e Historia Clínica (Fase 4)
     ConsultasModule,
+
+    // 9. Módulo Clínico: Recetas y Documentos Médicos (Fase 5)
+    RecetasModule,
   ],
   controllers: [AppController],
   providers: [AppService],
