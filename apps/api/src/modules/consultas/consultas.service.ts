@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
 import { Consulta, EstadoConsulta } from './entities/consulta.entity.js';
 import { CrearConsultaDto } from './dto/crear-consulta.dto.js';
+import { FiltrosSignosVitalesDto } from './dto/filtros-signos-vitales.dto.js';
 
 /**
  * Servicio de Consultas Clínicas (ConsultasService).
@@ -44,6 +45,25 @@ export class ConsultasService {
   }
 
   /**
+   * Clasifica el IMC según los rangos clínicos internacionales de la OMS:
+   * - < 18.5: Bajo peso
+   * - 18.5 - 24.9: Peso normal / Eutrófico
+   * - 25.0 - 29.9: Sobrepeso / Preobesidad
+   * - 30.0 - 34.9: Obesidad Grado I (Moderada)
+   * - 35.0 - 39.9: Obesidad Grado II (Severa)
+   * - >= 40.0: Obesidad Grado III (Mórbida)
+   */
+  clasificarImc(imc?: number | null): string | null {
+    if (!imc || imc <= 0) return null;
+    if (imc < 18.5) return 'Bajo peso';
+    if (imc < 25.0) return 'Peso normal / Eutrófico';
+    if (imc < 30.0) return 'Sobrepeso / Preobesidad';
+    if (imc < 35.0) return 'Obesidad Grado I (Moderada)';
+    if (imc < 40.0) return 'Obesidad Grado II (Severa)';
+    return 'Obesidad Grado III (Mórbida)';
+  }
+
+  /**
    * Valida la existencia y pertenencia del paciente al consultorio.
    */
   private async verificarPacienteEnConsultorio(
@@ -56,9 +76,7 @@ export class ConsultasService {
     );
 
     if (res.length === 0) {
-      throw new NotFoundException(
-        'El paciente no existe o no pertenece a su consultorio',
-      );
+      throw new NotFoundException('Paciente no encontrado');
     }
   }
 
@@ -75,9 +93,7 @@ export class ConsultasService {
     );
 
     if (res.length === 0) {
-      throw new NotFoundException(
-        'El profesional de salud no existe o no pertenece a su consultorio',
-      );
+      throw new NotFoundException('Profesional de salud no encontrado');
     }
   }
 
@@ -98,9 +114,7 @@ export class ConsultasService {
     );
 
     if (citas.length === 0) {
-      throw new NotFoundException(
-        'La cita no existe o no pertenece a su consultorio',
-      );
+      throw new NotFoundException('Cita no encontrada');
     }
 
     if (citas[0].paciente_id !== pacienteId) {
@@ -221,11 +235,93 @@ export class ConsultasService {
     });
 
     if (!consulta) {
-      throw new NotFoundException(
-        'La consulta clínica no existe o no pertenece a su consultorio',
-      );
+      throw new NotFoundException('Consulta clínica no encontrada');
     }
 
     return consulta;
   }
+
+  /**
+   * Obtiene la evolución histórica de signos vitales de un paciente.
+   *
+   * Diseñado para alimentar gráficas clínicas y paneles de seguimiento:
+   * - Curva de peso y variación de IMC con clasificación OMS.
+   * - Curva de presión arterial (sistólica/diastólica).
+   * - Frecuencia cardíaca, respiratoria, temperatura y oximetría.
+   *
+   * Garantías:
+   * - Aislamiento multi-tenant estricto: solo accede a pacientes de la clínica del usuario.
+   * - Descarta consultas anuladas para preservar la validez clínica.
+   * - Filtra únicamente atenciones que cuenten con datos biométricos.
+   * - Proporciona el resumen del último control para acceso rápido en la cabecera.
+   */
+  async obtenerSignosVitalesHistoricos(
+    consultorioId: string,
+    pacienteId: string,
+    filtros: FiltrosSignosVitalesDto,
+  ) {
+    // 1. Validar existencia del paciente en el consultorio
+    await this.verificarPacienteEnConsultorio(consultorioId, pacienteId);
+
+    const limite = filtros.limite ?? 20;
+
+    // 2. Consulta optimizada aprovechando el índice compuesto (consultorio_id, paciente_id, fecha_atencion)
+    const qb = this.consultaRepo
+      .createQueryBuilder('consulta')
+      .leftJoinAndSelect('consulta.profesional', 'profesional')
+      .where('consulta.consultorioId = :consultorioId', { consultorioId })
+      .andWhere('consulta.pacienteId = :pacienteId', { pacienteId })
+      .andWhere('consulta.estado != :estadoAnulada', {
+        estadoAnulada: EstadoConsulta.ANULADA,
+      })
+      .andWhere(
+        '(consulta.pesoKg IS NOT NULL OR consulta.presionSistolica IS NOT NULL OR consulta.frecuenciaCardiaca IS NOT NULL OR consulta.temperatura IS NOT NULL OR consulta.saturacionOxigeno IS NOT NULL)',
+      )
+      .orderBy('consulta.fechaAtencion', 'DESC');
+
+    if (filtros.fechaDesde) {
+      qb.andWhere('consulta.fechaAtencion >= :desde', {
+        desde: new Date(`${filtros.fechaDesde}T00:00:00.000Z`),
+      });
+    }
+
+    if (filtros.fechaHasta) {
+      qb.andWhere('consulta.fechaAtencion <= :hasta', {
+        hasta: new Date(`${filtros.fechaHasta}T23:59:59.999Z`),
+      });
+    }
+
+    const registros = await qb.take(limite).getMany();
+
+    // 3. Mapear y enriquecer cada registro con clasificación OMS
+    const historico = registros.map((c) => ({
+      consultaId: c.id,
+      fechaAtencion: c.fechaAtencion,
+      profesional: c.profesional
+        ? `${c.profesional.nombre} ${c.profesional.apellido}`
+        : null,
+      pesoKg: c.pesoKg ? Number(c.pesoKg) : null,
+      tallaCm: c.tallaCm ? Number(c.tallaCm) : null,
+      imc: c.imc ? Number(c.imc) : null,
+      clasificacionImc: this.clasificarImc(c.imc ? Number(c.imc) : null),
+      presionSistolica: c.presionSistolica,
+      presionDiastolica: c.presionDiastolica,
+      presionArterial:
+        c.presionSistolica && c.presionDiastolica
+          ? `${c.presionSistolica}/${c.presionDiastolica} mmHg`
+          : null,
+      frecuenciaCardiaca: c.frecuenciaCardiaca,
+      frecuenciaRespiratoria: c.frecuenciaRespiratoria,
+      temperatura: c.temperatura ? Number(c.temperatura) : null,
+      saturacionOxigeno: c.saturacionOxigeno ? Number(c.saturacionOxigeno) : null,
+    }));
+
+    return {
+      pacienteId,
+      totalRegistros: historico.length,
+      resumenUltimoControl: historico.length > 0 ? historico[0] : null,
+      historico,
+    };
+  }
 }
+

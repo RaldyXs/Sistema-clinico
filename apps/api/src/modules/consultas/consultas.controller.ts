@@ -4,10 +4,12 @@ import {
   Get,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ConsultasService } from './consultas.service.js';
 import { CrearConsultaDto } from './dto/crear-consulta.dto.js';
+import { FiltrosSignosVitalesDto } from './dto/filtros-signos-vitales.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 import { UsuarioActual } from '../../common/decorators/usuario-actual.decorator.js';
@@ -44,6 +46,28 @@ export class ConsultasController {
     @Body() dto: CrearConsultaDto,
   ) {
     return this.consultasService.crear(consultorioId, usuarioId, dto);
+  }
+
+  /**
+   * Obtiene la serie temporal histórica de signos vitales y biometría de un paciente.
+   *
+   * Diseñado para visualización de gráficas de evolución clínica:
+   * - Curva de peso y variación de IMC (con clasificación OMS).
+   * - Curva de presión arterial sistólica y diastólica.
+   * - Frecuencia cardíaca, temperatura y saturación de oxígeno.
+   * - Resumen del último control registrado.
+   */
+  @Get('paciente/:pacienteId/signos-vitales')
+  async obtenerSignosVitalesHistoricos(
+    @ConsultorioActual() consultorioId: string,
+    @Param('pacienteId') pacienteId: string,
+    @Query() filtros: FiltrosSignosVitalesDto,
+  ) {
+    return this.consultasService.obtenerSignosVitalesHistoricos(
+      consultorioId,
+      pacienteId,
+      filtros,
+    );
   }
 
   /**

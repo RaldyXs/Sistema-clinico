@@ -159,9 +159,7 @@ export class CitasService {
     );
 
     if (count.length === 0) {
-      throw new NotFoundException(
-        'El paciente no existe o no pertenece a su consultorio',
-      );
+      throw new NotFoundException('Paciente no encontrado');
     }
   }
 
@@ -180,9 +178,7 @@ export class CitasService {
     );
 
     if (count.length === 0) {
-      throw new NotFoundException(
-        'El profesional de salud no existe o no pertenece a su consultorio',
-      );
+      throw new NotFoundException('Profesional de salud no encontrado');
     }
   }
 
@@ -264,7 +260,7 @@ export class CitasService {
     });
 
     if (!cita) {
-      throw new NotFoundException('La cita no existe o no pertenece a su consultorio');
+      throw new NotFoundException('Cita no encontrada');
     }
 
     return cita;
@@ -295,7 +291,7 @@ export class CitasService {
     });
 
     if (!cita) {
-      throw new NotFoundException('La cita no existe o no pertenece a su consultorio');
+      throw new NotFoundException('Cita no encontrada');
     }
 
     // 2. Solo se pueden reprogramar citas en estados editables
@@ -369,7 +365,7 @@ export class CitasService {
     const cita = await this.citaRepo.findOne({ where: { id, consultorioId } });
 
     if (!cita) {
-      throw new NotFoundException('La cita no existe o no pertenece a su consultorio');
+      throw new NotFoundException('Cita no encontrada');
     }
 
     // 2. Validar que la transición esté permitida por la máquina de estados

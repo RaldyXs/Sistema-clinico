@@ -2,20 +2,22 @@ import {
   Injectable,
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 
 /**
  * Guard de Aislamiento Multi-Tenant (TenantGuard).
  *
- * ¿Qué función cumple este portero de seguridad?
- * Intercepta las solicitudes HTTP dirigidas a recursos identificados por ID de consultorio
- * y verifica que el consultorio solicitado coincida exactamente con el consultorio del usuario autenticado.
+ * Principio de Seguridad: "Ceguera de Tenant" (Blind Isolation / Zero Information Disclosure).
  *
- * Si el Dr. Carlos (Consultorio A) intenta consultar:
- * `GET /consultorios/<UUID-del-Consultorio-B>`
- * este Guard lo detecta y rechaza la petición con HTTP 403 Forbidden antes de que toque la base de datos.
+ * Si un usuario curioso o atacante intenta acceder a un consultorio ajeno (ej. GET /consultorios/<id-ajeno>),
+ * el sistema responde con HTTP 404 "Consultorio no encontrado" en lugar de HTTP 403 "Acceso denegado a otra organización".
+ *
+ * ¿Por qué?
+ * Porque un HTTP 403 le confirma al atacante que ese consultorio SÍ existe.
+ * Al responder HTTP 404 idéntico a si el ID no existiera, se previene por completo
+ * la enumeración de organizaciones y el usuario nunca sabrá si existen otros consultorios en el sistema.
  */
 @Injectable()
 export class TenantGuard implements CanActivate {
@@ -33,13 +35,12 @@ export class TenantGuard implements CanActivate {
     // 2. Buscamos si la URL contiene un parámetro de consultorio (:id o :consultorioId)
     const paramConsultorioId = request.params?.consultorioId ?? request.params?.id;
 
-    // 3. Si la ruta incluye un ID de consultorio, validamos que sea el suyo
+    // 3. Si la ruta incluye un ID que no es el suyo, fingimos que no existe (404)
     if (paramConsultorioId && paramConsultorioId !== user.consultorioId) {
-      throw new ForbiddenException(
-        'Acceso denegado: no tienes permiso para acceder o modificar los datos de otra organización',
-      );
+      throw new NotFoundException('Consultorio no encontrado');
     }
 
     return true;
   }
 }
+

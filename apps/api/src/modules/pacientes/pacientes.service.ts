@@ -45,7 +45,7 @@ export class PacientesService {
 
       if (existe) {
         throw new ConflictException(
-          `Ya existe un paciente con el documento de identidad "${docNormalizado}" registrado en su consultorio`,
+          `Ya existe un paciente con el documento de identidad "${docNormalizado}"`,
         );
       }
     }
@@ -77,7 +77,7 @@ export class PacientesService {
     });
 
     if (!paciente) {
-      throw new NotFoundException(`Paciente con ID "${id}" no encontrado en su consultorio`);
+      throw new NotFoundException('Paciente no encontrado');
     }
 
     return paciente;
@@ -107,7 +107,7 @@ export class PacientesService {
 
         if (duplicado && duplicado.id !== id) {
           throw new ConflictException(
-            `Ya existe otro paciente con el documento "${docNormalizado}" en su consultorio`,
+            `Ya existe otro paciente con el documento "${docNormalizado}"`,
           );
         }
       }
