@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
   Param,
   Query,
@@ -10,6 +11,7 @@ import {
 import { ConsultasService } from './consultas.service.js';
 import { CrearConsultaDto } from './dto/crear-consulta.dto.js';
 import { FiltrosSignosVitalesDto } from './dto/filtros-signos-vitales.dto.js';
+import { ActualizarDiagnosticoTratamientoDto } from './dto/actualizar-diagnostico-tratamiento.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 import { UsuarioActual } from '../../common/decorators/usuario-actual.decorator.js';
@@ -71,6 +73,19 @@ export class ConsultasController {
   }
 
   /**
+   * Catálogo médico internacional CIE-10 para autocompletado en tiempo real.
+   * Admite búsquedas por código (ej. "I10", "K29") o texto clínico (ej. "gastritis", "hipertension").
+   */
+  @Get('catalogo/cie10')
+  buscarCie10(
+    @Query('termino') termino?: string,
+    @Query('limite') limite?: string,
+  ) {
+    const lim = limite ? parseInt(limite, 10) : 15;
+    return this.consultasService.buscarCie10(termino, lim);
+  }
+
+  /**
    * Obtiene el detalle clínico completo de una consulta (anamnesis, signos vitales,
    * examen físico, diagnóstico CIE-10 y plan terapéutico), incluyendo los datos
    * del paciente y del médico tratante.
@@ -82,4 +97,18 @@ export class ConsultasController {
   ) {
     return this.consultasService.obtenerPorId(consultorioId, id);
   }
+
+  /**
+   * Actualiza el diagnóstico, plan de tratamiento, notas o signos vitales de una consulta médica.
+   * Regla médico-legal: solo se permite modificar consultas en estado BORRADOR.
+   */
+  @Patch(':id')
+  async actualizar(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+    @Body() dto: ActualizarDiagnosticoTratamientoDto,
+  ) {
+    return this.consultasService.actualizar(consultorioId, id, dto);
+  }
 }
+

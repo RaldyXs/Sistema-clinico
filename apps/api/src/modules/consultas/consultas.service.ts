@@ -10,6 +10,8 @@ import { Repository, Not } from 'typeorm';
 import { Consulta, EstadoConsulta } from './entities/consulta.entity.js';
 import { CrearConsultaDto } from './dto/crear-consulta.dto.js';
 import { FiltrosSignosVitalesDto } from './dto/filtros-signos-vitales.dto.js';
+import { ActualizarDiagnosticoTratamientoDto } from './dto/actualizar-diagnostico-tratamiento.dto.js';
+import { buscarEnCie10, CodigoCie10 } from './data/cie10-catalogo.js';
 
 /**
  * Servicio de Consultas Clínicas (ConsultasService).
@@ -323,5 +325,83 @@ export class ConsultasService {
       historico,
     };
   }
+
+  /**
+   * Búsqueda en el catálogo internacional CIE-10 para autocompletado médico.
+   */
+  buscarCie10(termino?: string, limite = 15): CodigoCie10[] {
+    return buscarEnCie10(termino, limite);
+  }
+
+  /**
+   * Actualiza el diagnóstico, plan de tratamiento o notas de una consulta clínica en curso.
+   *
+   * Regla médico-legal estricta:
+   * Solo se permite editar consultas en estado `BORRADOR`.
+   * Si la consulta ya fue `COMPLETADA` o `ANULADA`, la petición es rechazada
+   * para salvaguardar la integridad inmutable del acto médico.
+   */
+  async actualizar(
+    consultorioId: string,
+    id: string,
+    dto: ActualizarDiagnosticoTratamientoDto,
+  ): Promise<Consulta> {
+    // 1. Obtener la consulta verificando aislamiento multi-tenant
+    const consulta = await this.consultaRepo.findOne({
+      where: { id, consultorioId },
+    });
+
+    if (!consulta) {
+      throw new NotFoundException('Consulta clínica no encontrada');
+    }
+
+    // 2. Regla médico-legal: solo BORRADOR es editable
+    if (consulta.estado !== EstadoConsulta.BORRADOR) {
+      throw new BadRequestException(
+        `No se puede modificar una consulta médica en estado "${consulta.estado}". ` +
+        `Las consultas completadas o anuladas quedan selladas para proteger la historia clínica.`,
+      );
+    }
+
+    // 3. Recalcular IMC si se actualizaron peso o talla
+    const nuevoPeso = dto.pesoKg !== undefined ? dto.pesoKg : consulta.pesoKg;
+    const nuevaTalla = dto.tallaCm !== undefined ? dto.tallaCm : consulta.tallaCm;
+    if (dto.pesoKg !== undefined || dto.tallaCm !== undefined) {
+      consulta.pesoKg = nuevoPeso;
+      consulta.tallaCm = nuevaTalla;
+      consulta.imc = this.calcularImc(nuevoPeso, nuevaTalla);
+    }
+
+    // 4. Actualizar signos vitales opcionales
+    if (dto.presionSistolica !== undefined) consulta.presionSistolica = dto.presionSistolica;
+    if (dto.presionDiastolica !== undefined) consulta.presionDiastolica = dto.presionDiastolica;
+    if (dto.frecuenciaCardiaca !== undefined) consulta.frecuenciaCardiaca = dto.frecuenciaCardiaca;
+    if (dto.frecuenciaRespiratoria !== undefined) consulta.frecuenciaRespiratoria = dto.frecuenciaRespiratoria;
+    if (dto.temperatura !== undefined) consulta.temperatura = dto.temperatura;
+    if (dto.saturacionOxigeno !== undefined) consulta.saturacionOxigeno = dto.saturacionOxigeno;
+
+    // 5. Actualizar notas clínicas y evolución
+    if (dto.motivoConsulta !== undefined) consulta.motivoConsulta = dto.motivoConsulta.trim();
+    if (dto.enfermedadActual !== undefined) consulta.enfermedadActual = dto.enfermedadActual.trim() || null;
+    if (dto.examenFisico !== undefined) consulta.examenFisico = dto.examenFisico.trim() || null;
+    if (dto.notasEvolucion !== undefined) consulta.notasEvolucion = dto.notasEvolucion.trim() || null;
+
+    // 6. Actualizar diagnósticos y plan de tratamiento
+    if (dto.diagnosticoPrincipal !== undefined) consulta.diagnosticoPrincipal = dto.diagnosticoPrincipal.trim() || null;
+    if (dto.codigoCie10 !== undefined) consulta.codigoCie10 = dto.codigoCie10.trim().toUpperCase() || null;
+    if (dto.diagnosticosSecundarios !== undefined) consulta.diagnosticosSecundarios = dto.diagnosticosSecundarios.trim() || null;
+    if (dto.planTratamiento !== undefined) consulta.planTratamiento = dto.planTratamiento.trim() || null;
+    if (dto.indicacionesGenerales !== undefined) consulta.indicacionesGenerales = dto.indicacionesGenerales.trim() || null;
+    if (dto.proximoControl !== undefined) consulta.proximoControl = dto.proximoControl || null;
+
+    const guardada = await this.consultaRepo.save(consulta);
+
+    this.logger.log(
+      `Consulta ID ${id} actualizada con nuevo diagnóstico / tratamiento | CIE-10: ${guardada.codigoCie10}`,
+    );
+
+    return guardada;
+  }
 }
+
 
