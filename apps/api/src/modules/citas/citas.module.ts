@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Cita } from './entities/cita.entity.js';
+import { CitasService } from './citas.service.js';
+import { CitasController } from './citas.controller.js';
 
 /**
  * Módulo de Citas (CitasModule).
@@ -10,6 +12,9 @@ import { Cita } from './entities/cita.entity.js';
  */
 @Module({
   imports: [TypeOrmModule.forFeature([Cita])],
-  exports: [TypeOrmModule],
+  controllers: [CitasController],
+  providers: [CitasService],
+  exports: [CitasService, TypeOrmModule],
 })
 export class CitasModule {}
+
