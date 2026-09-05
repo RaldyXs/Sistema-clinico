@@ -5,12 +5,14 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CitasService } from './citas.service.js';
 import { CrearCitaDto } from './dto/crear-cita.dto.js';
 import { ActualizarCitaDto } from './dto/actualizar-cita.dto.js';
 import { CancelarCitaDto } from './dto/cancelar-cita.dto.js';
+import { FiltrosAgendaDto } from './dto/filtros-agenda.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 
@@ -30,6 +32,26 @@ import { ConsultorioActual } from '../../common/decorators/consultorio-actual.de
 @Controller('citas')
 export class CitasController {
   constructor(private readonly citasService: CitasService) {}
+
+  /**
+   * Consulta la agenda de citas de la clínica.
+   *
+   * Admite múltiples modos de vista según los filtros enviados:
+   * - Vista diaria:    ?fecha=2026-09-10
+   * - Vista semanal:   ?fechaDesde=2026-09-10&fechaHasta=2026-09-16
+   * - Sala de espera:  ?estado=EN_ESPERA
+   * - Agenda de médico: ?profesionalId=<uuid>
+   *
+   * La respuesta incluye la lista de citas, metadatos de paginación
+   * y un resumen de conteo por estado para el dashboard de recepción.
+   */
+  @Get()
+  async obtenerAgenda(
+    @ConsultorioActual() consultorioId: string,
+    @Query() filtros: FiltrosAgendaDto,
+  ) {
+    return this.citasService.obtenerAgenda(consultorioId, filtros);
+  }
 
   /**
    * Agenda una nueva cita médica en el consultorio del usuario autenticado.

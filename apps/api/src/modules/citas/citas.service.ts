@@ -11,6 +11,7 @@ import { Cita, EstadoCita } from './entities/cita.entity.js';
 import { CrearCitaDto } from './dto/crear-cita.dto.js';
 import { ActualizarCitaDto } from './dto/actualizar-cita.dto.js';
 import { CancelarCitaDto } from './dto/cancelar-cita.dto.js';
+import { FiltrosAgendaDto } from './dto/filtros-agenda.dto.js';
 
 /**
  * Matriz de transiciones válidas del flujo clínico.
@@ -477,5 +478,125 @@ export class CitasService {
    */
   async registrarNoAsistio(consultorioId: string, id: string): Promise<Cita> {
     return this.transicionarEstado(consultorioId, id, EstadoCita.NO_ASISTIO);
+  }
+
+  /**
+   * Consulta de Agenda — Vista Diaria y Semanal.
+   *
+   * Responde preguntas clave de la operación diaria de la clínica:
+   * - "¿Qué citas hay hoy?" → filtro por `fecha`
+   * - "¿Qué citas hay esta semana?" → filtro por `fechaDesde` y `fechaHasta`
+   * - "¿Quién está en sala de espera ahora?" → filtro por `estado=EN_ESPERA`
+   * - "¿Cuántas citas tiene el Dr. Mendoza mañana?" → filtro por `profesionalId`
+   *
+   * El resultado incluye:
+   * - Lista paginada de citas con datos del paciente y del médico.
+   * - Metadatos de paginación (total, página, limite, totalPaginas).
+   * - Resumen de conteo por estado (cuántas PROGRAMADAS, EN_ESPERA, ATENDIDAS, etc.)
+   *   para el dashboard de la recepción.
+   *
+   * Siempre aplica aislamiento multi-tenant estricto: solo retorna
+   * las citas del consultorio del usuario autenticado.
+   */
+  async obtenerAgenda(
+    consultorioId: string,
+    filtros: FiltrosAgendaDto,
+  ): Promise<{
+    datos: Cita[];
+    meta: {
+      total: number;
+      pagina: number;
+      limite: number;
+      totalPaginas: number;
+    };
+    resumen: Partial<Record<EstadoCita, number>>;
+  }> {
+    const pagina = filtros.pagina ?? 1;
+    const limite = filtros.limite ?? 20;
+
+    // Construimos la consulta base con el índice optimizado de PostgreSQL
+    const qb = this.citaRepo
+      .createQueryBuilder('cita')
+      // Cargamos los datos del paciente y del médico en la misma consulta (JOIN)
+      .leftJoinAndSelect('cita.paciente', 'paciente')
+      .leftJoinAndSelect('cita.profesional', 'profesional')
+      // Aislamiento multi-tenant — este filtro es SIEMPRE obligatorio
+      .where('cita.consultorioId = :consultorioId', { consultorioId })
+      // Las citas se muestran en orden cronológico (primero las más tempranas del día)
+      .orderBy('cita.fechaHoraInicio', 'ASC');
+
+    // ── FILTROS DE FECHA ────────────────────────────────────────────────────
+    if (filtros.fecha) {
+      // Vista diaria: todas las citas que INICIAN dentro de ese día calendario
+      // Usamos los extremos del día (00:00:00 al 23:59:59.999) para capturar
+      // todas las citas sin importar la hora
+      const inicioDia = new Date(`${filtros.fecha}T00:00:00.000Z`);
+      const finDia = new Date(`${filtros.fecha}T23:59:59.999Z`);
+      qb.andWhere('cita.fechaHoraInicio BETWEEN :inicioDia AND :finDia', {
+        inicioDia,
+        finDia,
+      });
+    } else if (filtros.fechaDesde || filtros.fechaHasta) {
+      // Vista por rango: semanal o cualquier rango de fechas personalizado
+      if (filtros.fechaDesde) {
+        const inicio = new Date(`${filtros.fechaDesde}T00:00:00.000Z`);
+        qb.andWhere('cita.fechaHoraInicio >= :inicio', { inicio });
+      }
+      if (filtros.fechaHasta) {
+        const fin = new Date(`${filtros.fechaHasta}T23:59:59.999Z`);
+        qb.andWhere('cita.fechaHoraInicio <= :fin', { fin });
+      }
+    }
+
+    // ── FILTRO POR PROFESIONAL ──────────────────────────────────────────────
+    if (filtros.profesionalId) {
+      // Validamos que el profesional pertenezca al consultorio antes de filtrar
+      await this.verificarProfesionalEnConsultorio(consultorioId, filtros.profesionalId);
+      qb.andWhere('cita.profesionalId = :profesionalId', {
+        profesionalId: filtros.profesionalId,
+      });
+    }
+
+    // ── FILTRO POR ESTADO ───────────────────────────────────────────────────
+    if (filtros.estado) {
+      qb.andWhere('cita.estado = :estado', { estado: filtros.estado });
+    }
+
+    // ── PAGINACIÓN ──────────────────────────────────────────────────────────
+    const total = await qb.getCount();
+    const datos = await qb
+      .skip((pagina - 1) * limite)
+      .take(limite)
+      .getMany();
+
+    // ── RESUMEN POR ESTADO ──────────────────────────────────────────────────
+    // Consulta auxiliar para contar cuántas citas hay en cada estado
+    // dentro del mismo rango filtrado. Esto alimenta el dashboard de recepción.
+    const resumenRaw = await this.citaRepo
+      .createQueryBuilder('cita')
+      .select('cita.estado', 'estado')
+      .addSelect('COUNT(*)', 'cantidad')
+      .where('cita.consultorioId = :consultorioId', { consultorioId })
+      .groupBy('cita.estado')
+      .getRawMany<{ estado: EstadoCita; cantidad: string }>();
+
+    const resumen = resumenRaw.reduce<Partial<Record<EstadoCita, number>>>(
+      (acc, row) => {
+        acc[row.estado] = parseInt(row.cantidad, 10);
+        return acc;
+      },
+      {},
+    );
+
+    return {
+      datos,
+      meta: {
+        total,
+        pagina,
+        limite,
+        totalPaginas: Math.ceil(total / limite),
+      },
+      resumen,
+    };
   }
 }
