@@ -10,6 +10,7 @@ import {
 import { CitasService } from './citas.service.js';
 import { CrearCitaDto } from './dto/crear-cita.dto.js';
 import { ActualizarCitaDto } from './dto/actualizar-cita.dto.js';
+import { CancelarCitaDto } from './dto/cancelar-cita.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 
@@ -71,5 +72,84 @@ export class CitasController {
     @Body() dto: ActualizarCitaDto,
   ) {
     return this.citasService.actualizar(consultorioId, id, dto);
+  }
+
+  // ─── FLUJO DE ESTADOS CLÍNICOS ────────────────────────────────────────────
+
+  /**
+   * Marca la cita como CONFIRMADA.
+   * Ejecutado por recepcionista cuando el paciente confirma su asistencia.
+   * Solo válido desde estado PROGRAMADA.
+   */
+  @Patch(':id/confirmar')
+  async confirmar(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+  ) {
+    return this.citasService.confirmar(consultorioId, id);
+  }
+
+  /**
+   * Registra la llegada del paciente a la clínica (sala de espera).
+   * Ejecutado por recepcionista cuando el paciente se presenta físicamente.
+   * Válido desde estado PROGRAMADA o CONFIRMADA.
+   */
+  @Patch(':id/registrar-llegada')
+  async registrarLlegada(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+  ) {
+    return this.citasService.registrarLlegada(consultorioId, id);
+  }
+
+  /**
+   * Inicia la consulta médica — el médico llama al paciente de la sala.
+   * Solo válido desde estado EN_ESPERA.
+   */
+  @Patch(':id/iniciar-consulta')
+  async iniciarConsulta(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+  ) {
+    return this.citasService.iniciarConsulta(consultorioId, id);
+  }
+
+  /**
+   * Finaliza la consulta médica satisfactoriamente.
+   * Marca la cita como ATENDIDA. Solo válido desde EN_CONSULTA.
+   * En Fase 4, este evento disparará la creación del registro de Historia Clínica.
+   */
+  @Patch(':id/finalizar')
+  async finalizar(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+  ) {
+    return this.citasService.finalizar(consultorioId, id);
+  }
+
+  /**
+   * Cancela la cita con un motivo obligatorio.
+   * Válido desde PROGRAMADA, CONFIRMADA, EN_ESPERA o EN_CONSULTA.
+   * El horario queda liberado en la agenda del profesional.
+   */
+  @Patch(':id/cancelar')
+  async cancelar(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+    @Body() dto: CancelarCitaDto,
+  ) {
+    return this.citasService.cancelar(consultorioId, id, dto);
+  }
+
+  /**
+   * Registra que el paciente no asistió a su turno.
+   * Solo válido desde PROGRAMADA o CONFIRMADA.
+   */
+  @Patch(':id/no-asistio')
+  async noAsistio(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+  ) {
+    return this.citasService.registrarNoAsistio(consultorioId, id);
   }
 }

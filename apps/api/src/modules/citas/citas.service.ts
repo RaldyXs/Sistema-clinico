@@ -10,6 +10,39 @@ import { Repository } from 'typeorm';
 import { Cita, EstadoCita } from './entities/cita.entity.js';
 import { CrearCitaDto } from './dto/crear-cita.dto.js';
 import { ActualizarCitaDto } from './dto/actualizar-cita.dto.js';
+import { CancelarCitaDto } from './dto/cancelar-cita.dto.js';
+
+/**
+ * Matriz de transiciones válidas del flujo clínico.
+ *
+ * Define explícitamente qué estados puede tener una cita ANTES de hacer
+ * una transición determinada. Esto actúa como un guardián que impide saltos
+ * inválidos en el flujo (ej. pasar de PROGRAMADA directamente a ATENDIDA).
+ *
+ * Analogía: es como los semáforos de un quirófano — no puedes entrar
+ * a operar sin haber pasado primero por admisión, preparación y anestesia.
+ */
+const TRANSICIONES_VALIDAS: Record<EstadoCita, EstadoCita[]> = {
+  // CONFIRMAR solo es válido si la cita está PROGRAMADA
+  [EstadoCita.CONFIRMADA]: [EstadoCita.PROGRAMADA],
+  // Registrar llegada es válido desde PROGRAMADA o CONFIRMADA
+  [EstadoCita.EN_ESPERA]: [EstadoCita.PROGRAMADA, EstadoCita.CONFIRMADA],
+  // Iniciar consulta solo si el paciente ya está en sala de espera
+  [EstadoCita.EN_CONSULTA]: [EstadoCita.EN_ESPERA],
+  // Finalizar solo si la consulta está en curso
+  [EstadoCita.ATENDIDA]: [EstadoCita.EN_CONSULTA],
+  // Cancelar es válido desde cualquier estado activo
+  [EstadoCita.CANCELADA]: [
+    EstadoCita.PROGRAMADA,
+    EstadoCita.CONFIRMADA,
+    EstadoCita.EN_ESPERA,
+    EstadoCita.EN_CONSULTA,
+  ],
+  // No asistió solo aplica a citas que estaban programadas o confirmadas
+  [EstadoCita.NO_ASISTIO]: [EstadoCita.PROGRAMADA, EstadoCita.CONFIRMADA],
+  // Estos son estados de origen, no de destino en transiciones
+  [EstadoCita.PROGRAMADA]: [],
+};
 
 /**
  * Servicio de Citas (CitasService).
@@ -309,5 +342,140 @@ export class CitasService {
     );
 
     return citaActualizada;
+  }
+
+  /**
+   * Motor de Transición de Estados (State Machine Engine).
+   *
+   * Método privado que centraliza TODA la lógica de cambio de estado.
+   * Cada endpoint público de transición (confirmar, registrarLlegada, etc.)
+   * delega aquí para evitar duplicación de código.
+   *
+   * Proceso:
+   * 1. Busca la cita validando el aislamiento multi-tenant.
+   * 2. Consulta la matriz TRANSICIONES_VALIDAS para verificar si el salto es permitido.
+   * 3. Si no es válido, lanza un error descriptivo indicando desde qué estado viene
+   *    y a qué estado se intenta llegar.
+   * 4. Aplica el nuevo estado y registra en el log para trazabilidad.
+   */
+  private async transicionarEstado(
+    consultorioId: string,
+    id: string,
+    nuevoEstado: EstadoCita,
+    camposExtra?: Partial<Cita>,
+  ): Promise<Cita> {
+    // 1. Obtener la cita con aislamiento multi-tenant
+    const cita = await this.citaRepo.findOne({ where: { id, consultorioId } });
+
+    if (!cita) {
+      throw new NotFoundException('La cita no existe o no pertenece a su consultorio');
+    }
+
+    // 2. Validar que la transición esté permitida por la máquina de estados
+    const estadosPermitidos = TRANSICIONES_VALIDAS[nuevoEstado];
+    if (!estadosPermitidos.includes(cita.estado)) {
+      throw new BadRequestException(
+        `No se puede cambiar el estado de "${cita.estado}" a "${nuevoEstado}". ` +
+        `Transición no permitida en el flujo clínico.`,
+      );
+    }
+
+    // 3. Aplicar el nuevo estado y cualquier campo adicional (ej. motivoCancelacion)
+    cita.estado = nuevoEstado;
+    if (camposExtra) {
+      Object.assign(cita, camposExtra);
+    }
+
+    const citaActualizada = await this.citaRepo.save(cita);
+
+    this.logger.log(
+      `Cita ID ${id} | Transición de estado: ${cita.estado} → ${nuevoEstado}`,
+    );
+
+    return citaActualizada;
+  }
+
+  /**
+   * CONFIRMAR — El paciente confirma su asistencia al turno.
+   *
+   * Quién lo ejecuta: Recepcionista (por teléfono, WhatsApp o portal web).
+   * Estado origen permitido: PROGRAMADA
+   * Estado destino: CONFIRMADA
+   */
+  async confirmar(consultorioId: string, id: string): Promise<Cita> {
+    return this.transicionarEstado(consultorioId, id, EstadoCita.CONFIRMADA);
+  }
+
+  /**
+   * REGISTRAR LLEGADA — El paciente se presenta físicamente en la clínica.
+   *
+   * Quién lo ejecuta: Recepcionista al ver al paciente llegar.
+   * Estado origen permitido: PROGRAMADA o CONFIRMADA
+   * Estado destino: EN_ESPERA
+   *
+   * Nota: También es válido desde PROGRAMADA porque un paciente puede llegar
+   * sin haber confirmado previamente por teléfono.
+   */
+  async registrarLlegada(consultorioId: string, id: string): Promise<Cita> {
+    return this.transicionarEstado(consultorioId, id, EstadoCita.EN_ESPERA);
+  }
+
+  /**
+   * INICIAR CONSULTA — El médico llama al paciente a su consultorio.
+   *
+   * Quién lo ejecuta: Médico o recepcionista cuando el médico está disponible.
+   * Estado origen permitido: EN_ESPERA (el paciente debe haber llegado primero)
+   * Estado destino: EN_CONSULTA
+   */
+  async iniciarConsulta(consultorioId: string, id: string): Promise<Cita> {
+    return this.transicionarEstado(consultorioId, id, EstadoCita.EN_CONSULTA);
+  }
+
+  /**
+   * FINALIZAR — El médico concluye el acto médico satisfactoriamente.
+   *
+   * Quién lo ejecuta: Médico al terminar la atención.
+   * Estado origen permitido: EN_CONSULTA
+   * Estado destino: ATENDIDA
+   *
+   * Este es el estado terminal exitoso. En Fase 4, este evento disparará
+   * la creación automática del registro de Historia Clínica.
+   */
+  async finalizar(consultorioId: string, id: string): Promise<Cita> {
+    return this.transicionarEstado(consultorioId, id, EstadoCita.ATENDIDA);
+  }
+
+  /**
+   * CANCELAR — La cita es cancelada antes o durante el proceso de atención.
+   *
+   * Quién lo ejecuta: Recepcionista o médico.
+   * Estado origen permitido: PROGRAMADA, CONFIRMADA, EN_ESPERA o EN_CONSULTA
+   * Estado destino: CANCELADA
+   *
+   * El motivo de cancelación es OBLIGATORIO por regulaciones médico-legales.
+   * Al cancelar, el horario queda liberado en la agenda del profesional.
+   */
+  async cancelar(
+    consultorioId: string,
+    id: string,
+    dto: CancelarCitaDto,
+  ): Promise<Cita> {
+    return this.transicionarEstado(consultorioId, id, EstadoCita.CANCELADA, {
+      motivoCancelacion: dto.motivoCancelacion.trim(),
+    });
+  }
+
+  /**
+   * NO ASISTIÓ — El paciente no se presentó a su turno.
+   *
+   * Quién lo ejecuta: Recepcionista cuando el horario pasa sin que el paciente llegue.
+   * Estado origen permitido: PROGRAMADA o CONFIRMADA
+   * Estado destino: NO_ASISTIO
+   *
+   * Las inasistencias quedan registradas para estadísticas de ausentismo
+   * y para eventualmente aplicar políticas de la clínica (ej. cobro por inasistencia).
+   */
+  async registrarNoAsistio(consultorioId: string, id: string): Promise<Cita> {
+    return this.transicionarEstado(consultorioId, id, EstadoCita.NO_ASISTIO);
   }
 }
