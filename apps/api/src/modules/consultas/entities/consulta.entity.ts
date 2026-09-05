@@ -253,4 +253,11 @@ export class Consulta extends TenantBaseEntity {
    */
   @Column({ name: 'cerrada_en', type: 'timestamp with time zone', nullable: true })
   cerradaEn: Date | null;
+
+  /**
+   * Justificación obligatoria en caso de anulación excepcional de la consulta médica.
+   */
+  @Column({ name: 'motivo_anulacion', type: 'text', nullable: true })
+  motivoAnulacion: string | null;
 }
+

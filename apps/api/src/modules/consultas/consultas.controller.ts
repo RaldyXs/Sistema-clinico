@@ -12,6 +12,7 @@ import { ConsultasService } from './consultas.service.js';
 import { CrearConsultaDto } from './dto/crear-consulta.dto.js';
 import { FiltrosSignosVitalesDto } from './dto/filtros-signos-vitales.dto.js';
 import { ActualizarDiagnosticoTratamientoDto } from './dto/actualizar-diagnostico-tratamiento.dto.js';
+import { AnularConsultaDto } from './dto/anular-consulta.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 import { UsuarioActual } from '../../common/decorators/usuario-actual.decorator.js';
@@ -110,5 +111,35 @@ export class ConsultasController {
   ) {
     return this.consultasService.actualizar(consultorioId, id, dto);
   }
+
+  /**
+   * Completa y sella formalmente el acto médico.
+   *
+   * Acciones ejecutadas:
+   * - Verifica que exista diagnóstico principal registrado.
+   * - Cambia el estado a COMPLETADA y sella con cerradaEn.
+   * - Bloquea la consulta contra futuras modificaciones.
+   * - Si proviene de una cita en agenda, marca automáticamente la cita como ATENDIDA.
+   */
+  @Patch(':id/completar')
+  async completar(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+  ) {
+    return this.consultasService.completar(consultorioId, id);
+  }
+
+  /**
+   * Anula una consulta médica de forma excepcional requiriendo justificación.
+   */
+  @Patch(':id/anular')
+  async anular(
+    @ConsultorioActual() consultorioId: string,
+    @Param('id') id: string,
+    @Body() dto: AnularConsultaDto,
+  ) {
+    return this.consultasService.anular(consultorioId, id, dto);
+  }
 }
+
 

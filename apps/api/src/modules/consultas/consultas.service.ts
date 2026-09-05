@@ -11,6 +11,7 @@ import { Consulta, EstadoConsulta } from './entities/consulta.entity.js';
 import { CrearConsultaDto } from './dto/crear-consulta.dto.js';
 import { FiltrosSignosVitalesDto } from './dto/filtros-signos-vitales.dto.js';
 import { ActualizarDiagnosticoTratamientoDto } from './dto/actualizar-diagnostico-tratamiento.dto.js';
+import { AnularConsultaDto } from './dto/anular-consulta.dto.js';
 import { buscarEnCie10, CodigoCie10 } from './data/cie10-catalogo.js';
 
 /**
@@ -402,6 +403,105 @@ export class ConsultasService {
 
     return guardada;
   }
+
+  /**
+   * Completa y sella formalmente una consulta clínica (Acto Médico).
+   *
+   * Reglas de negocio y médico-legales:
+   * 1. Solo se pueden completar consultas en estado `BORRADOR`.
+   * 2. Exige obligatoriamente que exista un `diagnosticoPrincipal` formulado.
+   * 3. Sella la consulta asignando `estado = COMPLETADA` y `cerradaEn = NOW()`.
+   * 4. Si la consulta tiene una `citaId` asociada, actualiza automáticamente el estado
+   *    de la cita en agenda a `ATENDIDA` (cerrando el ciclo del paciente en recepción).
+   */
+  async completar(consultorioId: string, id: string): Promise<Consulta> {
+    const consulta = await this.consultaRepo.findOne({
+      where: { id, consultorioId },
+    });
+
+    if (!consulta) {
+      throw new NotFoundException('Consulta clínica no encontrada');
+    }
+
+    if (consulta.estado === EstadoConsulta.COMPLETADA) {
+      throw new BadRequestException('La consulta clínica ya se encuentra completada');
+    }
+
+    if (consulta.estado === EstadoConsulta.ANULADA) {
+      throw new BadRequestException(
+        'No se puede completar una consulta clínica que ha sido anulada',
+      );
+    }
+
+    // Exigencia médico-legal: Diagnóstico principal obligatorio para firmar el expediente
+    if (!consulta.diagnosticoPrincipal || consulta.diagnosticoPrincipal.trim().length === 0) {
+      throw new BadRequestException(
+        'Para completar y sellar la consulta es obligatorio registrar el diagnóstico principal del paciente',
+      );
+    }
+
+    consulta.estado = EstadoConsulta.COMPLETADA;
+    consulta.cerradaEn = new Date();
+
+    const completada = await this.consultaRepo.save(consulta);
+
+    // Si provenía de una cita en agenda, actualizamos la cita a ATENDIDA
+    if (consulta.citaId) {
+      await this.consultaRepo.manager.query(
+        `UPDATE citas 
+         SET estado = 'ATENDIDA', actualizado_en = NOW() 
+         WHERE id = $1 AND consultorio_id = $2 AND estado NOT IN ('CANCELADA', 'NO_ASISTIO')`,
+        [consulta.citaId, consultorioId],
+      );
+      this.logger.log(
+        `Cita vinculada ID ${consulta.citaId} marcada como ATENDIDA automáticamente tras completar consulta ID ${id}`,
+      );
+    }
+
+    this.logger.log(
+      `Consulta clínica ID ${id} COMPLETADA y sellada formalmente a las ${consulta.cerradaEn.toISOString()}`,
+    );
+
+    return completada;
+  }
+
+  /**
+   * Anula formalmente una consulta médica con justificación obligatoria.
+   *
+   * Reglas de negocio:
+   * 1. Se puede anular desde `BORRADOR` o excepcionalmente desde `COMPLETADA`.
+   * 2. Si ya está `ANULADA`, se rechaza la operación.
+   * 3. Requiere justificación médico-legal (`motivoAnulacion`).
+   */
+  async anular(
+    consultorioId: string,
+    id: string,
+    dto: AnularConsultaDto,
+  ): Promise<Consulta> {
+    const consulta = await this.consultaRepo.findOne({
+      where: { id, consultorioId },
+    });
+
+    if (!consulta) {
+      throw new NotFoundException('Consulta clínica no encontrada');
+    }
+
+    if (consulta.estado === EstadoConsulta.ANULADA) {
+      throw new BadRequestException('La consulta clínica ya se encuentra anulada');
+    }
+
+    consulta.estado = EstadoConsulta.ANULADA;
+    consulta.motivoAnulacion = dto.motivoAnulacion.trim();
+
+    const anulada = await this.consultaRepo.save(consulta);
+
+    this.logger.log(
+      `Consulta clínica ID ${id} ANULADA. Motivo: "${anulada.motivoAnulacion}"`,
+    );
+
+    return anulada;
+  }
 }
+
 
 
