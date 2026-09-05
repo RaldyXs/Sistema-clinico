@@ -11,6 +11,7 @@ import {
 import { ConsultasService } from './consultas.service.js';
 import { CrearConsultaDto } from './dto/crear-consulta.dto.js';
 import { FiltrosSignosVitalesDto } from './dto/filtros-signos-vitales.dto.js';
+import { FiltrosHistorialClinicoDto } from './dto/filtros-historial-clinico.dto.js';
 import { ActualizarDiagnosticoTratamientoDto } from './dto/actualizar-diagnostico-tratamiento.dto.js';
 import { AnularConsultaDto } from './dto/anular-consulta.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -67,6 +68,28 @@ export class ConsultasController {
     @Query() filtros: FiltrosSignosVitalesDto,
   ) {
     return this.consultasService.obtenerSignosVitalesHistoricos(
+      consultorioId,
+      pacienteId,
+      filtros,
+    );
+  }
+
+  /**
+   * Obtiene la Historia Clínica integral y cronológica del paciente (Timeline 360°).
+   *
+   * Consolida:
+   * - Ficha médica del paciente (demográficos, edad, alergias, grupo sanguíneo).
+   * - Estadísticas del expediente (total consultas, diagnósticos recurrentes).
+   * - Línea de tiempo cronológica paginada con cada acto médico detallado.
+   * - Filtros por fecha, médico, código CIE-10 y estado.
+   */
+  @Get('paciente/:pacienteId/historial')
+  async obtenerHistorialClinico(
+    @ConsultorioActual() consultorioId: string,
+    @Param('pacienteId') pacienteId: string,
+    @Query() filtros: FiltrosHistorialClinicoDto,
+  ) {
+    return this.consultasService.obtenerHistorialClinico(
       consultorioId,
       pacienteId,
       filtros,

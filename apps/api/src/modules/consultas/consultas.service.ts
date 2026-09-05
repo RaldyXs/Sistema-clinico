@@ -10,6 +10,7 @@ import { Repository, Not } from 'typeorm';
 import { Consulta, EstadoConsulta } from './entities/consulta.entity.js';
 import { CrearConsultaDto } from './dto/crear-consulta.dto.js';
 import { FiltrosSignosVitalesDto } from './dto/filtros-signos-vitales.dto.js';
+import { FiltrosHistorialClinicoDto } from './dto/filtros-historial-clinico.dto.js';
 import { ActualizarDiagnosticoTratamientoDto } from './dto/actualizar-diagnostico-tratamiento.dto.js';
 import { AnularConsultaDto } from './dto/anular-consulta.dto.js';
 import { buscarEnCie10, CodigoCie10 } from './data/cie10-catalogo.js';
@@ -501,7 +502,221 @@ export class ConsultasService {
 
     return anulada;
   }
+
+  /**
+   * Obtiene la Historia Clínica integral y cronológica del paciente (Timeline 360°).
+   *
+   * Diseñado para la pantalla principal del médico en el consultorio:
+   * 1. Cabecera médica del paciente: datos demográficos, edad clínica, alergias destacadas,
+   *    grupo sanguíneo y antecedentes patológicos.
+   * 2. Estadísticas asistenciales: total de consultas, primera y última atención,
+   *    y diagnósticos CIE-10 más frecuentes.
+   * 3. Línea de tiempo cronológica paginada: cada consulta con su médico tratante,
+   *    anamnesis, signos vitales con IMC clasificado por la OMS, examen físico,
+   *    diagnósticos principal y secundarios, plan terapéutico, pautas de alarma
+   *    y cita de origen (si aplica).
+   * 4. Filtros potentes: por rango de fechas, profesional tratante, código CIE-10 o estado.
+   *
+   * Seguridad:
+   * - Aislamiento multi-tenant forzoso: solo consulta pacientes de la clínica activa.
+   */
+  async obtenerHistorialClinico(
+    consultorioId: string,
+    pacienteId: string,
+    filtros: FiltrosHistorialClinicoDto,
+  ) {
+    // 1. Obtener datos demográficos y clínicos del paciente
+    const pacientes = await this.consultaRepo.manager.query(
+      `SELECT id, nombre, apellido, documento_identidad, tipo_documento, fecha_nacimiento,
+              genero, telefono, email, grupo_sanguineo, alergias,
+              antecedentes_medicos, antecedentes_familiares
+       FROM pacientes
+       WHERE id = $1 AND consultorio_id = $2 AND activo = true
+       LIMIT 1`,
+      [pacienteId, consultorioId],
+    );
+
+    if (pacientes.length === 0) {
+      throw new NotFoundException('Paciente no encontrado');
+    }
+
+    const paciente = pacientes[0];
+
+    // Cálculo de edad clínica
+    const fechaNac = new Date(paciente.fecha_nacimiento);
+    const hoy = new Date();
+    let edadAnios = hoy.getFullYear() - fechaNac.getFullYear();
+    const mesDif = hoy.getMonth() - fechaNac.getMonth();
+    if (mesDif < 0 || (mesDif === 0 && hoy.getDate() < fechaNac.getDate())) {
+      edadAnios--;
+    }
+
+    // 2. Construcción de consulta de timeline con filtros y relaciones
+    const pagina = filtros.pagina ?? 1;
+    const limite = filtros.limite ?? 10;
+
+    const qb = this.consultaRepo
+      .createQueryBuilder('consulta')
+      .leftJoinAndSelect('consulta.profesional', 'profesional')
+      .leftJoinAndSelect('consulta.cita', 'cita')
+      .where('consulta.consultorioId = :consultorioId', { consultorioId })
+      .andWhere('consulta.pacienteId = :pacienteId', { pacienteId })
+      .orderBy('consulta.fechaAtencion', 'DESC');
+
+    // Filtros opcionales
+    if (filtros.fechaDesde) {
+      qb.andWhere('consulta.fechaAtencion >= :desde', {
+        desde: new Date(`${filtros.fechaDesde}T00:00:00.000Z`),
+      });
+    }
+
+    if (filtros.fechaHasta) {
+      qb.andWhere('consulta.fechaAtencion <= :hasta', {
+        hasta: new Date(`${filtros.fechaHasta}T23:59:59.999Z`),
+      });
+    }
+
+    if (filtros.profesionalId) {
+      qb.andWhere('consulta.profesionalId = :profesionalId', {
+        profesionalId: filtros.profesionalId,
+      });
+    }
+
+    if (filtros.codigoCie10) {
+      qb.andWhere('consulta.codigoCie10 = :codigoCie10', {
+        codigoCie10: filtros.codigoCie10.trim().toUpperCase(),
+      });
+    }
+
+    if (filtros.estado) {
+      qb.andWhere('consulta.estado = :estado', { estado: filtros.estado });
+    }
+
+    // Paginación
+    const total = await qb.getCount();
+    const consultas = await qb
+      .skip((pagina - 1) * limite)
+      .take(limite)
+      .getMany();
+
+    // 3. Estadísticas generales del expediente del paciente
+    const statsConsultas = await this.consultaRepo.manager.query(
+      `SELECT 
+         COUNT(*) as total_consultas,
+         MIN(fecha_atencion) as primera_atencion,
+         MAX(fecha_atencion) as ultima_atencion
+       FROM consultas
+       WHERE consultorio_id = $1 AND paciente_id = $2 AND estado != 'ANULADA'`,
+      [consultorioId, pacienteId],
+    );
+
+    const diagnosticosFrecuentes = await this.consultaRepo.manager.query(
+      `SELECT codigo_cie10, diagnostico_principal, COUNT(*) as cantidad
+       FROM consultas
+       WHERE consultorio_id = $1 AND paciente_id = $2 AND codigo_cie10 IS NOT NULL AND estado != 'ANULADA'
+       GROUP BY codigo_cie10, diagnostico_principal
+       ORDER BY cantidad DESC
+       LIMIT 5`,
+      [consultorioId, pacienteId],
+    );
+
+    // 4. Mapear cada nodo de la línea de tiempo
+    const timeline = consultas.map((c) => ({
+      id: c.id,
+      fechaAtencion: c.fechaAtencion,
+      estado: c.estado,
+      cerradaEn: c.cerradaEn,
+      motivoAnulacion: c.motivoAnulacion,
+      profesional: c.profesional
+        ? {
+            id: c.profesional.id,
+            nombreCompleto: `${c.profesional.nombre} ${c.profesional.apellido}`,
+            email: c.profesional.email,
+          }
+        : null,
+      anamnesis: {
+        motivo: c.motivoConsulta,
+        enfermedadActual: c.enfermedadActual,
+      },
+      signosVitales: {
+        pesoKg: c.pesoKg ? Number(c.pesoKg) : null,
+        tallaCm: c.tallaCm ? Number(c.tallaCm) : null,
+        imc: c.imc ? Number(c.imc) : null,
+        clasificacionImc: this.clasificarImc(c.imc ? Number(c.imc) : null),
+        presionArterial:
+          c.presionSistolica && c.presionDiastolica
+            ? `${c.presionSistolica}/${c.presionDiastolica} mmHg`
+            : null,
+        presionSistolica: c.presionSistolica,
+        presionDiastolica: c.presionDiastolica,
+        frecuenciaCardiaca: c.frecuenciaCardiaca,
+        frecuenciaRespiratoria: c.frecuenciaRespiratoria,
+        temperatura: c.temperatura ? Number(c.temperatura) : null,
+        saturacionOxigeno: c.saturacionOxigeno ? Number(c.saturacionOxigeno) : null,
+      },
+      examenFisico: c.examenFisico,
+      notasEvolucion: c.notasEvolucion,
+      diagnostico: {
+        principal: c.diagnosticoPrincipal,
+        codigoCie10: c.codigoCie10,
+        secundarios: c.diagnosticosSecundarios,
+      },
+      tratamiento: {
+        plan: c.planTratamiento,
+        indicaciones: c.indicacionesGenerales,
+      },
+      proximoControl: c.proximoControl,
+      citaOrigen: c.cita
+        ? {
+            id: c.cita.id,
+            fechaHoraInicio: c.cita.fechaHoraInicio,
+            estado: c.cita.estado,
+            motivo: c.cita.motivo,
+          }
+        : null,
+    }));
+
+    return {
+      paciente: {
+        id: paciente.id,
+        nombreCompleto: `${paciente.nombre} ${paciente.apellido}`,
+        documentoIdentidad: paciente.documento_identidad,
+        tipoDocumento: paciente.tipo_documento,
+        edad: `${edadAnios} años`,
+        genero: paciente.genero,
+        contacto: {
+          telefono: paciente.telefono,
+          email: paciente.email,
+        },
+        alertasMedicas: {
+          grupoSanguineo: paciente.grupo_sanguineo,
+          tieneAlergias: Boolean(paciente.alergias && paciente.alergias.trim() !== ''),
+          alergias: paciente.alergias,
+          antecedentesMedicos: paciente.antecedentes_medicos,
+          antecedentesFamiliares: paciente.antecedentes_familiares,
+        },
+      },
+      estadisticas: {
+        totalConsultasHistoricas: parseInt(statsConsultas[0]?.total_consultas ?? '0', 10),
+        primeraAtencion: statsConsultas[0]?.primera_atencion ?? null,
+        ultimaAtencion: statsConsultas[0]?.ultima_atencion ?? null,
+        diagnosticosRecurrentes: diagnosticosFrecuentes.map((d: any) => ({
+          codigoCie10: d.codigo_cie10,
+          diagnostico: d.diagnostico_principal,
+          atenciones: parseInt(d.cantidad, 10),
+        })),
+      },
+      timeline,
+      meta: {
+        total,
+        pagina,
+        limite,
+        totalPaginas: Math.ceil(total / limite),
+      },
+    };
+  }
 }
+
 
 
 
