@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Consulta } from './entities/consulta.entity.js';
+import { ConsultasService } from './consultas.service.js';
+import { ConsultasController } from './consultas.controller.js';
 
 /**
  * Módulo de Consultas Clínicas (ConsultasModule).
@@ -10,6 +12,9 @@ import { Consulta } from './entities/consulta.entity.js';
  */
 @Module({
   imports: [TypeOrmModule.forFeature([Consulta])],
-  exports: [TypeOrmModule],
+  controllers: [ConsultasController],
+  providers: [ConsultasService],
+  exports: [ConsultasService, TypeOrmModule],
 })
 export class ConsultasModule {}
+
