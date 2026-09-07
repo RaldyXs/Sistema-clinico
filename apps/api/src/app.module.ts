@@ -17,6 +17,7 @@ import { UsuariosModule } from './modules/usuarios/usuarios.module.js';
 import { ReportesModule } from './modules/reportes/reportes.module.js';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module.js';
 import { BackupsModule } from './modules/backups/backups.module.js';
+import { SaasModule } from './modules/saas/saas.module.js';
 
 /**
  * AppModule es el módulo raíz de la aplicación backend.
@@ -82,6 +83,9 @@ import { BackupsModule } from './modules/backups/backups.module.js';
 
     // 16. Módulo de Copias de Seguridad y Portabilidad de Datos (Fase 9)
     BackupsModule,
+
+    // 17. Módulo de Planes, Suscripciones, Onboarding y SuperAdmin SaaS (Fase 10)
+    SaasModule,
   ],
   controllers: [AppController],
   providers: [AppService],

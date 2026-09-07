@@ -11,6 +11,7 @@ import { GinecologiaView } from '@/views/GinecologiaView';
 import { ReportesView } from '@/views/ReportesView';
 import { ConfiguracionView } from '@/views/ConfiguracionView';
 import { SeguridadView } from '@/views/SeguridadView';
+import { SaasAdminView } from '@/views/SaasAdminView';
 import { RefreshCw } from 'lucide-react';
 
 function MainRouter() {
@@ -40,6 +41,7 @@ function MainRouter() {
       {currentTab === 'ginecologia' && <GinecologiaView />}
       {currentTab === 'reportes' && <ReportesView />}
       {currentTab === 'seguridad' && <SeguridadView />}
+      {currentTab === 'saas' && <SaasAdminView />}
       {currentTab === 'configuracion' && <ConfiguracionView />}
     </AppLayout>
   );

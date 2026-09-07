@@ -3,13 +3,35 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Activity, Lock, Mail, ShieldCheck, UserCheck, AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import {
+  Activity,
+  Lock,
+  Mail,
+  ShieldCheck,
+  UserCheck,
+  AlertCircle,
+  Building2,
+  Sparkles,
+} from 'lucide-react';
 
 export function LoginView() {
   const { login, quickLogin, isLoading } = useAuth();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+
+  // Modal Onboarding
+  const [showOnboarding, setShowOnboarding] = React.useState(false);
+  const [nombreClinica, setNombreClinica] = React.useState('');
+  const [telefonoClinica, setTelefonoClinica] = React.useState('');
+  const [adminNombre, setAdminNombre] = React.useState('');
+  const [adminApellido, setAdminApellido] = React.useState('');
+  const [adminEmail, setAdminEmail] = React.useState('');
+  const [adminPassword, setAdminPassword] = React.useState('');
+  const [planSeleccionado, setPlanSeleccionado] = React.useState('PROFESIONAL');
+  const [isOnboardingLoading, setIsOnboardingLoading] = React.useState(false);
+  const [onboardingError, setOnboardingError] = React.useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +49,51 @@ export function LoginView() {
       await quickLogin(type);
     } catch (err: any) {
       setError(err.message || 'Error en acceso rápido');
+    }
+  };
+
+  const handleOnboardingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOnboardingError(null);
+    setIsOnboardingLoading(true);
+
+    try {
+      const res = await fetch('http://localhost:3000/saas/onboarding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombreConsultorio: nombreClinica,
+          telefono: telefonoClinica || undefined,
+          adminNombre,
+          adminApellido: adminApellido || undefined,
+          adminEmail,
+          adminPassword,
+          planCodigo: planSeleccionado,
+          periodo: 'MENSUAL',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Error al aprovisionar clínica');
+      }
+
+      // Guardamos tokens y perfil en localStorage e iniciamos sesión automáticamente
+      localStorage.setItem('token_clinico', data.accessToken);
+      localStorage.setItem(
+        'usuario_clinico',
+        JSON.stringify({
+          ...data.usuario,
+          consultorioId: data.consultorio.id,
+          consultorio: data.consultorio,
+        }),
+      );
+
+      window.location.reload();
+    } catch (err: any) {
+      setOnboardingError(err.message);
+    } finally {
+      setIsOnboardingLoading(false);
     }
   };
 
@@ -87,6 +154,18 @@ export function LoginView() {
             </Button>
           </form>
 
+          {/* Botón Onboarding / Crear Clínica */}
+          <div className="pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-primary/40 text-primary hover:bg-primary/10 flex items-center justify-center gap-2 text-xs font-semibold"
+              onClick={() => setShowOnboarding(true)}
+            >
+              <Sparkles className="size-4" /> Registrar Nueva Clínica (14 Días Gratis)
+            </Button>
+          </div>
+
           {/* Acceso rápido de prueba / Multi-tenant demo */}
           <div className="space-y-3 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -130,6 +209,122 @@ export function LoginView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Modal de Onboarding Público */}
+      {showOnboarding && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-card border border-border rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="size-6 text-primary" />
+                <div>
+                  <h3 className="font-bold text-lg">Onboarding — Nueva Clínica SaaS</h3>
+                  <p className="text-xs text-muted-foreground">Aprovisiona tu propio consultorio en segundos con 14 días gratis</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowOnboarding(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                ✕
+              </button>
+            </div>
+
+            {onboardingError && (
+              <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs rounded-md flex items-center gap-2">
+                <AlertCircle className="size-4 shrink-0" />
+                <span>{onboardingError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleOnboardingSubmit} className="space-y-4 text-xs">
+              {/* Selector de Plan */}
+              <div>
+                <label className="font-semibold text-foreground block mb-1.5">1. Selecciona tu Plan Comercial</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { code: 'BASICO', name: 'Básico', price: '$29/m' },
+                    { code: 'PROFESIONAL', name: 'Profesional', price: '$79/m', popular: true },
+                    { code: 'ENTERPRISE', name: 'Enterprise', price: '$199/m' },
+                  ].map((p) => (
+                    <div
+                      key={p.code}
+                      onClick={() => setPlanSeleccionado(p.code)}
+                      className={`p-2.5 rounded-lg border text-center cursor-pointer transition-all ${
+                        planSeleccionado === p.code
+                          ? 'border-primary bg-primary/10 shadow-xs'
+                          : 'border-border bg-card'
+                      }`}
+                    >
+                      <div className="font-bold text-foreground">{p.name}</div>
+                      <div className="text-[11px] text-primary font-semibold">{p.price}</div>
+                      {p.popular && <Badge className="text-[9px] py-0 px-1 mt-1">Popular</Badge>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Datos de la Clínica */}
+              <div className="space-y-2">
+                <label className="font-semibold text-foreground block">2. Datos de la Clínica o Consultorio</label>
+                <Input
+                  placeholder="Nombre de la clínica (ej: Policlínica Los Ángeles)"
+                  value={nombreClinica}
+                  onChange={(e) => setNombreClinica(e.target.value)}
+                  required
+                />
+                <Input
+                  placeholder="Teléfono institucional"
+                  value={telefonoClinica}
+                  onChange={(e) => setTelefonoClinica(e.target.value)}
+                />
+              </div>
+
+              {/* Cuenta Administrador */}
+              <div className="space-y-2">
+                <label className="font-semibold text-foreground block">3. Cuenta Administrador (Primer Médico o Director)</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    placeholder="Nombre"
+                    value={adminNombre}
+                    onChange={(e) => setAdminNombre(e.target.value)}
+                    required
+                  />
+                  <Input
+                    placeholder="Apellido"
+                    value={adminApellido}
+                    onChange={(e) => setAdminApellido(e.target.value)}
+                  />
+                </div>
+                <Input
+                  type="email"
+                  placeholder="Correo electrónico administrativo"
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  required
+                />
+                <Input
+                  type="password"
+                  placeholder="Contraseña (mínimo 6 caracteres)"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  required
+                  minLength={6}
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-border">
+                <Button type="button" variant="outline" size="sm" onClick={() => setShowOnboarding(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" size="sm" disabled={isOnboardingLoading}>
+                  {isOnboardingLoading ? 'Aprovisionando...' : 'Crear y Comenzar Prueba'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
