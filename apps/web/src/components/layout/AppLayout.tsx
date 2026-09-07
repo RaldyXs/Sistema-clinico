@@ -9,6 +9,7 @@ import {
   Stethoscope,
   FileText,
   Baby,
+  BarChart3,
   Settings,
   LogOut,
   Moon,
@@ -26,6 +27,7 @@ export type NavTab =
   | 'consultas'
   | 'recetas'
   | 'ginecologia'
+  | 'reportes'
   | 'configuracion';
 
 interface AppLayoutProps {
@@ -58,6 +60,7 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
     { id: 'consultas', label: 'Consultas Médicas', icon: <Stethoscope className="size-4" /> },
     { id: 'recetas', label: 'Recetas y PDF', icon: <FileText className="size-4" /> },
     { id: 'ginecologia', label: 'Ginecología & Obs.', icon: <Baby className="size-4" /> },
+    { id: 'reportes', label: 'Reportes & Métricas', icon: <BarChart3 className="size-4" /> },
     { id: 'configuracion', label: 'Configuración', icon: <Settings className="size-4" /> },
   ];
 
