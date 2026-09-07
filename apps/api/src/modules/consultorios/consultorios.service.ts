@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Consultorio } from './entities/consultorio.entity.js';
 import { ActualizarConsultorioDto } from './dto/actualizar-consultorio.dto.js';
+import { ActualizarConfiguracionDto } from './dto/actualizar-configuracion.dto.js';
 
 /**
  * Servicio de Consultorios (ConsultoriosService).
@@ -43,6 +44,37 @@ export class ConsultoriosService {
     if (dto.nombre !== undefined) consultorio.nombre = dto.nombre.trim();
     if (dto.telefono !== undefined) consultorio.telefono = dto.telefono.trim();
     if (dto.direccion !== undefined) consultorio.direccion = dto.direccion.trim();
+
+    return this.consultorioRepo.save(consultorio);
+  }
+
+  /**
+   * Actualiza la configuración de identidad, colores de marca, horarios de apertura,
+   * módulos activos y diseño de recetas del consultorio.
+   */
+  async actualizarConfiguracion(id: string, dto: ActualizarConfiguracionDto): Promise<Consultorio> {
+    const consultorio = await this.obtenerPorId(id);
+
+    if (dto.nombre !== undefined) consultorio.nombre = dto.nombre.trim();
+    if (dto.telefono !== undefined) consultorio.telefono = dto.telefono ? dto.telefono.trim() : null;
+    if (dto.direccion !== undefined) consultorio.direccion = dto.direccion ? dto.direccion.trim() : null;
+    if (dto.email !== undefined) consultorio.email = dto.email ? dto.email.trim().toLowerCase() : null;
+    if (dto.logoUrl !== undefined) consultorio.logoUrl = dto.logoUrl ? dto.logoUrl.trim() : null;
+    if (dto.colorPrimario !== undefined) consultorio.colorPrimario = dto.colorPrimario;
+    if (dto.colorSecundario !== undefined) consultorio.colorSecundario = dto.colorSecundario;
+    if (dto.horarioAtencion !== undefined) consultorio.horarioAtencion = dto.horarioAtencion;
+    if (dto.modulosActivos !== undefined) {
+      consultorio.modulosActivos = {
+        ...consultorio.modulosActivos,
+        ...dto.modulosActivos,
+      };
+    }
+    if (dto.configuracionReceta !== undefined) {
+      consultorio.configuracionReceta = {
+        ...consultorio.configuracionReceta,
+        ...dto.configuracionReceta,
+      };
+    }
 
     return this.consultorioRepo.save(consultorio);
   }

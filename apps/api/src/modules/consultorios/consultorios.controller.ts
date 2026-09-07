@@ -1,6 +1,7 @@
 import { Controller, Get, Patch, Body, Param, UseGuards } from '@nestjs/common';
 import { ConsultoriosService } from './consultorios.service.js';
 import { ActualizarConsultorioDto } from './dto/actualizar-consultorio.dto.js';
+import { ActualizarConfiguracionDto } from './dto/actualizar-configuracion.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { TenantGuard } from '../../common/guards/tenant.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
@@ -25,6 +26,25 @@ export class ConsultoriosController {
   @Get('mi-consultorio')
   async obtenerMiConsultorio(@ConsultorioActual() consultorioId: string) {
     return this.consultoriosService.obtenerPorId(consultorioId);
+  }
+
+  /**
+   * Obtiene la configuración completa de marca, horarios y módulos del consultorio.
+   */
+  @Get('configuracion')
+  async obtenerConfiguracion(@ConsultorioActual() consultorioId: string) {
+    return this.consultoriosService.obtenerPorId(consultorioId);
+  }
+
+  /**
+   * Actualiza la configuración, colores de marca, horarios y diseño de recetas del consultorio.
+   */
+  @Patch('configuracion')
+  async actualizarConfiguracion(
+    @ConsultorioActual() consultorioId: string,
+    @Body() dto: ActualizarConfiguracionDto,
+  ) {
+    return this.consultoriosService.actualizarConfiguracion(consultorioId, dto);
   }
 
   /**

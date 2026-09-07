@@ -52,6 +52,15 @@ export class Usuario {
   @Column({ type: 'varchar', length: 100, nullable: true })
   apellido: string | null;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  especialidad: string | null;
+
+  @Column({ name: 'matricula_profesional', type: 'varchar', length: 50, nullable: true })
+  matriculaProfesional: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  telefono: string | null;
+
   @Column({ name: 'rol_id', type: 'uuid', nullable: true })
   rolId: string | null;
 

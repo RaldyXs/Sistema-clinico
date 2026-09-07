@@ -10,6 +10,10 @@ import { PacientesModule } from './modules/pacientes/pacientes.module.js';
 import { CitasModule } from './modules/citas/citas.module.js';
 import { ConsultasModule } from './modules/consultas/consultas.module.js';
 import { RecetasModule } from './modules/recetas/recetas.module.js';
+import { DocumentosModule } from './modules/documentos/documentos.module.js';
+import { GinecologiaModule } from './modules/ginecologia/ginecologia.module.js';
+import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { UsuariosModule } from './modules/usuarios/usuarios.module.js';
 
 /**
  * AppModule es el módulo raíz de la aplicación backend.
@@ -52,8 +56,20 @@ import { RecetasModule } from './modules/recetas/recetas.module.js';
     // 8. Módulo Clínico: Consultas e Historia Clínica (Fase 4)
     ConsultasModule,
 
-    // 9. Módulo Clínico: Recetas y Documentos Médicos (Fase 5)
+    // 9. Módulo Clínico: Recetas y Prescripciones Médicas (Fase 5)
     RecetasModule,
+
+    // 10. Módulo Clínico: Almacenamiento y Documentos Adjuntos (Fase 5)
+    DocumentosModule,
+
+    // 11. Módulo Satélite de Especialidad: Ginecología y Obstetricia (Fase 6)
+    GinecologiaModule,
+
+    // 12. Módulo de Dashboard y KPIs en Tiempo Real (Fase 7)
+    DashboardModule,
+
+    // 13. Módulo de Administración de Personal y Usuarios (Fase 7)
+    UsuariosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
