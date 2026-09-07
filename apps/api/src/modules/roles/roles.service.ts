@@ -26,6 +26,19 @@ export const PERMISOS_INICIALES = [
   { codigo: 'consultas:crear', nombre: 'Crear consulta médica', modulo: 'CLINICA_CONSULTAS', descripcion: 'Registrar atención clínica, anamnesis y diagnóstico' },
   { codigo: 'consultas:ver', nombre: 'Ver historial clínico', modulo: 'CLINICA_CONSULTAS', descripcion: 'Revisar consultas previas del paciente' },
   { codigo: 'recetas:crear', nombre: 'Emitir recetas', modulo: 'CLINICA_RECETAS', descripcion: 'Generar recetas e indicaciones médicas' },
+  { codigo: 'recetas:ver', nombre: 'Ver recetas médicas', modulo: 'CLINICA_RECETAS', descripcion: 'Consultar y descargar recetas del paciente' },
+  { codigo: 'recetas:anular', nombre: 'Anular recetas', modulo: 'CLINICA_RECETAS', descripcion: 'Invalidar recetas médicas emitidas' },
+  { codigo: 'documentos:subir', nombre: 'Subir documentos', modulo: 'CLINICA_DOCUMENTOS', descripcion: 'Subir exámenes y estudios clínicos' },
+  { codigo: 'documentos:ver', nombre: 'Ver documentos', modulo: 'CLINICA_DOCUMENTOS', descripcion: 'Consultar y descargar adjuntos del paciente' },
+  { codigo: 'documentos:eliminar', nombre: 'Eliminar documentos', modulo: 'CLINICA_DOCUMENTOS', descripcion: 'Eliminar archivos adjuntos del historial' },
+  { codigo: 'ginecologia:historia:ver', nombre: 'Ver historia ginecológica', modulo: 'ESPECIALIDAD_GINECOLOGIA', descripcion: 'Consultar antecedentes ginecológicos y fórmula obstétrica' },
+  { codigo: 'ginecologia:historia:editar', nombre: 'Editar historia ginecológica', modulo: 'ESPECIALIDAD_GINECOLOGIA', descripcion: 'Registrar y actualizar antecedentes ginecológicos' },
+  { codigo: 'ginecologia:embarazos:crear', nombre: 'Registrar embarazo', modulo: 'ESPECIALIDAD_GINECOLOGIA', descripcion: 'Aperturar nuevo expediente de embarazo y control prenatal' },
+  { codigo: 'ginecologia:embarazos:ver', nombre: 'Ver embarazos', modulo: 'ESPECIALIDAD_GINECOLOGIA', descripcion: 'Consultar expedientes de embarazo activos e históricos' },
+  { codigo: 'ginecologia:controles:crear', nombre: 'Registrar control prenatal', modulo: 'ESPECIALIDAD_GINECOLOGIA', descripcion: 'Registrar consultas y controles periódicos prenatales' },
+  { codigo: 'ginecologia:controles:ver', nombre: 'Ver controles prenatales', modulo: 'ESPECIALIDAD_GINECOLOGIA', descripcion: 'Consultar controles y curvas de crecimiento fetal' },
+  { codigo: 'ginecologia:ecografias:crear', nombre: 'Registrar ecografía', modulo: 'ESPECIALIDAD_GINECOLOGIA', descripcion: 'Emitir informes ecográficos ginecológicos y obstétricos' },
+  { codigo: 'ginecologia:ecografias:ver', nombre: 'Ver ecografías', modulo: 'ESPECIALIDAD_GINECOLOGIA', descripcion: 'Consultar informes ecográficos y biometría fetal' },
 ];
 
 /**
@@ -73,7 +86,10 @@ export class RolesService implements OnModuleInit {
     const todosLosPermisos = await this.permisoRepo.find();
 
     // 1. Rol Universal del Núcleo: ADMIN (Tiene todos los permisos)
-    let rolAdmin = await this.rolRepo.findOne({ where: { codigo: 'ADMIN', consultorioId: IsNull() } });
+    let rolAdmin = await this.rolRepo.findOne({
+      where: { codigo: 'ADMIN', consultorioId: IsNull() },
+      relations: { permisos: true },
+    });
     if (!rolAdmin) {
       rolAdmin = this.rolRepo.create({
         codigo: 'ADMIN',
@@ -85,18 +101,26 @@ export class RolesService implements OnModuleInit {
       });
       await this.rolRepo.save(rolAdmin);
       this.logger.log('Rol universal ADMIN creado con todos los permisos');
+    } else {
+      rolAdmin.permisos = todosLosPermisos;
+      await this.rolRepo.save(rolAdmin);
     }
 
     // 2. Plantilla de Dominio: PROFESIONAL_SALUD (Médicos, Odontólogos, Especialistas)
-    let rolProfesional = await this.rolRepo.findOne({ where: { codigo: 'PROFESIONAL_SALUD', consultorioId: IsNull() } });
-    if (!rolProfesional) {
-      const permisosSalud = todosLosPermisos.filter(p =>
-        p.codigo.startsWith('pacientes:') ||
-        p.codigo.startsWith('citas:') ||
-        p.codigo.startsWith('consultas:') ||
-        p.codigo.startsWith('recetas:')
-      );
+    const permisosSalud = todosLosPermisos.filter(p =>
+      p.codigo.startsWith('pacientes:') ||
+      p.codigo.startsWith('citas:') ||
+      p.codigo.startsWith('consultas:') ||
+      p.codigo.startsWith('recetas:') ||
+      p.codigo.startsWith('documentos:') ||
+      p.codigo.startsWith('ginecologia:')
+    );
 
+    let rolProfesional = await this.rolRepo.findOne({
+      where: { codigo: 'PROFESIONAL_SALUD', consultorioId: IsNull() },
+      relations: { permisos: true },
+    });
+    if (!rolProfesional) {
       rolProfesional = this.rolRepo.create({
         codigo: 'PROFESIONAL_SALUD',
         nombre: 'Profesional de la Salud',
@@ -107,6 +131,9 @@ export class RolesService implements OnModuleInit {
       });
       await this.rolRepo.save(rolProfesional);
       this.logger.log('Rol plantilla PROFESIONAL_SALUD creado');
+    } else {
+      rolProfesional.permisos = permisosSalud;
+      await this.rolRepo.save(rolProfesional);
     }
 
     // 3. Plantilla de Dominio: RECEPCION (Secretaría / Asistentes)
