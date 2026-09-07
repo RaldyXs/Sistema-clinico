@@ -18,6 +18,7 @@ import {
   Menu,
   X,
   UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
 
 export type NavTab =
@@ -28,6 +29,7 @@ export type NavTab =
   | 'recetas'
   | 'ginecologia'
   | 'reportes'
+  | 'seguridad'
   | 'configuracion';
 
 interface AppLayoutProps {
@@ -61,6 +63,7 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
     { id: 'recetas', label: 'Recetas y PDF', icon: <FileText className="size-4" /> },
     { id: 'ginecologia', label: 'Ginecología & Obs.', icon: <Baby className="size-4" /> },
     { id: 'reportes', label: 'Reportes & Métricas', icon: <BarChart3 className="size-4" /> },
+    { id: 'seguridad', label: 'Seguridad & Backups', icon: <ShieldCheck className="size-4" /> },
     { id: 'configuracion', label: 'Configuración', icon: <Settings className="size-4" /> },
   ];
 

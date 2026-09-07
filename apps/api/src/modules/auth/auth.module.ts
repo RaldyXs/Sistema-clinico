@@ -6,22 +6,15 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Usuario } from '../usuarios/entities/usuario.entity.js';
 import { Consultorio } from '../consultorios/entities/consultorio.entity.js';
 import { Rol } from '../roles/entities/rol.entity.js';
+import { SesionUsuario } from './entities/sesion-usuario.entity.js';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './strategies/jwt.strategy.js';
 
-/**
- * Módulo de Autenticación Global (AuthModule).
- *
- * Al marcarse con `@Global()`:
- * Todos los demás módulos (Roles, Pacientes, Citas, Consultas) pueden utilizar
- * `@UseGuards(JwtAuthGuard)` y acceder a la estrategia JWT sin tener que re-importar
- * Passport en cada módulo individual.
- */
 @Global()
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario, Consultorio, Rol]),
+    TypeOrmModule.forFeature([Usuario, Consultorio, Rol, SesionUsuario]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

@@ -104,6 +104,15 @@ export class Usuario {
   @JoinColumn({ name: 'consultorio_id' })
   consultorio: Consultorio;
 
+  @Column({ name: 'two_factor_enabled', type: 'boolean', default: false })
+  twoFactorEnabled: boolean;
+
+  @Column({ name: 'two_factor_secret', type: 'varchar', length: 128, nullable: true })
+  twoFactorSecret: string | null;
+
+  @Column({ name: 'two_factor_recovery_codes', type: 'jsonb', nullable: true })
+  twoFactorRecoveryCodes: string[] | null;
+
   @CreateDateColumn({ name: 'creado_en' })
   creadoEn: Date;
 

@@ -9,6 +9,7 @@ export interface UserProfile {
   rolCodigo?: string;
   especialidad?: string | null;
   matriculaProfesional?: string | null;
+  twoFactorEnabled?: boolean;
   consultorioId: string;
   consultorio?: {
     id: string;

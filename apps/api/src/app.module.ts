@@ -15,6 +15,8 @@ import { GinecologiaModule } from './modules/ginecologia/ginecologia.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { UsuariosModule } from './modules/usuarios/usuarios.module.js';
 import { ReportesModule } from './modules/reportes/reportes.module.js';
+import { AuditoriaModule } from './modules/auditoria/auditoria.module.js';
+import { BackupsModule } from './modules/backups/backups.module.js';
 
 /**
  * AppModule es el módulo raíz de la aplicación backend.
@@ -74,6 +76,12 @@ import { ReportesModule } from './modules/reportes/reportes.module.js';
 
     // 14. Módulo de Reportes Clínicos, Ausentismo y Productividad Médica (Fase 8)
     ReportesModule,
+
+    // 15. Módulo de Auditoría Clínica Avanzada (Fase 9)
+    AuditoriaModule,
+
+    // 16. Módulo de Copias de Seguridad y Portabilidad de Datos (Fase 9)
+    BackupsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

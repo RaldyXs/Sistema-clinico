@@ -10,6 +10,7 @@ import { RecetasView } from '@/views/RecetasView';
 import { GinecologiaView } from '@/views/GinecologiaView';
 import { ReportesView } from '@/views/ReportesView';
 import { ConfiguracionView } from '@/views/ConfiguracionView';
+import { SeguridadView } from '@/views/SeguridadView';
 import { RefreshCw } from 'lucide-react';
 
 function MainRouter() {
@@ -38,6 +39,7 @@ function MainRouter() {
       {currentTab === 'recetas' && <RecetasView />}
       {currentTab === 'ginecologia' && <GinecologiaView />}
       {currentTab === 'reportes' && <ReportesView />}
+      {currentTab === 'seguridad' && <SeguridadView />}
       {currentTab === 'configuracion' && <ConfiguracionView />}
     </AppLayout>
   );
