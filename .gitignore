@@ -41,3 +41,7 @@ Desktop.ini
 
 # NestJS / Node
 .nest/
+
+# Uploads / Clinical Files
+uploads/
+**/uploads/
