@@ -6,7 +6,7 @@ export interface UserProfile {
   email: string;
   nombre: string;
   apellido?: string | null;
-  rolCodigo?: string;
+  rolCodigo?: 'SUPERADMIN' | 'ADMIN' | 'MEDICO' | 'RECEPCION' | string;
   especialidad?: string | null;
   matriculaProfesional?: string | null;
   twoFactorEnabled?: boolean;
@@ -25,7 +25,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  quickLogin: (userType: 'carlos' | 'elena') => Promise<void>;
+  quickLogin: (userType: 'carlos' | 'elena' | 'superadmin') => Promise<void>;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -52,7 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: data.email,
         nombre: data.nombre,
         apellido: data.apellido,
-        rolCodigo: data.rolCodigo || data.rol?.codigo || 'ADMIN',
+        rolCodigo:
+          data.rolCodigo ||
+          (typeof data.rol === 'string' ? data.rol : data.rol?.codigo) ||
+          'MEDICO',
         especialidad: data.especialidad,
         matriculaProfesional: data.matriculaProfesional,
         consultorioId: data.consultorioId,
@@ -87,8 +90,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const quickLogin = async (userType: 'carlos' | 'elena') => {
-    if (userType === 'carlos') {
+  const quickLogin = async (userType: 'carlos' | 'elena' | 'superadmin') => {
+    if (userType === 'superadmin') {
+      await login('superadmin@saas.com', 'SuperAdmin1234!');
+    } else if (userType === 'carlos') {
       await login('dr.carlos@test.com', 'Test1234!');
     } else {
       await login('elena.rios@test2.com', 'Test1234!');

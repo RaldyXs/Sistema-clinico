@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,15 +14,26 @@ import {
   CheckCircle2,
   X,
   AlertCircle,
+  Crown,
+  Zap,
+  Clock,
 } from 'lucide-react';
 
 export function ConfiguracionView() {
+  const { user } = useAuth();
   const [config, setConfig] = React.useState<any>(null);
   const [usuarios, setUsuarios] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [guardandoConfig, setGuardandoConfig] = React.useState(false);
   const [showModalCrearUsuario, setShowModalCrearUsuario] = React.useState(false);
   const [mensajeExito, setMensajeExito] = React.useState<string | null>(null);
+
+  // Suscripción SaaS & Cupos
+  const [suscripcionInfo, setSuscripcionInfo] = React.useState<any>(null);
+  const [planesDisponibles, setPlanesDisponibles] = React.useState<any[]>([]);
+  const [showModalPlan, setShowModalPlan] = React.useState(false);
+  const [planSeleccionado, setPlanSeleccionado] = React.useState('PROFESIONAL');
+  const [cambiandoPlan, setCambiandoPlan] = React.useState(false);
 
   // Formulario nuevo usuario
   const [formUser, setFormUser] = React.useState({
@@ -40,12 +52,21 @@ export function ConfiguracionView() {
   const cargarDatos = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [cfg, users] = await Promise.all([
+      const [cfg, users, sub, pls] = await Promise.all([
         api.get('/consultorios/configuracion'),
         api.get('/usuarios'),
+        api.get('/saas/mi-suscripcion').catch(() => null),
+        api.get('/saas/planes').catch(() => []),
       ]);
       setConfig(cfg);
       setUsuarios(Array.isArray(users) ? users : []);
+      if (sub) {
+        setSuscripcionInfo(sub);
+        setPlanSeleccionado(sub.plan?.codigo || 'PROFESIONAL');
+      }
+      if (Array.isArray(pls)) {
+        setPlanesDisponibles(pls);
+      }
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -117,6 +138,23 @@ export function ConfiguracionView() {
     }
   };
 
+  const handleCambiarPlan = async () => {
+    setCambiandoPlan(true);
+    try {
+      await api.post('/saas/cambiar-plan', {
+        planCodigo: planSeleccionado,
+        periodo: 'MENSUAL',
+      });
+      setShowModalPlan(false);
+      setMensajeExito(`¡Plan de la clínica actualizado exitosamente a ${planSeleccionado}!`);
+      await cargarDatos();
+    } catch (err: any) {
+      alert(err.message || 'Error al modificar plan');
+    } finally {
+      setCambiandoPlan(false);
+    }
+  };
+
   if (loading && !config) {
     return (
       <div className="p-12 text-center text-muted-foreground">
@@ -143,6 +181,102 @@ export function ConfiguracionView() {
           <CheckCircle2 className="size-4 shrink-0" />
           <span>{mensajeExito}</span>
         </div>
+      )}
+
+      {/* TARJETA DE PLAN Y SUSCRIPCIÓN SAAS DE LA CLÍNICA */}
+      {suscripcionInfo && (
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-card to-card shadow-sm overflow-hidden">
+          <CardHeader className="border-b border-border/60 pb-4 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+                <Crown className="size-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-bold">
+                    {suscripcionInfo.plan?.nombre || 'Plan Activo'}
+                  </CardTitle>
+                  <Badge
+                    variant={suscripcionInfo.suscripcion?.estado === 'ACTIVA' ? 'default' : 'secondary'}
+                    className="text-[10px] font-semibold"
+                  >
+                    {suscripcionInfo.suscripcion?.estado === 'PRUEBA'
+                      ? 'Prueba Gratuita (14 días)'
+                      : 'Suscripción Activa'}
+                  </Badge>
+                </div>
+                <CardDescription className="text-xs mt-0.5 flex items-center gap-2">
+                  <span>Facturación {suscripcionInfo.suscripcion?.periodo === 'ANUAL' ? 'Anual' : 'Mensual'}</span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="size-3 text-muted-foreground" />
+                    {suscripcionInfo.suscripcion?.diasRestantes} días restantes en el ciclo actual
+                  </span>
+                </CardDescription>
+              </div>
+            </div>
+
+            <Button
+              size="sm"
+              onClick={() => setShowModalPlan(true)}
+              className="gap-1.5 shrink-0 shadow-xs"
+            >
+              <Zap className="size-3.5" /> Cambiar / Mejorar Plan
+            </Button>
+          </CardHeader>
+
+          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Medidor de Médicos */}
+            <div className="p-3 rounded-lg border border-border/80 bg-background/60 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Users className="size-3.5 text-primary" /> Capacidad de Usuarios (Médicos y Personal)
+                </span>
+                <span className="font-semibold text-foreground">
+                  {suscripcionInfo.consumo?.usuarios?.actual ?? suscripcionInfo.consumo?.medicos?.actual ?? 0} / {suscripcionInfo.consumo?.usuarios?.maximo ?? suscripcionInfo.consumo?.medicos?.maximo ?? 0} colaboradores
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    ((suscripcionInfo.consumo?.usuarios?.porcentaje ?? suscripcionInfo.consumo?.medicos?.porcentaje ?? 0) >= 90)
+                      ? 'bg-destructive'
+                      : 'bg-primary'
+                  }`}
+                  style={{ width: `${Math.min(100, suscripcionInfo.consumo?.usuarios?.porcentaje ?? suscripcionInfo.consumo?.medicos?.porcentaje ?? 0)}%` }}
+                />
+              </div>
+              <div className="text-[11px] text-muted-foreground text-right">
+                {suscripcionInfo.consumo?.usuarios?.porcentaje ?? suscripcionInfo.consumo?.medicos?.porcentaje ?? 0}% de cupo utilizado
+              </div>
+            </div>
+
+            {/* Medidor de Pacientes */}
+            <div className="p-3 rounded-lg border border-border/80 bg-background/60 space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Users className="size-3.5 text-emerald-500" /> Capacidad de Pacientes
+                </span>
+                <span className="font-semibold text-foreground">
+                  {suscripcionInfo.consumo?.pacientes?.actual ?? 0} / {suscripcionInfo.consumo?.pacientes?.maximo ?? 0} expedientes
+                </span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-300 ${
+                    (suscripcionInfo.consumo?.pacientes?.porcentaje ?? 0) >= 90
+                      ? 'bg-destructive'
+                      : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${Math.min(100, suscripcionInfo.consumo?.pacientes?.porcentaje ?? 0)}%` }}
+                />
+              </div>
+              <div className="text-[11px] text-muted-foreground text-right">
+                {suscripcionInfo.consumo?.pacientes?.porcentaje ?? 0}% de cupo utilizado
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -263,17 +397,23 @@ export function ConfiguracionView() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={u.activo ? 'success' : 'secondary'}>
+                    <Badge variant={u.activo ? 'default' : 'secondary'}>
                       {u.activo ? 'Activo' : 'Suspendido'}
                     </Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-xs h-7"
-                      onClick={() => cambiarEstadoUsuario(u.id, !u.activo)}
-                    >
-                      {u.activo ? 'Suspender' : 'Activar'}
-                    </Button>
+                    {u.id === user?.id ? (
+                      <Badge variant="outline" className="text-[10px] border-primary/40 text-primary py-0.5">
+                        Tú (Sesión actual)
+                      </Badge>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={() => cambiarEstadoUsuario(u.id, !u.activo)}
+                      >
+                        {u.activo ? 'Suspender' : 'Activar'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -354,9 +494,11 @@ export function ConfiguracionView() {
                       value={formUser.rolCodigo}
                       onChange={(e) => setFormUser({ ...formUser, rolCodigo: e.target.value })}
                     >
-                      <option value="MEDICO">Médico</option>
-                      <option value="RECEPCION">Recepción</option>
-                      <option value="ADMIN">Administrador</option>
+                      <option value="MEDICO">Médico / Especialista</option>
+                      <option value="RECEPCION">Recepción / Asistente</option>
+                      {!usuarios.some((u) => u.rolCodigo === 'ADMIN' && u.activo) && (
+                        <option value="ADMIN">Administrador</option>
+                      )}
                     </select>
                   </div>
                   <div className="space-y-1">
@@ -388,6 +530,75 @@ export function ConfiguracionView() {
                 </Button>
               </div>
             </form>
+          </Card>
+        </div>
+      )}
+
+      {/* Modal Cambiar Plan */}
+      {showModalPlan && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <Card className="max-w-2xl w-full shadow-2xl border-border animate-in fade-in zoom-in-95 duration-150">
+            <CardHeader className="border-b border-border flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Zap className="size-5 text-primary" /> Cambiar o Mejorar Plan de la Clínica
+                </CardTitle>
+                <CardDescription>
+                  Actualiza tu suscripción para ampliar la capacidad de médicos, pacientes y funcionalidades
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowModalPlan(false)}>
+                <X className="size-4" />
+              </Button>
+            </CardHeader>
+
+            <CardContent className="pt-6 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {planesDisponibles.map((p) => {
+                  const seleccionado = planSeleccionado === p.codigo;
+                  return (
+                    <div
+                      key={p.id}
+                      onClick={() => setPlanSeleccionado(p.codigo)}
+                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                        seleccionado
+                          ? 'border-primary bg-primary/5 shadow-xs'
+                          : 'border-border hover:border-border/80 hover:bg-muted/30'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-bold text-sm">{p.nombre}</span>
+                        {p.destacado && (
+                          <Badge variant="default" className="text-[9px] py-0">
+                            Popular
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="text-xl font-bold text-primary mt-1">
+                        ${p.precioMensual}
+                        <span className="text-xs font-normal text-muted-foreground">/mes</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2">
+                        {p.descripcion}
+                      </p>
+                      <div className="mt-3 pt-3 border-t border-border/60 text-[11px] space-y-1 text-muted-foreground">
+                        <div>👨‍⚕️ Hasta {p.maxMedicos} médicos</div>
+                        <div>👥 Hasta {p.maxPacientes.toLocaleString()} pacientes</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="p-4 border-t border-border flex items-center justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setShowModalPlan(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCambiarPlan} disabled={cambiandoPlan}>
+                  {cambiandoPlan ? 'Actualizando...' : 'Confirmar Cambio de Plan'}
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         </div>
       )}

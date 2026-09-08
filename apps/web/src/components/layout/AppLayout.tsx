@@ -57,20 +57,54 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
     });
   };
 
-  const navItems: Array<{ id: NavTab; label: string; icon: React.ReactNode }> = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="size-4" /> },
-    { id: 'pacientes', label: 'Pacientes', icon: <Users className="size-4" /> },
-    { id: 'citas', label: 'Agenda de Citas', icon: <Calendar className="size-4" /> },
-    { id: 'consultas', label: 'Consultas Médicas', icon: <Stethoscope className="size-4" /> },
-    { id: 'recetas', label: 'Recetas y PDF', icon: <FileText className="size-4" /> },
-    { id: 'ginecologia', label: 'Ginecología & Obs.', icon: <Baby className="size-4" /> },
-    { id: 'reportes', label: 'Reportes & Métricas', icon: <BarChart3 className="size-4" /> },
-    { id: 'seguridad', label: 'Seguridad & Backups', icon: <ShieldCheck className="size-4" /> },
-    { id: 'saas', label: 'Plataforma SaaS', icon: <Globe2 className="size-4" /> },
-    { id: 'configuracion', label: 'Configuración', icon: <Settings className="size-4" /> },
-  ];
+  const isSuperAdmin = user?.rolCodigo === 'SUPERADMIN';
+  const isMedico = user?.rolCodigo === 'MEDICO';
+  const isRecepcion = user?.rolCodigo === 'RECEPCION';
 
-  const clinicName = user?.consultorio?.nombre || 'Mi Consultorio';
+  const navItems: Array<{ id: NavTab; label: string; icon: React.ReactNode }> = React.useMemo(() => {
+    if (isSuperAdmin) {
+      return [
+        { id: 'saas', label: 'Plataforma SaaS', icon: <Globe2 className="size-4" /> },
+        { id: 'reportes', label: 'Métricas Globales', icon: <BarChart3 className="size-4" /> },
+        { id: 'seguridad', label: 'Auditoría Global', icon: <ShieldCheck className="size-4" /> },
+      ];
+    }
+
+    if (isRecepcion) {
+      return [
+        { id: 'citas', label: 'Agenda de Citas', icon: <Calendar className="size-4" /> },
+        { id: 'pacientes', label: 'Pacientes', icon: <Users className="size-4" /> },
+      ];
+    }
+
+    if (isMedico) {
+      return [
+        { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="size-4" /> },
+        { id: 'pacientes', label: 'Pacientes', icon: <Users className="size-4" /> },
+        { id: 'citas', label: 'Agenda de Citas', icon: <Calendar className="size-4" /> },
+        { id: 'consultas', label: 'Consultas Médicas', icon: <Stethoscope className="size-4" /> },
+        { id: 'recetas', label: 'Recetas y PDF', icon: <FileText className="size-4" /> },
+        { id: 'ginecologia', label: 'Ginecología & Obs.', icon: <Baby className="size-4" /> },
+      ];
+    }
+
+    // Administrador de Clínica (Cliente)
+    return [
+      { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="size-4" /> },
+      { id: 'pacientes', label: 'Pacientes', icon: <Users className="size-4" /> },
+      { id: 'citas', label: 'Agenda de Citas', icon: <Calendar className="size-4" /> },
+      { id: 'consultas', label: 'Consultas Médicas', icon: <Stethoscope className="size-4" /> },
+      { id: 'recetas', label: 'Recetas y PDF', icon: <FileText className="size-4" /> },
+      { id: 'ginecologia', label: 'Ginecología & Obs.', icon: <Baby className="size-4" /> },
+      { id: 'reportes', label: 'Reportes & Métricas', icon: <BarChart3 className="size-4" /> },
+      { id: 'seguridad', label: 'Seguridad & Backups', icon: <ShieldCheck className="size-4" /> },
+      { id: 'configuracion', label: 'Configuración & Plan', icon: <Settings className="size-4" /> },
+    ];
+  }, [isSuperAdmin, isMedico, isRecepcion]);
+
+  const clinicName = isSuperAdmin
+    ? 'Plataforma SaaS Global'
+    : (user?.consultorio?.nombre || 'Mi Consultorio');
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
@@ -91,12 +125,16 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
         {/* Header de la Clínica */}
         <div className="h-16 border-b border-border px-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="size-9 rounded-xl bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
-              <Building2 className="size-5" />
+            <div className={`size-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-xs shrink-0 ${
+              isSuperAdmin ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'
+            }`}>
+              {isSuperAdmin ? <Globe2 className="size-5" /> : <Building2 className="size-5" />}
             </div>
             <div className="min-w-0">
               <div className="font-semibold text-sm truncate leading-tight">{clinicName}</div>
-              <div className="text-[11px] text-muted-foreground truncate">Multi-Tenant SaaS</div>
+              <div className="text-[11px] text-muted-foreground truncate">
+                {isSuperAdmin ? 'Panel Maestro SaaS' : 'Multi-Tenant SaaS'}
+              </div>
             </div>
           </div>
           <Button
@@ -122,7 +160,9 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
                 }}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   active
-                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    ? isSuperAdmin
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-primary text-primary-foreground shadow-xs'
                     : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
@@ -133,28 +173,44 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
           })}
         </nav>
 
-        {/* Quick Tenant Switcher (Demo bar) */}
+        {/* Quick Tenant / Role Switcher (Demo bar) */}
         <div className="p-3 border-t border-border/80 bg-muted/30 space-y-2">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-            <UserCheck className="size-3 text-emerald-500" /> Switch Clínica (Demo)
+          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+            <span className="flex items-center gap-1">
+              <UserCheck className="size-3 text-emerald-500" /> Switch Rol / Clínica (Demo)
+            </span>
           </div>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="space-y-1">
             <Button
-              variant="outline"
+              variant={isSuperAdmin ? "default" : "outline"}
               size="sm"
-              className="text-[11px] h-7 px-1.5 justify-center"
-              onClick={() => quickLogin('carlos')}
+              className={`w-full text-[11px] h-7 px-2 justify-start ${
+                isSuperAdmin
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
+                  : 'border-amber-500/40 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10'
+              }`}
+              onClick={() => quickLogin('superadmin')}
             >
-              Del Sol
+              👑 <span className="ml-1.5 font-semibold">Tú (SuperAdmin SaaS)</span>
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-[11px] h-7 px-1.5 justify-center"
-              onClick={() => quickLogin('elena')}
-            >
-              San Rafael
-            </Button>
+            <div className="grid grid-cols-2 gap-1">
+              <Button
+                variant={!isSuperAdmin && user?.consultorio?.nombre?.includes('Sol') ? "secondary" : "outline"}
+                size="sm"
+                className="text-[11px] h-7 px-1.5 justify-center"
+                onClick={() => quickLogin('carlos')}
+              >
+                Del Sol (Cliente)
+              </Button>
+              <Button
+                variant={!isSuperAdmin && user?.consultorio?.nombre?.includes('Rafael') ? "secondary" : "outline"}
+                size="sm"
+                className="text-[11px] h-7 px-1.5 justify-center"
+                onClick={() => quickLogin('elena')}
+              >
+                San Rafael (Cliente)
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -193,9 +249,15 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
             >
               <Menu className="size-5" />
             </Button>
-            <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary">
-              {clinicName}
-            </Badge>
+            {isSuperAdmin ? (
+              <Badge variant="outline" className="text-xs font-semibold border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                👑 SuperAdmin — Control Plataforma SaaS
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-xs font-medium border-primary/30 text-primary">
+                {clinicName}
+              </Badge>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

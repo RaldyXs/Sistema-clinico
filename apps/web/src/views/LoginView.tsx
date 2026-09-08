@@ -43,7 +43,7 @@ export function LoginView() {
     }
   };
 
-  const handleQuickLogin = async (type: 'carlos' | 'elena') => {
+  const handleQuickLogin = async (type: 'carlos' | 'elena' | 'superadmin') => {
     setError(null);
     try {
       await quickLogin(type);
@@ -170,10 +170,37 @@ export function LoginView() {
           <div className="space-y-3 pt-4 border-t border-border">
             <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               <ShieldCheck className="size-4 text-emerald-500" />
-              <span>Acceso Rápido Multi-Tenant (Demo)</span>
+              <span>Demostración de Roles y Aislamiento</span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Prueba el aislamiento estricto cambiando entre dos consultorios independientes:
+
+            {/* Opción 1: SuperAdmin (Dueño) */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full justify-start text-xs h-auto py-2.5 px-3 border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10 text-left"
+              onClick={() => handleQuickLogin('superadmin')}
+              disabled={isLoading}
+            >
+              <div className="size-7 rounded-lg bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-sm shrink-0 mr-2.5">
+                👑
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-foreground flex items-center justify-between">
+                  <span>Tú (Dueño / SuperAdmin SaaS)</span>
+                  <Badge variant="outline" className="text-[10px] border-amber-500/30 text-amber-600 dark:text-amber-400 py-0">
+                    Plataforma Global
+                  </Badge>
+                </div>
+                <div className="text-[11px] text-muted-foreground truncate">
+                  superadmin@saas.com • MRR, Directorio y Control
+                </div>
+              </div>
+            </Button>
+
+            {/* Opción 2: Clínicas Clientes */}
+            <p className="text-[11px] text-muted-foreground pt-1">
+              O entra como <strong>Cliente de Clínica</strong> para ver la experiencia médica aislada:
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Button

@@ -135,8 +135,8 @@ export function SaasAdminView() {
     if (!token || !selectedTenantForPlan) return;
     setActionLoadingId(selectedTenantForPlan.id);
     try {
-      const res = await fetch('http://localhost:3000/saas/cambiar-plan', {
-        method: 'POST',
+      const res = await fetch(`http://localhost:3000/saas/consultorios/${selectedTenantForPlan.id}/plan`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,

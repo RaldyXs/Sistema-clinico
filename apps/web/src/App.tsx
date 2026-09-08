@@ -15,8 +15,18 @@ import { SaasAdminView } from '@/views/SaasAdminView';
 import { RefreshCw } from 'lucide-react';
 
 function MainRouter() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [currentTab, setCurrentTab] = React.useState<NavTab>('dashboard');
+
+  const isSuperAdmin = user?.rolCodigo === 'SUPERADMIN';
+
+  React.useEffect(() => {
+    if (isSuperAdmin && currentTab !== 'saas' && currentTab !== 'reportes' && currentTab !== 'seguridad') {
+      setCurrentTab('saas');
+    } else if (!isSuperAdmin && currentTab === 'saas') {
+      setCurrentTab('dashboard');
+    }
+  }, [isSuperAdmin, currentTab]);
 
   if (isLoading && !isAuthenticated) {
     return (
