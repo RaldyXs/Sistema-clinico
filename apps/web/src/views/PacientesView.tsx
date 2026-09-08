@@ -31,12 +31,13 @@ export function PacientesView() {
   const [form, setForm] = React.useState({
     nombre: '',
     apellido: '',
-    dni: '',
+    tipoDocumento: 'DNI',
+    documentoIdentidad: '',
     fechaNacimiento: '1995-05-15',
-    sexo: 'FEMENINO',
+    genero: 'FEMENINO',
     telefono: '',
     email: '',
-    grupoSanguineo: 'O_POSITIVO',
+    grupoSanguineo: 'O+',
     alergias: '',
     antecedentesMedicos: '',
   });
@@ -87,17 +88,32 @@ export function PacientesView() {
     setFormError(null);
 
     try {
-      await api.post('/pacientes', form);
+      const payload = {
+        nombre: form.nombre.trim(),
+        apellido: form.apellido.trim(),
+        tipoDocumento: form.tipoDocumento,
+        documentoIdentidad: form.documentoIdentidad.trim(),
+        fechaNacimiento: form.fechaNacimiento,
+        genero: form.genero,
+        telefono: form.telefono.trim() || undefined,
+        email: form.email.trim() || undefined,
+        grupoSanguineo: form.grupoSanguineo || undefined,
+        alergias: form.alergias.trim() || undefined,
+        antecedentesMedicos: form.antecedentesMedicos.trim() || undefined,
+      };
+
+      await api.post('/pacientes', payload);
       setShowModalCrear(false);
       setForm({
         nombre: '',
         apellido: '',
-        dni: '',
+        tipoDocumento: 'DNI',
+        documentoIdentidad: '',
         fechaNacimiento: '1995-05-15',
-        sexo: 'FEMENINO',
+        genero: 'FEMENINO',
         telefono: '',
         email: '',
-        grupoSanguineo: 'O_POSITIVO',
+        grupoSanguineo: 'O+',
         alergias: '',
         antecedentesMedicos: '',
       });
@@ -179,11 +195,11 @@ export function PacientesView() {
                             <div>
                               {p.nombre} {p.apellido || ''}
                             </div>
-                            <div className="text-xs text-muted-foreground">{p.sexo}</div>
+                            <div className="text-xs text-muted-foreground">{p.genero || p.sexo || 'Femenino'}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-mono text-muted-foreground">{p.dni}</td>
+                      <td className="px-6 py-4 font-mono text-muted-foreground">{p.documentoIdentidad || p.dni || 'S/D'}</td>
                       <td className="px-6 py-4 text-xs text-muted-foreground space-y-0.5">
                         {p.telefono && (
                           <div className="flex items-center gap-1">
@@ -238,7 +254,7 @@ export function PacientesView() {
                     {pacienteSeleccionado.nombre} {pacienteSeleccionado.apellido || ''}
                   </CardTitle>
                   <CardDescription>
-                    DNI: {pacienteSeleccionado.dni} • {pacienteSeleccionado.sexo}
+                    {pacienteSeleccionado.tipoDocumento || 'Doc'}: {pacienteSeleccionado.documentoIdentidad || pacienteSeleccionado.dni || 'S/D'} • {pacienteSeleccionado.genero || pacienteSeleccionado.sexo}
                   </CardDescription>
                 </div>
               </div>
@@ -412,14 +428,27 @@ export function PacientesView() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">DNI / Cédula *</label>
+                    <label className="text-xs font-semibold text-muted-foreground">Tipo Doc. *</label>
+                    <select
+                      className="w-full h-9 rounded-md border border-input bg-background px-2.5 py-1 text-sm shadow-xs outline-none focus:border-primary"
+                      value={form.tipoDocumento}
+                      onChange={(e) => setForm({ ...form, tipoDocumento: e.target.value })}
+                    >
+                      <option value="DNI">DNI</option>
+                      <option value="CEDULA">Cédula</option>
+                      <option value="PASAPORTE">Pasaporte</option>
+                      <option value="OTRO">Otro</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Número de Documento *</label>
                     <Input
                       required
                       placeholder="Ej. 38123456"
-                      value={form.dni}
-                      onChange={(e) => setForm({ ...form, dni: e.target.value })}
+                      value={form.documentoIdentidad}
+                      onChange={(e) => setForm({ ...form, documentoIdentidad: e.target.value })}
                     />
                   </div>
                   <div className="space-y-1">
@@ -438,8 +467,8 @@ export function PacientesView() {
                     <label className="text-xs font-semibold text-muted-foreground">Sexo Biológico *</label>
                     <select
                       className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus:border-primary"
-                      value={form.sexo}
-                      onChange={(e) => setForm({ ...form, sexo: e.target.value })}
+                      value={form.genero}
+                      onChange={(e) => setForm({ ...form, genero: e.target.value })}
                     >
                       <option value="FEMENINO">Femenino</option>
                       <option value="MASCULINO">Masculino</option>
@@ -453,14 +482,15 @@ export function PacientesView() {
                       value={form.grupoSanguineo}
                       onChange={(e) => setForm({ ...form, grupoSanguineo: e.target.value })}
                     >
-                      <option value="O_POSITIVO">O Rh+</option>
-                      <option value="O_NEGATIVO">O Rh-</option>
-                      <option value="A_POSITIVO">A Rh+</option>
-                      <option value="A_NEGATIVO">A Rh-</option>
-                      <option value="B_POSITIVO">B Rh+</option>
-                      <option value="B_NEGATIVO">B Rh-</option>
-                      <option value="AB_POSITIVO">AB Rh+</option>
-                      <option value="AB_NEGATIVO">AB Rh-</option>
+                      <option value="">No especificado / Desconocido</option>
+                      <option value="O+">O Rh+ (O+)</option>
+                      <option value="O-">O Rh- (O-)</option>
+                      <option value="A+">A Rh+ (A+)</option>
+                      <option value="A-">A Rh- (A-)</option>
+                      <option value="B+">B Rh+ (B+)</option>
+                      <option value="B-">B Rh- (B-)</option>
+                      <option value="AB+">AB Rh+ (AB+)</option>
+                      <option value="AB-">AB Rh- (AB-)</option>
                     </select>
                   </div>
                 </div>
@@ -485,13 +515,64 @@ export function PacientesView() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground">Alergias Conocidas</label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Alergias Conocidas <span className="font-normal text-[11px]">(Opcional)</span>
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm({
+                            ...form,
+                            alergias: form.alergias.trim().toLowerCase() === 'ninguna' ? '' : 'Ninguna',
+                          })
+                        }
+                        className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
+                          form.alergias.trim().toLowerCase() === 'ninguna'
+                            ? 'bg-emerald-500/15 text-emerald-600 border-emerald-500/40 font-semibold shadow-xs'
+                            : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                        }`}
+                      >
+                        {form.alergias.trim().toLowerCase() === 'ninguna' ? '✓ Ninguna (Sin alergias)' : 'Ninguna'}
+                      </button>
+                      {form.alergias && form.alergias.trim().toLowerCase() !== 'ninguna' && (
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, alergias: '' })}
+                          className="text-[11px] px-1.5 py-0.5 text-muted-foreground hover:text-destructive cursor-pointer"
+                          title="Dejar vacío"
+                        >
+                          ✕ Vaciar
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <Input
-                    placeholder="Ej. Penicilina, AINEs, Dipirona"
+                    placeholder="Ej. Penicilina, AINEs (o selecciona 'Ninguna' / deja vacío)"
                     value={form.alergias}
                     onChange={(e) => setForm({ ...form, alergias: e.target.value })}
                   />
+                  <div className="flex items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground flex-wrap">
+                    <span>Frecuentes:</span>
+                    {['Penicilina', 'AINEs', 'Sulfas', 'Dipirona', 'Látex'].map((alergia) => (
+                      <button
+                        key={alergia}
+                        type="button"
+                        onClick={() => {
+                          const actual = form.alergias.trim().toLowerCase() === 'ninguna' ? '' : form.alergias.trim();
+                          const yaExiste = actual.toLowerCase().includes(alergia.toLowerCase());
+                          if (!yaExiste) {
+                            setForm({ ...form, alergias: actual ? `${actual}, ${alergia}` : alergia });
+                          }
+                        }}
+                        className="px-1.5 py-0.5 rounded bg-muted hover:bg-muted/80 text-foreground transition-colors cursor-pointer text-[10px] border border-border/40"
+                      >
+                        + {alergia}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
 

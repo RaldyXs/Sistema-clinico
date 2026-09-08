@@ -1,4 +1,4 @@
-import { Entity, Column, Index } from 'typeorm';
+import { Entity, Column, Index, AfterLoad } from 'typeorm';
 import { TenantBaseEntity } from '../../../common/entities/tenant-base.entity.js';
 
 /**
@@ -141,4 +141,16 @@ export class Paciente extends TenantBaseEntity {
    */
   @Column({ type: 'boolean', default: true })
   activo: boolean;
+
+  /**
+   * Propiedades virtuales / alias para asegurar compatibilidad en toda la plataforma.
+   */
+  dni?: string | null;
+  sexo?: Genero;
+
+  @AfterLoad()
+  populateAliases() {
+    this.dni = this.documentoIdentidad;
+    this.sexo = this.genero;
+  }
 }

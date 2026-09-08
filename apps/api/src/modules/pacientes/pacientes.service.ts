@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Paciente } from './entities/paciente.entity.js';
+import { Paciente, TipoDocumento, Genero } from './entities/paciente.entity.js';
 import { CrearPacienteDto } from './dto/crear-paciente.dto.js';
 import { ActualizarPacienteDto } from './dto/actualizar-paciente.dto.js';
 import { FiltrosPacienteDto } from './dto/filtros-paciente.dto.js';
@@ -32,7 +32,9 @@ export class PacientesService {
    * Registra un nuevo paciente vinculado automáticamente al consultorio del usuario.
    */
   async crear(consultorioId: string, dto: CrearPacienteDto): Promise<Paciente> {
-    const docNormalizado = dto.documentoIdentidad ? dto.documentoIdentidad.trim() : null;
+    const docNormalizado = (dto.documentoIdentidad || dto.dni || '').trim() || null;
+    const tipoDoc = dto.tipoDocumento || TipoDocumento.DNI;
+    const genero = dto.genero || (dto.sexo as any) || Genero.FEMENINO;
 
     // 1. Verificamos duplicidad de documento solo dentro del mismo consultorio
     if (docNormalizado) {
@@ -51,11 +53,15 @@ export class PacientesService {
     }
 
     // 2. Instanciamos la entidad asignando el tenant validado por el JWT
+    const { dni, sexo, ...resto } = dto;
     const nuevoPaciente = this.pacienteRepo.create({
-      ...dto,
+      ...resto,
       nombre: dto.nombre.trim(),
       apellido: dto.apellido.trim(),
+      tipoDocumento: tipoDoc,
       documentoIdentidad: docNormalizado,
+      genero,
+      alergias: dto.alergias ? dto.alergias.trim() : null,
       email: dto.email ? dto.email.toLowerCase().trim() : null,
       telefono: dto.telefono ? dto.telefono.trim() : null,
       fechaNacimiento: new Date(dto.fechaNacimiento),
@@ -94,8 +100,9 @@ export class PacientesService {
     const paciente = await this.obtenerPorId(consultorioId, id);
 
     // Si se actualiza el documento de identidad, validamos que no colisione con otro paciente
-    if (dto.documentoIdentidad !== undefined) {
-      const docNormalizado = dto.documentoIdentidad ? dto.documentoIdentidad.trim() : null;
+    const docInput = dto.documentoIdentidad !== undefined ? dto.documentoIdentidad : dto.dni;
+    if (docInput !== undefined) {
+      const docNormalizado = docInput ? docInput.trim() : null;
 
       if (docNormalizado && docNormalizado !== paciente.documentoIdentidad) {
         const duplicado = await this.pacienteRepo.findOne({
@@ -120,6 +127,7 @@ export class PacientesService {
     if (dto.tipoDocumento !== undefined) paciente.tipoDocumento = dto.tipoDocumento;
     if (dto.fechaNacimiento !== undefined) paciente.fechaNacimiento = new Date(dto.fechaNacimiento);
     if (dto.genero !== undefined) paciente.genero = dto.genero;
+    else if (dto.sexo !== undefined) paciente.genero = dto.sexo as any;
     if (dto.telefono !== undefined) paciente.telefono = dto.telefono ? dto.telefono.trim() : null;
     if (dto.email !== undefined) paciente.email = dto.email ? dto.email.toLowerCase().trim() : null;
     if (dto.direccion !== undefined) paciente.direccion = dto.direccion ? dto.direccion.trim() : null;
