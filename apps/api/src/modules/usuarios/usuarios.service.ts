@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -10,6 +11,8 @@ import bcrypt from 'bcryptjs';
 import { Usuario, RolUsuario } from './entities/usuario.entity.js';
 import { Rol } from '../roles/entities/rol.entity.js';
 import { Suscripcion } from '../saas/entities/suscripcion.entity.js';
+import { SesionUsuario } from '../auth/entities/sesion-usuario.entity.js';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto.js';
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto.js';
 import { FiltrosUsuariosDto } from './dto/filtros-usuario.dto.js';
@@ -25,6 +28,11 @@ export class UsuariosService {
 
     @InjectRepository(Suscripcion)
     private readonly suscripcionRepo: Repository<Suscripcion>,
+
+    @InjectRepository(SesionUsuario)
+    private readonly sesionRepo: Repository<SesionUsuario>,
+
+    private readonly auditoriaService: AuditoriaService,
   ) {}
 
   /**
@@ -51,7 +59,7 @@ export class UsuariosService {
     });
     if (suscripcion?.plan) {
       const totalUsuariosActivos = await this.usuarioRepo.count({
-        where: { consultorioId, activo: true },
+        where: { consultorioId, activo: true, eliminado: false },
       });
       if (totalUsuariosActivos >= suscripcion.plan.maxMedicos) {
         throw new BadRequestException(
@@ -62,7 +70,7 @@ export class UsuariosService {
 
     // 2. Verificamos si el email ya existe en el sistema
     const existente = await this.usuarioRepo.findOne({
-      where: { email: emailNormalizado },
+      where: { email: emailNormalizado, eliminado: false },
     });
 
     if (existente) {
@@ -73,7 +81,7 @@ export class UsuariosService {
     const rolSolicitado = dto.rolCodigo || RolUsuario.MEDICO;
     if (rolSolicitado === RolUsuario.ADMIN) {
       const adminExistente = await this.usuarioRepo.findOne({
-        where: { consultorioId, rolCodigo: 'ADMIN' },
+        where: { consultorioId, rolCodigo: 'ADMIN', eliminado: false },
       });
       if (adminExistente) {
         throw new BadRequestException(
@@ -108,6 +116,7 @@ export class UsuariosService {
       matriculaProfesional: dto.matriculaProfesional ? dto.matriculaProfesional.trim() : null,
       telefono: dto.telefono ? dto.telefono.trim() : null,
       activo: true,
+      eliminado: false,
     });
 
     const guardado = await this.usuarioRepo.save(nuevoUsuario);
@@ -124,7 +133,8 @@ export class UsuariosService {
     const qb = this.usuarioRepo
       .createQueryBuilder('u')
       .leftJoinAndSelect('u.rol', 'rol')
-      .where('u.consultorio_id = :consultorioId', { consultorioId });
+      .where('u.consultorio_id = :consultorioId', { consultorioId })
+      .andWhere('u.eliminado = false');
 
     if (filtros?.rolCodigo) {
       qb.andWhere('u.rol_codigo = :rolCodigo', { rolCodigo: filtros.rolCodigo });
@@ -164,6 +174,7 @@ export class UsuariosService {
         consultorioId,
         rolCodigo: RolUsuario.MEDICO,
         activo: true,
+        eliminado: false,
       },
       relations: {
         rol: true,
@@ -182,7 +193,7 @@ export class UsuariosService {
    */
   async obtenerPorId(consultorioId: string, id: string): Promise<Omit<Usuario, 'passwordHash'>> {
     const usuario = await this.usuarioRepo.findOne({
-      where: { id, consultorioId },
+      where: { id, consultorioId, eliminado: false },
       relations: { rol: true },
     });
 
@@ -202,7 +213,7 @@ export class UsuariosService {
     dto: ActualizarUsuarioDto,
   ): Promise<Omit<Usuario, 'passwordHash'>> {
     const usuario = await this.usuarioRepo.findOne({
-      where: { id, consultorioId },
+      where: { id, consultorioId, eliminado: false },
       relations: { rol: true },
     });
 
@@ -241,5 +252,74 @@ export class UsuariosService {
       throw new BadRequestException('No puedes suspender o desactivar tu propia cuenta de usuario.');
     }
     return this.actualizar(consultorioId, id, { activo });
+  }
+
+  /**
+   * Elimina a un usuario del consultorio preservando la trazabilidad histórica, legal y médica.
+   * - Solo administradores o superadministradores pueden ejecutar esta acción.
+   * - No permite auto-eliminación.
+   * - Revoca de inmediato todas las sesiones activas en cualquier dispositivo.
+   * - Registra el evento detallado en la Auditoría del sistema.
+   * - Aplica borrado seguro: desactiva, marca eliminado y renombra el email para liberarlo.
+   */
+  async eliminar(
+    consultorioId: string,
+    id: string,
+    usuarioSolicitante: any,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<{ mensaje: string }> {
+    if (usuarioSolicitante?.id === id) {
+      throw new BadRequestException('No puedes eliminar tu propia cuenta de usuario.');
+    }
+
+    const rolSolicitante = usuarioSolicitante?.rol?.codigo || usuarioSolicitante?.rolCodigo;
+    if (rolSolicitante !== 'ADMIN' && rolSolicitante !== 'SUPERADMIN') {
+      throw new ForbiddenException('Solo los Administradores de la clínica pueden eliminar usuarios.');
+    }
+
+    const usuario = await this.usuarioRepo.findOne({
+      where: { id, consultorioId, eliminado: false },
+    });
+
+    if (!usuario) {
+      throw new NotFoundException(`Usuario con ID "${id}" no encontrado en este consultorio`);
+    }
+
+    // 1. Revocar inmediatamente todas las sesiones del usuario
+    await this.sesionRepo.update({ usuarioId: id }, { activa: false });
+
+    // 2. Registrar evento formal de eliminación en la Auditoría
+    const nombreCompletoAdmin = `${usuarioSolicitante?.nombre ?? ''} ${usuarioSolicitante?.apellido ?? ''}`.trim() || usuarioSolicitante?.email || 'Administrador';
+    const nombreCompletoEliminado = `${usuario.nombre ?? ''} ${usuario.apellido ?? ''}`.trim();
+
+    await this.auditoriaService.registrar({
+      consultorioId,
+      usuarioId: usuarioSolicitante?.id ?? null,
+      usuarioEmail: usuarioSolicitante?.email ?? 'admin',
+      usuarioNombre: nombreCompletoAdmin,
+      modulo: 'USUARIOS',
+      accion: 'USUARIO_ELIMINAR',
+      entidadTipo: 'USUARIO',
+      entidadId: id,
+      detalles: {
+        usuarioEliminadoId: usuario.id,
+        usuarioEliminadoEmail: usuario.email,
+        usuarioEliminadoNombre: nombreCompletoEliminado,
+        usuarioEliminadoRol: usuario.rolCodigo,
+        especialidad: usuario.especialidad,
+        matriculaProfesional: usuario.matriculaProfesional,
+      },
+      ipAddress,
+      userAgent,
+    });
+
+    // 3. Borrado seguro: deshabilitar, marcar eliminado y liberar el email original
+    usuario.activo = false;
+    usuario.eliminado = true;
+    usuario.email = `eliminado_${Date.now()}_${usuario.email}`;
+    await this.usuarioRepo.save(usuario);
+
+    return { mensaje: `El usuario ${nombreCompletoEliminado || usuario.email} ha sido eliminado satisfactoriamente.` };
   }
 }

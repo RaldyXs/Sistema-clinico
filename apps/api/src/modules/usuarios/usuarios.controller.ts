@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -92,5 +93,24 @@ export class UsuariosController {
     @Body('activo') activo: boolean,
   ) {
     return this.usuariosService.cambiarEstado(consultorioId, id, activo, req.user?.id);
+  }
+
+  /**
+   * Elimina un usuario del consultorio y revoca sus accesos en todas las sesiones.
+   * La acción queda registrada inalterablemente en la auditoría del sistema.
+   */
+  @Delete(':id')
+  async eliminar(
+    @ConsultorioActual() consultorioId: string,
+    @Request() req: any,
+    @Param('id') id: string,
+  ) {
+    return this.usuariosService.eliminar(
+      consultorioId,
+      id,
+      req.user,
+      req.ip,
+      req.headers?.['user-agent'],
+    );
   }
 }

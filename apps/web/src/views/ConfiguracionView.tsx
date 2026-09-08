@@ -17,6 +17,7 @@ import {
   Crown,
   Zap,
   Clock,
+  Trash2,
 } from 'lucide-react';
 
 export function ConfiguracionView() {
@@ -27,6 +28,8 @@ export function ConfiguracionView() {
   const [guardandoConfig, setGuardandoConfig] = React.useState(false);
   const [showModalCrearUsuario, setShowModalCrearUsuario] = React.useState(false);
   const [mensajeExito, setMensajeExito] = React.useState<string | null>(null);
+  const [usuarioAEliminar, setUsuarioAEliminar] = React.useState<any | null>(null);
+  const [eliminandoUser, setEliminandoUser] = React.useState(false);
 
   // Suscripción SaaS & Cupos
   const [suscripcionInfo, setSuscripcionInfo] = React.useState<any>(null);
@@ -135,6 +138,21 @@ export function ConfiguracionView() {
       cargarDatos();
     } catch (err: any) {
       alert(err.message || 'Error al cambiar estado');
+    }
+  };
+
+  const handleEliminarUsuario = async () => {
+    if (!usuarioAEliminar) return;
+    setEliminandoUser(true);
+    try {
+      await api.delete(`/usuarios/${usuarioAEliminar.id}`);
+      setMensajeExito(`Usuario ${usuarioAEliminar.nombre} ${usuarioAEliminar.apellido || ''} eliminado correctamente de la clínica.`);
+      setUsuarioAEliminar(null);
+      await cargarDatos();
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar usuario');
+    } finally {
+      setEliminandoUser(false);
     }
   };
 
@@ -405,14 +423,25 @@ export function ConfiguracionView() {
                         Tú (Sesión actual)
                       </Badge>
                     ) : (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs h-7"
-                        onClick={() => cambiarEstadoUsuario(u.id, !u.activo)}
-                      >
-                        {u.activo ? 'Suspender' : 'Activar'}
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => cambiarEstadoUsuario(u.id, !u.activo)}
+                        >
+                          {u.activo ? 'Suspender' : 'Activar'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs h-7 text-destructive hover:bg-destructive/10 hover:text-destructive px-2"
+                          title="Eliminar usuario"
+                          onClick={() => setUsuarioAEliminar(u)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -596,6 +625,67 @@ export function ConfiguracionView() {
                 </Button>
                 <Button onClick={handleCambiarPlan} disabled={cambiandoPlan}>
                   {cambiandoPlan ? 'Actualizando...' : 'Confirmar Cambio de Plan'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL CONFIRMAR ELIMINACIÓN DE USUARIO */}
+      {usuarioAEliminar && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full shadow-2xl border-destructive/30">
+            <CardHeader className="pb-3 border-b border-border">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base text-destructive flex items-center gap-2">
+                  <Trash2 className="size-5" />
+                  Confirmar Eliminación de Colaborador
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={() => setUsuarioAEliminar(null)}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+              <CardDescription>
+                Esta acción removerá el acceso de forma inmediata.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 text-xs space-y-2 text-foreground">
+                <p>
+                  ¿Estás seguro de que deseas eliminar a{' '}
+                  <strong className="text-destructive font-semibold">
+                    {usuarioAEliminar.nombre} {usuarioAEliminar.apellido || ''}
+                  </strong>{' '}
+                  ({usuarioAEliminar.email})?
+                </p>
+                <p className="text-muted-foreground text-[11px]">
+                  • Se revocarán todas sus sesiones activas en cualquier dispositivo.<br />
+                  • Su correo quedará liberado para futuros registros.<br />
+                  • Por normativa médico-legal, su historial clínico y recetas previas se mantendrán preservados.<br />
+                  • La eliminación quedará auditada y registrada en el historial del consultorio.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setUsuarioAEliminar(null)}
+                  disabled={eliminandoUser}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleEliminarUsuario}
+                  disabled={eliminandoUser}
+                >
+                  {eliminandoUser ? 'Eliminando...' : 'Eliminar Definitivamente'}
                 </Button>
               </div>
             </CardContent>

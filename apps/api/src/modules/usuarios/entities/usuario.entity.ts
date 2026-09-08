@@ -88,6 +88,9 @@ export class Usuario {
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 
+  @Column({ name: 'eliminado', type: 'boolean', default: false })
+  eliminado: boolean;
+
   /**
    * Identificador del consultorio al que pertenece este usuario.
    */

@@ -50,7 +50,7 @@ export class AuthService {
     const emailNormalizado = dto.email.toLowerCase().trim();
 
     const existeUsuario = await this.usuarioRepo.findOne({
-      where: { email: emailNormalizado },
+      where: { email: emailNormalizado, eliminado: false },
     });
 
     if (existeUsuario) {
@@ -138,7 +138,7 @@ export class AuthService {
     const emailNormalizado = dto.email.toLowerCase().trim();
 
     const usuario = await this.usuarioRepo.findOne({
-      where: { email: emailNormalizado },
+      where: { email: emailNormalizado, eliminado: false },
       relations: {
         consultorio: true,
         rol: {

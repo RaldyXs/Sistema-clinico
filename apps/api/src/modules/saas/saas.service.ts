@@ -402,7 +402,7 @@ export class SaasService implements OnModuleInit {
     // Calculamos consumo de cuotas (total de usuarios/personal activo y pacientes)
     const [totalUsuarios, totalPacientes] = await Promise.all([
       this.usuarioRepo.count({
-        where: { consultorioId, activo: true },
+        where: { consultorioId, activo: true, eliminado: false },
       }),
       this.pacienteRepo.count({
         where: { consultorioId, activo: true },
@@ -507,7 +507,7 @@ export class SaasService implements OnModuleInit {
       await Promise.all([
         this.consultorioRepo.count(),
         this.consultorioRepo.count({ where: { activo: true } }),
-        this.usuarioRepo.count({ where: { rolCodigo: 'MEDICO', activo: true } }),
+        this.usuarioRepo.count({ where: { rolCodigo: 'MEDICO', activo: true, eliminado: false } }),
         this.pacienteRepo.count({ where: { activo: true } }),
         this.consultaRepo.count(),
       ]);
@@ -559,7 +559,7 @@ export class SaasService implements OnModuleInit {
           order: { creadoEn: 'DESC' },
           relations: { plan: true },
         }),
-        this.usuarioRepo.count({ where: { consultorioId: c.id, rolCodigo: 'MEDICO' } }),
+        this.usuarioRepo.count({ where: { consultorioId: c.id, rolCodigo: 'MEDICO', eliminado: false } }),
         this.pacienteRepo.count({ where: { consultorioId: c.id } }),
       ]);
 
