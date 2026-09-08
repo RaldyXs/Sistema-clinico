@@ -17,6 +17,7 @@ import { Rol } from '../../roles/entities/rol.entity.js';
  * asignar un rol inexistente o arbitrario.
  */
 export enum RolUsuario {
+  SUPERADMIN = 'SUPERADMIN',
   ADMIN = 'ADMIN',
   MEDICO = 'MEDICO',
   RECEPCION = 'RECEPCION',

@@ -51,10 +51,75 @@ export class SaasService implements OnModuleInit {
   ) {}
 
   /**
-   * Asegura que los planes estándar SaaS existan en la base de datos al iniciar el módulo.
+   * Asegura que los planes estándar SaaS y la cuenta SuperAdmin existan al iniciar el módulo.
    */
   async onModuleInit() {
     await this.seedPlanesIniciales();
+    await this.seedSuperAdminInicial();
+  }
+
+  /**
+   * Sembrado de la organización matriz y cuenta maestra de SuperAdmin de la plataforma SaaS.
+   */
+  async seedSuperAdminInicial() {
+    const superAdminEmail = 'superadmin@saas.com';
+    const existe = await this.usuarioRepo.findOne({ where: { email: superAdminEmail } });
+    if (existe) return;
+
+    this.logger.log('Sembrando organización matriz y cuenta SuperAdmin de la plataforma SaaS...');
+
+    // 1. Buscamos o creamos el consultorio matriz
+    let matriz = await this.consultorioRepo.findOne({ where: { nombre: 'Plataforma SaaS Global' } });
+    if (!matriz) {
+      matriz = this.consultorioRepo.create({
+        nombre: 'Plataforma SaaS Global',
+        email: 'soporte@saas.com',
+        telefono: '+1 (800) 555-SAAS',
+        direccion: 'Sede Central Operativa',
+        activo: true,
+        modulosActivos: {
+          general: true,
+          recetas: true,
+          documentos: true,
+          ginecologia: true,
+          reportes: true,
+          auditoria: true,
+          saas: true,
+        },
+      });
+      matriz = await this.consultorioRepo.save(matriz);
+    }
+
+    // 2. Buscamos o creamos el rol global SUPERADMIN
+    let rolSuperAdmin = await this.rolRepo.findOne({ where: { codigo: 'SUPERADMIN' } });
+    if (!rolSuperAdmin) {
+      rolSuperAdmin = this.rolRepo.create({
+        codigo: 'SUPERADMIN',
+        nombre: 'Super Administrador de Plataforma',
+        descripcion: 'Acceso directivo a métricas globales de negocio, inquilinos y control SaaS',
+        esSistema: true,
+        consultorioId: null,
+      });
+      rolSuperAdmin = await this.rolRepo.save(rolSuperAdmin);
+    }
+
+    // 3. Creamos el usuario SuperAdmin
+    const passwordHash = await bcrypt.hash('SuperAdmin1234!', 10);
+    const superAdminUser = this.usuarioRepo.create({
+      nombre: 'Super',
+      apellido: 'Administrador SaaS',
+      email: superAdminEmail,
+      passwordHash,
+      rolId: rolSuperAdmin.id,
+      rol: rolSuperAdmin,
+      rolCodigo: 'SUPERADMIN',
+      consultorioId: matriz.id,
+      activo: true,
+      twoFactorEnabled: false,
+    });
+    await this.usuarioRepo.save(superAdminUser);
+
+    this.logger.log(`SuperAdmin aprovisionado con éxito: ${superAdminEmail}`);
   }
 
   /**
@@ -299,20 +364,45 @@ export class SaasService implements OnModuleInit {
    * Obtiene la suscripción actual del consultorio junto a sus métricas de consumo de cupos.
    */
   async obtenerMiSuscripcion(consultorioId: string) {
-    const suscripcion = await this.suscripcionRepo.findOne({
+    let suscripcion = await this.suscripcionRepo.findOne({
       where: { consultorioId },
       order: { creadoEn: 'DESC' },
       relations: { plan: true },
     });
 
     if (!suscripcion) {
-      throw new NotFoundException('No se encontró suscripción activa para este consultorio');
+      // Auto-asignación para consultorios preexistentes
+      const planDefault =
+        (await this.planRepo.findOne({ where: { codigo: 'PROFESIONAL' } })) ||
+        (await this.planRepo.findOne({ where: { codigo: 'BASICO' } }));
+
+      if (!planDefault) {
+        throw new NotFoundException('No se encontró suscripción activa para este consultorio');
+      }
+
+      const ahora = new Date();
+      const fechaFin = new Date(ahora);
+      fechaFin.setDate(fechaFin.getDate() + 30);
+
+      suscripcion = await this.suscripcionRepo.save(
+        this.suscripcionRepo.create({
+          consultorioId,
+          planId: planDefault.id,
+          plan: planDefault,
+          estado: EstadoSuscripcion.ACTIVA,
+          periodo: 'MENSUAL',
+          fechaInicio: ahora,
+          fechaFin,
+          precioCobrado: planDefault.precioMensual,
+          renovacionAutomatica: true,
+        }),
+      );
     }
 
-    // Calculamos consumo de cuotas
-    const [totalMedicos, totalPacientes] = await Promise.all([
+    // Calculamos consumo de cuotas (total de usuarios/personal activo y pacientes)
+    const [totalUsuarios, totalPacientes] = await Promise.all([
       this.usuarioRepo.count({
-        where: { consultorioId, rolCodigo: 'MEDICO', activo: true },
+        where: { consultorioId, activo: true },
       }),
       this.pacienteRepo.count({
         where: { consultorioId, activo: true },
@@ -337,10 +427,15 @@ export class SaasService implements OnModuleInit {
       },
       plan: suscripcion.plan,
       consumo: {
-        medicos: {
-          actual: totalMedicos,
+        usuarios: {
+          actual: totalUsuarios,
           maximo: suscripcion.plan.maxMedicos,
-          porcentaje: Math.min(100, Math.round((totalMedicos / suscripcion.plan.maxMedicos) * 100)),
+          porcentaje: Math.min(100, Math.round((totalUsuarios / suscripcion.plan.maxMedicos) * 100)),
+        },
+        medicos: {
+          actual: totalUsuarios,
+          maximo: suscripcion.plan.maxMedicos,
+          porcentaje: Math.min(100, Math.round((totalUsuarios / suscripcion.plan.maxMedicos) * 100)),
         },
         pacientes: {
           actual: totalPacientes,

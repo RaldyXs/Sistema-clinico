@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service.js';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto.js';
@@ -86,9 +87,10 @@ export class UsuariosController {
   @Patch(':id/estado')
   async cambiarEstado(
     @ConsultorioActual() consultorioId: string,
+    @Request() req: any,
     @Param('id') id: string,
     @Body('activo') activo: boolean,
   ) {
-    return this.usuariosService.cambiarEstado(consultorioId, id, activo);
+    return this.usuariosService.cambiarEstado(consultorioId, id, activo, req.user?.id);
   }
 }

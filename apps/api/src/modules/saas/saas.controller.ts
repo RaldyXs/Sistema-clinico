@@ -96,4 +96,16 @@ export class SaasController {
   ) {
     return this.saasService.cambiarEstadoConsultorio(consultorioId, dto);
   }
+
+  /**
+   * Panel SuperAdmin: Cambia directamente el plan de un consultorio cliente.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch('consultorios/:id/plan')
+  async cambiarPlanTenant(
+    @Param('id', ParseUUIDPipe) consultorioId: string,
+    @Body() dto: CambiarPlanDto,
+  ) {
+    return this.saasService.cambiarPlan(consultorioId, dto);
+  }
 }

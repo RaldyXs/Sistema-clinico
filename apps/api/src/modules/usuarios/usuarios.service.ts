@@ -2,11 +2,14 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import bcrypt from 'bcryptjs';
 import { Usuario, RolUsuario } from './entities/usuario.entity.js';
+import { Rol } from '../roles/entities/rol.entity.js';
+import { Suscripcion } from '../saas/entities/suscripcion.entity.js';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto.js';
 import { ActualizarUsuarioDto } from './dto/actualizar-usuario.dto.js';
 import { FiltrosUsuariosDto } from './dto/filtros-usuario.dto.js';
@@ -16,6 +19,12 @@ export class UsuariosService {
   constructor(
     @InjectRepository(Usuario)
     private readonly usuarioRepo: Repository<Usuario>,
+
+    @InjectRepository(Rol)
+    private readonly rolRepo: Repository<Rol>,
+
+    @InjectRepository(Suscripcion)
+    private readonly suscripcionRepo: Repository<Suscripcion>,
   ) {}
 
   /**
@@ -28,19 +37,59 @@ export class UsuariosService {
   }
 
   /**
-   * Crea un nuevo usuario (médico, recepcionista o administrador adicional)
+   * Crea un nuevo usuario (médico, recepcionista o personal asistencial)
    * vinculado estrictamente al consultorio del administrador solicitante.
    */
   async crear(consultorioId: string, dto: CrearUsuarioDto): Promise<Omit<Usuario, 'passwordHash'>> {
     const emailNormalizado = dto.email.trim().toLowerCase();
 
-    // Verificamos si el email ya existe en el sistema
+    // 1. Verificamos la cuota total de usuarios del plan de la clínica (incluye médicos, secretarias y personal)
+    const suscripcion = await this.suscripcionRepo.findOne({
+      where: { consultorioId },
+      order: { creadoEn: 'DESC' },
+      relations: { plan: true },
+    });
+    if (suscripcion?.plan) {
+      const totalUsuariosActivos = await this.usuarioRepo.count({
+        where: { consultorioId, activo: true },
+      });
+      if (totalUsuariosActivos >= suscripcion.plan.maxMedicos) {
+        throw new BadRequestException(
+          `Has alcanzado el límite total de usuarios permitidos (${suscripcion.plan.maxMedicos}) para tu ${suscripcion.plan.nombre}. Por favor, actualiza tu plan en Configuración para registrar más colaboradores.`,
+        );
+      }
+    }
+
+    // 2. Verificamos si el email ya existe en el sistema
     const existente = await this.usuarioRepo.findOne({
       where: { email: emailNormalizado },
     });
 
     if (existente) {
       throw new ConflictException(`El correo "${emailNormalizado}" ya se encuentra registrado`);
+    }
+
+    // 3. Regla de negocio: Solo puede existir un único Administrador por consultorio/clínica
+    const rolSolicitado = dto.rolCodigo || RolUsuario.MEDICO;
+    if (rolSolicitado === RolUsuario.ADMIN) {
+      const adminExistente = await this.usuarioRepo.findOne({
+        where: { consultorioId, rolCodigo: 'ADMIN' },
+      });
+      if (adminExistente) {
+        throw new BadRequestException(
+          'Ya existe un Administrador principal para este consultorio. Solo se permite un Administrador por clínica.',
+        );
+      }
+    }
+
+    // 4. Buscamos y vinculamos la entidad Rol correspondiente
+    let rolEntidad: Rol | null = null;
+    if (dto.rolId) {
+      rolEntidad = await this.rolRepo.findOne({ where: { id: dto.rolId } });
+    } else {
+      const codigoBuscar =
+        rolSolicitado === RolUsuario.MEDICO ? 'PROFESIONAL_SALUD' : rolSolicitado;
+      rolEntidad = await this.rolRepo.findOne({ where: { codigo: codigoBuscar } });
     }
 
     const saltRounds = 10;
@@ -52,8 +101,9 @@ export class UsuariosService {
       passwordHash,
       nombre: dto.nombre.trim(),
       apellido: dto.apellido ? dto.apellido.trim() : null,
-      rolCodigo: dto.rolCodigo || RolUsuario.MEDICO,
-      rolId: dto.rolId || null,
+      rolCodigo: rolSolicitado,
+      rolId: rolEntidad?.id || null,
+      rol: rolEntidad || null,
       especialidad: dto.especialidad ? dto.especialidad.trim() : null,
       matriculaProfesional: dto.matriculaProfesional ? dto.matriculaProfesional.trim() : null,
       telefono: dto.telefono ? dto.telefono.trim() : null,
@@ -185,7 +235,11 @@ export class UsuariosService {
     consultorioId: string,
     id: string,
     activo: boolean,
+    usuarioSolicitanteId?: string,
   ): Promise<Omit<Usuario, 'passwordHash'>> {
+    if (!activo && usuarioSolicitanteId && usuarioSolicitanteId === id) {
+      throw new BadRequestException('No puedes suspender o desactivar tu propia cuenta de usuario.');
+    }
     return this.actualizar(consultorioId, id, { activo });
   }
 }
