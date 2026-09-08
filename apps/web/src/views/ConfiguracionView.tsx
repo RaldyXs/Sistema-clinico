@@ -22,6 +22,8 @@ import {
 
 export function ConfiguracionView() {
   const { user } = useAuth();
+  const isAdmin = user?.rolCodigo === 'ADMIN' || user?.rolCodigo === 'SUPERADMIN';
+
   const [config, setConfig] = React.useState<any>(null);
   const [usuarios, setUsuarios] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -53,11 +55,15 @@ export function ConfiguracionView() {
   const [errorUser, setErrorUser] = React.useState<string | null>(null);
 
   const cargarDatos = React.useCallback(async () => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [cfg, users, sub, pls] = await Promise.all([
-        api.get('/consultorios/configuracion'),
-        api.get('/usuarios'),
+        api.get('/consultorios/configuracion').catch(() => null),
+        api.get('/usuarios').catch(() => []),
         api.get('/saas/mi-suscripcion').catch(() => null),
         api.get('/saas/planes').catch(() => []),
       ]);
@@ -75,7 +81,7 @@ export function ConfiguracionView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin]);
 
   React.useEffect(() => {
     cargarDatos();
@@ -172,6 +178,20 @@ export function ConfiguracionView() {
       setCambiandoPlan(false);
     }
   };
+
+  if (!isAdmin) {
+    return (
+      <div className="p-12 max-w-lg mx-auto text-center space-y-4">
+        <div className="size-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mx-auto">
+          <AlertCircle className="size-8" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground">Acceso Restringido</h2>
+        <p className="text-sm text-muted-foreground">
+          La administración de la clínica, la gestión de usuarios y la configuración de planes están reservadas exclusivamente para el Administrador de la clínica o SuperAdmin.
+        </p>
+      </div>
+    );
+  }
 
   if (loading && !config) {
     return (

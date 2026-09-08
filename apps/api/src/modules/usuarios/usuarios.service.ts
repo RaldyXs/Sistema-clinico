@@ -247,7 +247,11 @@ export class UsuariosService {
     id: string,
     activo: boolean,
     usuarioSolicitanteId?: string,
+    usuarioSolicitanteRol?: string,
   ): Promise<Omit<Usuario, 'passwordHash'>> {
+    if (usuarioSolicitanteRol && usuarioSolicitanteRol !== 'ADMIN' && usuarioSolicitanteRol !== 'SUPERADMIN') {
+      throw new ForbiddenException('Solo los Administradores pueden suspender o activar usuarios.');
+    }
     if (!activo && usuarioSolicitanteId && usuarioSolicitanteId === id) {
       throw new BadRequestException('No puedes suspender o desactivar tu propia cuenta de usuario.');
     }

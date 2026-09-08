@@ -19,14 +19,17 @@ function MainRouter() {
   const [currentTab, setCurrentTab] = React.useState<NavTab>('dashboard');
 
   const isSuperAdmin = user?.rolCodigo === 'SUPERADMIN';
+  const isAdmin = user?.rolCodigo === 'ADMIN' || isSuperAdmin;
 
   React.useEffect(() => {
     if (isSuperAdmin && currentTab !== 'saas' && currentTab !== 'reportes' && currentTab !== 'seguridad') {
       setCurrentTab('saas');
     } else if (!isSuperAdmin && currentTab === 'saas') {
       setCurrentTab('dashboard');
+    } else if (!isAdmin && (currentTab === 'configuracion' || currentTab === 'seguridad')) {
+      setCurrentTab('dashboard');
     }
-  }, [isSuperAdmin, currentTab]);
+  }, [isSuperAdmin, isAdmin, currentTab]);
 
   if (isLoading && !isAuthenticated) {
     return (
