@@ -473,7 +473,19 @@ export class AuthService {
   /**
    * Revoca una sesión remota específica.
    */
-  async revocarSesion(usuarioId: string, sesionId: string, ipAddress?: string, userAgent?: string) {
+  async revocarSesion(
+    usuarioId: string,
+    sesionId: string,
+    sesionActualId?: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    if (sesionActualId && sesionId === sesionActualId) {
+      throw new BadRequestException(
+        'No puedes revocar o desactivar tu propio token de sesión activa. Para salir del sistema, utiliza la opción Cerrar Sesión.',
+      );
+    }
+
     const sesion = await this.sesionRepo.findOne({
       where: { id: sesionId, usuarioId },
     });

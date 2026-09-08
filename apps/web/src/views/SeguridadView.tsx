@@ -245,6 +245,9 @@ export function SeguridadView() {
       });
       if (res.ok) {
         fetchSesiones();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.message || 'No se pudo revocar la sesión');
       }
     } catch (e) {
       console.error('Error revocando sesión:', e);

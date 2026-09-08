@@ -54,6 +54,7 @@ export class AuthController {
       apellido: usuario.apellido,
       email: usuario.email,
       rol: usuario.rol?.codigo ?? usuario.rolCodigo,
+      rolCodigo: usuario.rolCodigo ?? usuario.rol?.codigo ?? 'MEDICO',
       twoFactorEnabled: usuario.twoFactorEnabled ?? false,
       consultorio: {
         id: usuario.consultorio?.id ?? usuario.consultorioId,
@@ -111,6 +112,6 @@ export class AuthController {
   async revocarSesion(@Request() req: any, @Param('id', ParseUUIDPipe) sesionId: string) {
     const ip = req.ip || req.connection?.remoteAddress;
     const ua = req.headers['user-agent'];
-    return this.authService.revocarSesion(req.user.id, sesionId, ip, ua);
+    return this.authService.revocarSesion(req.user.id, sesionId, req.user.sessionId, ip, ua);
   }
 }
