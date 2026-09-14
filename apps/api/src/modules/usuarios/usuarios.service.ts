@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import bcrypt from 'bcryptjs';
 import { Usuario, RolUsuario } from './entities/usuario.entity.js';
 import { Rol } from '../roles/entities/rol.entity.js';
@@ -120,6 +120,23 @@ export class UsuariosService {
     });
 
     const guardado = await this.usuarioRepo.save(nuevoUsuario);
+
+    await this.auditoriaService.registrar({
+      consultorioId,
+      modulo: 'USUARIOS',
+      accion: 'USUARIO_CREAR',
+      entidadTipo: 'Usuario',
+      entidadId: guardado.id,
+      detalles: {
+        nombre: guardado.nombre,
+        apellido: guardado.apellido,
+        email: guardado.email,
+        rol: guardado.rolCodigo,
+        especialidad: guardado.especialidad,
+        matriculaProfesional: guardado.matriculaProfesional,
+      },
+    });
+
     return this.sanitizarUsuario(guardado);
   }
 
@@ -211,6 +228,10 @@ export class UsuariosService {
     consultorioId: string,
     id: string,
     dto: ActualizarUsuarioDto,
+    usuarioSolicitante?: any,
+    ipAddress?: string,
+    userAgent?: string,
+    skipAudit: boolean = false,
   ): Promise<Omit<Usuario, 'passwordHash'>> {
     const usuario = await this.usuarioRepo.findOne({
       where: { id, consultorioId, eliminado: false },
@@ -221,9 +242,38 @@ export class UsuariosService {
       throw new NotFoundException(`Usuario con ID "${id}" no encontrado`);
     }
 
+    // Regla de seguridad: Si el usuario es el único ADMIN activo, no permitir cambiarlo a otro rol
+    if (
+      usuario.rolCodigo === RolUsuario.ADMIN &&
+      dto.rolCodigo &&
+      dto.rolCodigo !== RolUsuario.ADMIN
+    ) {
+      const otrosAdmins = await this.usuarioRepo.count({
+        where: {
+          consultorioId,
+          rolCodigo: RolUsuario.ADMIN,
+          activo: true,
+          eliminado: false,
+          id: Not(usuario.id),
+        },
+      });
+      if (otrosAdmins === 0) {
+        throw new BadRequestException(
+          'No puedes retirar el rol de Administrador al único Administrador activo del consultorio.',
+        );
+      }
+    }
+
     if (dto.nombre !== undefined) usuario.nombre = dto.nombre.trim();
     if (dto.apellido !== undefined) usuario.apellido = dto.apellido ? dto.apellido.trim() : null;
-    if (dto.rolCodigo !== undefined) usuario.rolCodigo = dto.rolCodigo;
+    if (dto.rolCodigo !== undefined) {
+      usuario.rolCodigo = dto.rolCodigo;
+      const codigoBuscar =
+        dto.rolCodigo === RolUsuario.MEDICO ? 'PROFESIONAL_SALUD' : dto.rolCodigo;
+      const rolEntidad = await this.rolRepo.findOne({ where: { codigo: codigoBuscar } });
+      usuario.rolId = rolEntidad?.id || null;
+      usuario.rol = rolEntidad || null;
+    }
     if (dto.rolId !== undefined) usuario.rolId = dto.rolId;
     if (dto.especialidad !== undefined) usuario.especialidad = dto.especialidad ? dto.especialidad.trim() : null;
     if (dto.matriculaProfesional !== undefined) usuario.matriculaProfesional = dto.matriculaProfesional ? dto.matriculaProfesional.trim() : null;
@@ -236,6 +286,37 @@ export class UsuariosService {
     }
 
     const actualizado = await this.usuarioRepo.save(usuario);
+
+    if (!skipAudit) {
+      const nombreAdmin = usuarioSolicitante
+        ? `${usuarioSolicitante.nombre ?? ''} ${usuarioSolicitante.apellido ?? ''}`.trim() || usuarioSolicitante.email
+        : 'Administrador';
+
+      await this.auditoriaService.registrar({
+        consultorioId,
+        usuarioId: usuarioSolicitante?.id ?? null,
+        usuarioEmail: usuarioSolicitante?.email ?? 'admin',
+        usuarioNombre: nombreAdmin,
+        modulo: 'USUARIOS',
+        accion: 'USUARIO_ACTUALIZAR',
+        entidadTipo: 'Usuario',
+        entidadId: actualizado.id,
+        detalles: {
+          usuarioAfectadoId: actualizado.id,
+          usuarioAfectadoEmail: actualizado.email,
+          nombre: actualizado.nombre,
+          apellido: actualizado.apellido,
+          rol: actualizado.rolCodigo,
+          especialidad: actualizado.especialidad,
+          matriculaProfesional: actualizado.matriculaProfesional,
+          telefono: actualizado.telefono,
+          ...(dto.password ? { passwordCambiado: true } : {}),
+        },
+        ipAddress,
+        userAgent,
+      });
+    }
+
     return this.sanitizarUsuario(actualizado);
   }
 
@@ -255,7 +336,32 @@ export class UsuariosService {
     if (!activo && usuarioSolicitanteId && usuarioSolicitanteId === id) {
       throw new BadRequestException('No puedes suspender o desactivar tu propia cuenta de usuario.');
     }
-    return this.actualizar(consultorioId, id, { activo });
+    const actualizado = await this.actualizar(
+      consultorioId,
+      id,
+      { activo },
+      undefined,
+      undefined,
+      undefined,
+      true, // skipAudit para registrar específicamente USUARIO_ACTIVAR o USUARIO_SUSPENDER abajo
+    );
+
+    await this.auditoriaService.registrar({
+      consultorioId,
+      usuarioId: usuarioSolicitanteId ?? null,
+      modulo: 'USUARIOS',
+      accion: activo ? 'USUARIO_ACTIVAR' : 'USUARIO_SUSPENDER',
+      entidadTipo: 'Usuario',
+      entidadId: id,
+      detalles: {
+        usuarioAfectadoId: id,
+        usuarioAfectadoEmail: actualizado.email,
+        usuarioAfectadoNombre: `${actualizado.nombre} ${actualizado.apellido ?? ''}`.trim(),
+        activo,
+      },
+    });
+
+    return actualizado;
   }
 
   /**

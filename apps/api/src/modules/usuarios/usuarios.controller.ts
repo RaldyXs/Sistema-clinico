@@ -105,7 +105,14 @@ export class UsuariosController {
     if (rol !== 'ADMIN' && rol !== 'SUPERADMIN' && req.user?.id !== id) {
       throw new ForbiddenException('No tienes permisos para modificar este usuario.');
     }
-    return this.usuariosService.actualizar(consultorioId, id, dto);
+    return this.usuariosService.actualizar(
+      consultorioId,
+      id,
+      dto,
+      req.user,
+      req.ip,
+      req.headers?.['user-agent'],
+    );
   }
 
   /**

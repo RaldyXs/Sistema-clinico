@@ -18,6 +18,7 @@ import {
   Zap,
   Clock,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 
 export function ConfiguracionView() {
@@ -53,6 +54,22 @@ export function ConfiguracionView() {
   });
   const [guardandoUser, setGuardandoUser] = React.useState(false);
   const [errorUser, setErrorUser] = React.useState<string | null>(null);
+
+  // Modal y formulario para editar usuario existente
+  const [usuarioAEditar, setUsuarioAEditar] = React.useState<any | null>(null);
+  const [showModalEditarUsuario, setShowModalEditarUsuario] = React.useState(false);
+  const [formEditarUser, setFormEditarUser] = React.useState({
+    nombre: '',
+    apellido: '',
+    email: '',
+    telefono: '',
+    especialidad: '',
+    matriculaProfesional: '',
+    rolCodigo: 'MEDICO',
+    password: '',
+  });
+  const [guardandoEditarUser, setGuardandoEditarUser] = React.useState(false);
+  const [errorEditarUser, setErrorEditarUser] = React.useState<string | null>(null);
 
   const cargarDatos = React.useCallback(async () => {
     if (!isAdmin) {
@@ -135,6 +152,54 @@ export function ConfiguracionView() {
       setErrorUser(err.message || 'Error al registrar usuario');
     } finally {
       setGuardandoUser(false);
+    }
+  };
+
+  const abrirModalEditar = (u: any) => {
+    setUsuarioAEditar(u);
+    setErrorEditarUser(null);
+    setFormEditarUser({
+      nombre: u.nombre || '',
+      apellido: u.apellido || '',
+      email: u.email || '',
+      telefono: u.telefono || '',
+      especialidad: u.especialidad || '',
+      matriculaProfesional: u.matriculaProfesional || '',
+      rolCodigo: u.rolCodigo || 'MEDICO',
+      password: '',
+    });
+    setShowModalEditarUsuario(true);
+  };
+
+  const handleGuardarEdicionUsuario = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!usuarioAEditar) return;
+    setGuardandoEditarUser(true);
+    setErrorEditarUser(null);
+
+    try {
+      const payload: any = {
+        nombre: formEditarUser.nombre.trim(),
+        apellido: formEditarUser.apellido ? formEditarUser.apellido.trim() : null,
+        telefono: formEditarUser.telefono ? formEditarUser.telefono.trim() : null,
+        especialidad: formEditarUser.especialidad ? formEditarUser.especialidad.trim() : null,
+        matriculaProfesional: formEditarUser.matriculaProfesional ? formEditarUser.matriculaProfesional.trim() : null,
+        rolCodigo: formEditarUser.rolCodigo,
+      };
+
+      if (formEditarUser.password?.trim()) {
+        payload.password = formEditarUser.password.trim();
+      }
+
+      await api.patch(`/usuarios/${usuarioAEditar.id}`, payload);
+      setShowModalEditarUsuario(false);
+      setUsuarioAEditar(null);
+      setMensajeExito(`Datos del colaborador "${formEditarUser.nombre}" actualizados correctamente.`);
+      await cargarDatos();
+    } catch (err: any) {
+      setErrorEditarUser(err.message || 'Error al actualizar información del colaborador.');
+    } finally {
+      setGuardandoEditarUser(false);
     }
   };
 
@@ -438,31 +503,44 @@ export function ConfiguracionView() {
                     <Badge variant={u.activo ? 'default' : 'secondary'}>
                       {u.activo ? 'Activo' : 'Suspendido'}
                     </Badge>
-                    {u.id === user?.id ? (
+                    {u.id === user?.id && (
                       <Badge variant="outline" className="text-[10px] border-primary/40 text-primary py-0.5">
                         Tú (Sesión actual)
                       </Badge>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-xs h-7"
-                          onClick={() => cambiarEstadoUsuario(u.id, !u.activo)}
-                        >
-                          {u.activo ? 'Suspender' : 'Activar'}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs h-7 text-destructive hover:bg-destructive/10 hover:text-destructive px-2"
-                          title="Eliminar usuario"
-                          onClick={() => setUsuarioAEliminar(u)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
                     )}
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 gap-1 px-2.5"
+                        title="Editar datos del colaborador"
+                        onClick={() => abrirModalEditar(u)}
+                      >
+                        <Pencil className="size-3" />
+                        Editar
+                      </Button>
+                      {u.id !== user?.id && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs h-7"
+                            onClick={() => cambiarEstadoUsuario(u.id, !u.activo)}
+                          >
+                            {u.activo ? 'Suspender' : 'Activar'}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs h-7 text-destructive hover:bg-destructive/10 hover:text-destructive px-2"
+                            title="Eliminar usuario"
+                            onClick={() => setUsuarioAEliminar(u)}
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -576,6 +654,147 @@ export function ConfiguracionView() {
                 </Button>
                 <Button type="submit" disabled={guardandoUser}>
                   {guardandoUser ? 'Guardando...' : 'Crear Usuario'}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL EDITAR COLABORADOR */}
+      {showModalEditarUsuario && usuarioAEditar && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <Card className="max-w-md w-full shadow-2xl border-border">
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Pencil className="size-4 text-primary" />
+                  Editar Datos del Colaborador
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Actualiza información profesional, de contacto o credenciales
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowModalEditarUsuario(false);
+                  setUsuarioAEditar(null);
+                }}
+              >
+                <X className="size-5" />
+              </Button>
+            </div>
+
+            <form onSubmit={handleGuardarEdicionUsuario}>
+              <div className="p-6 space-y-3">
+                {errorEditarUser && (
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-xs flex items-center gap-2">
+                    <AlertCircle className="size-4 shrink-0" />
+                    <span>{errorEditarUser}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Nombre *</label>
+                    <Input
+                      required
+                      value={formEditarUser.nombre}
+                      onChange={(e) => setFormEditarUser({ ...formEditarUser, nombre: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Apellido</label>
+                    <Input
+                      value={formEditarUser.apellido}
+                      onChange={(e) => setFormEditarUser({ ...formEditarUser, apellido: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-muted-foreground">Email Institucional</label>
+                    <span className="text-[10px] text-muted-foreground">Credencial única</span>
+                  </div>
+                  <Input
+                    type="email"
+                    disabled
+                    className="bg-muted text-muted-foreground cursor-not-allowed"
+                    value={formEditarUser.email}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Teléfono</label>
+                    <Input
+                      placeholder="Ej. 809-555-0123"
+                      value={formEditarUser.telefono}
+                      onChange={(e) => setFormEditarUser({ ...formEditarUser, telefono: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Rol en la Clínica</label>
+                    <select
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus:border-primary"
+                      value={formEditarUser.rolCodigo}
+                      onChange={(e) => setFormEditarUser({ ...formEditarUser, rolCodigo: e.target.value })}
+                    >
+                      <option value="MEDICO">Médico / Especialista</option>
+                      <option value="RECEPCION">Recepción / Asistente</option>
+                      <option value="ADMIN">Administrador</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Especialidad</label>
+                    <Input
+                      placeholder="Ej. Ginecología, Pediatría"
+                      value={formEditarUser.especialidad}
+                      onChange={(e) => setFormEditarUser({ ...formEditarUser, especialidad: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Matrícula Profesional</label>
+                    <Input
+                      placeholder="Ej. MP-123456"
+                      value={formEditarUser.matriculaProfesional}
+                      onChange={(e) => setFormEditarUser({ ...formEditarUser, matriculaProfesional: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Actualizar Contraseña <span className="text-[10px] font-normal text-muted-foreground">(Opcional)</span>
+                  </label>
+                  <Input
+                    type="password"
+                    placeholder="Dejar en blanco para mantener la actual"
+                    value={formEditarUser.password}
+                    onChange={(e) => setFormEditarUser({ ...formEditarUser, password: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-border flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowModalEditarUsuario(false);
+                    setUsuarioAEditar(null);
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={guardandoEditarUser}>
+                  {guardandoEditarUser ? 'Guardando Cambios...' : 'Guardar Cambios'}
                 </Button>
               </div>
             </form>

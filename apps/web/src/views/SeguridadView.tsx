@@ -16,12 +16,19 @@ import {
   RefreshCw,
   Lock,
   Unlock,
-  FileCheck2,
   HardDrive,
   Copy,
   LogOut,
   Clock,
   Eye,
+  User,
+  Globe,
+  Monitor,
+  Code2,
+  Check,
+  X,
+  Sparkles,
+  UserMinus,
 } from 'lucide-react';
 
 interface AuditoriaItem {
@@ -65,6 +72,146 @@ interface BackupItem {
   creadoEn: string;
 }
 
+interface AccionInfo {
+  titulo: string;
+  etiquetaCorta: string;
+  descripcion: string;
+  tipo: 'crear' | 'actualizar' | 'eliminar' | 'suspender' | 'seguridad' | 'info';
+  badgeClase: string;
+}
+
+const getAccionInfo = (accion: string): AccionInfo => {
+  switch (accion) {
+    case 'CONFIGURACION_ACTUALIZAR':
+      return {
+        titulo: 'Actualización Institucional de la Clínica',
+        etiquetaCorta: 'Ajuste de Clínica',
+        descripcion: 'Se modificaron datos generales, información de contacto, horarios o módulos activos.',
+        tipo: 'actualizar',
+        badgeClase: 'bg-blue-500/15 text-blue-700 border-blue-200 dark:border-blue-900',
+      };
+    case 'USUARIO_CREAR':
+      return {
+        titulo: 'Alta de Nuevo Miembro de Equipo',
+        etiquetaCorta: 'Alta de Personal',
+        descripcion: 'Se dio de alta a un nuevo colaborador (médico, recepcionista o administrador).',
+        tipo: 'crear',
+        badgeClase: 'bg-emerald-500/15 text-emerald-700 border-emerald-200 dark:border-emerald-900',
+      };
+    case 'USUARIO_ACTUALIZAR':
+      return {
+        titulo: 'Modificación de Datos de Colaborador',
+        etiquetaCorta: 'Modificación Personal',
+        descripcion: 'Se actualizaron datos profesionales, especialidad médica, teléfono o credenciales.',
+        tipo: 'actualizar',
+        badgeClase: 'bg-sky-500/15 text-sky-700 border-sky-200 dark:border-sky-900',
+      };
+    case 'USUARIO_ELIMINAR':
+      return {
+        titulo: 'Baja Definitiva de Colaborador',
+        etiquetaCorta: 'Baja de Personal',
+        descripcion: 'Se desvinculó permanentemente a un colaborador y se revocaron de inmediato sus accesos.',
+        tipo: 'eliminar',
+        badgeClase: 'bg-red-500/15 text-red-700 border-red-200 dark:border-red-900',
+      };
+    case 'USUARIO_SUSPENDER':
+      return {
+        titulo: 'Suspensión Temporal de Acceso',
+        etiquetaCorta: 'Acceso Suspendido',
+        descripcion: 'Se inhabilitó temporalmente la cuenta del colaborador para impedir el inicio de sesión.',
+        tipo: 'suspender',
+        badgeClase: 'bg-amber-500/15 text-amber-700 border-amber-200 dark:border-amber-900',
+      };
+    case 'USUARIO_ACTIVAR':
+      return {
+        titulo: 'Reactivación de Acceso a Cuenta',
+        etiquetaCorta: 'Acceso Reactivado',
+        descripcion: 'Se restableció el acceso al sistema para un colaborador previamente suspendido.',
+        tipo: 'crear',
+        badgeClase: 'bg-emerald-500/15 text-emerald-700 border-emerald-200 dark:border-emerald-900',
+      };
+    case 'GENERAR_BACKUP':
+      return {
+        titulo: 'Generación de Copia de Seguridad',
+        etiquetaCorta: 'Respaldo Generado',
+        descripcion: 'Se creó una copia de seguridad encriptada con integridad verificada (SHA-256).',
+        tipo: 'seguridad',
+        badgeClase: 'bg-purple-500/15 text-purple-700 border-purple-200 dark:border-purple-900',
+      };
+    case 'RESTAURAR_BACKUP':
+      return {
+        titulo: 'Restauración de Copia de Seguridad',
+        etiquetaCorta: 'Respaldo Restaurado',
+        descripcion: 'Se restauraron registros clínicos desde un archivo de respaldo certificado.',
+        tipo: 'seguridad',
+        badgeClase: 'bg-purple-500/15 text-purple-700 border-purple-200 dark:border-purple-900',
+      };
+    case 'LOGIN':
+      return {
+        titulo: 'Inicio de Sesión Autorizado',
+        etiquetaCorta: 'Inicio de Sesión',
+        descripcion: 'Un usuario autorizado inició sesión satisfactoriamente en la plataforma.',
+        tipo: 'seguridad',
+        badgeClase: 'bg-teal-500/15 text-teal-700 border-teal-200 dark:border-teal-900',
+      };
+    case 'LOGOUT':
+    case 'CERRAR_SESION':
+      return {
+        titulo: 'Cierre de Sesión',
+        etiquetaCorta: 'Cierre de Sesión',
+        descripcion: 'El usuario finalizó voluntariamente su sesión de trabajo.',
+        tipo: 'info',
+        badgeClase: 'bg-slate-500/15 text-slate-700 border-slate-200 dark:border-slate-800',
+      };
+    case '2FA_ACTIVAR':
+      return {
+        titulo: 'Activación de Doble Factor (2FA)',
+        etiquetaCorta: '2FA Activado',
+        descripcion: 'Se reforzó la seguridad de la cuenta con códigos temporales TOTP.',
+        tipo: 'seguridad',
+        badgeClase: 'bg-emerald-500/15 text-emerald-700 border-emerald-200 dark:border-emerald-900',
+      };
+    case '2FA_DESACTIVAR':
+      return {
+        titulo: 'Desactivación de Doble Factor (2FA)',
+        etiquetaCorta: '2FA Desactivado',
+        descripcion: 'Se deshabilitó la exigencia de segundo factor en la cuenta.',
+        tipo: 'suspender',
+        badgeClase: 'bg-amber-500/15 text-amber-700 border-amber-200 dark:border-amber-900',
+      };
+    default:
+      return {
+        titulo: accion.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase()),
+        etiquetaCorta: accion,
+        descripcion: `Evento registrado en el sistema clínico.`,
+        tipo: accion.includes('ELIMINAR') ? 'eliminar' : accion.includes('CREAR') ? 'crear' : 'info',
+        badgeClase: accion.includes('ELIMINAR')
+          ? 'bg-red-500/15 text-red-700 border-red-200'
+          : accion.includes('CREAR')
+          ? 'bg-emerald-500/15 text-emerald-700 border-emerald-200'
+          : 'bg-blue-500/15 text-blue-700 border-blue-200',
+      };
+  }
+};
+
+const parseDispositivo = (ua: string | null) => {
+  if (!ua) return 'Dispositivo estándar';
+  let browser = 'Navegador Web';
+  if (ua.includes('Edg/')) browser = 'Microsoft Edge';
+  else if (ua.includes('Chrome/')) browser = 'Google Chrome';
+  else if (ua.includes('Firefox/')) browser = 'Mozilla Firefox';
+  else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Apple Safari';
+
+  let os = 'Dispositivo';
+  if (ua.includes('Windows')) os = 'Windows';
+  else if (ua.includes('Macintosh') || ua.includes('Mac OS')) os = 'macOS';
+  else if (ua.includes('Android')) os = 'Android';
+  else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS';
+  else if (ua.includes('Linux')) os = 'Linux';
+
+  return `${browser} en ${os}`;
+};
+
 export function SeguridadView() {
   const { token, user } = useAuth();
   const [activeTab, setActiveTab] = React.useState<'auditoria' | '2fa' | 'backups'>('auditoria');
@@ -75,6 +222,8 @@ export function SeguridadView() {
   const [filtroModulo, setFiltroModulo] = React.useState('TODOS');
   const [busqueda, setBusqueda] = React.useState('');
   const [selectedLog, setSelectedLog] = React.useState<AuditoriaItem | null>(null);
+  const [modalTab, setModalTab] = React.useState<'humano' | 'json'>('humano');
+  const [copiadoJson, setCopiadoJson] = React.useState(false);
   const [isLoadingLogs, setIsLoadingLogs] = React.useState(false);
 
   // Estados 2FA y Sesiones
@@ -340,6 +489,49 @@ export function SeguridadView() {
     return cumpleModulo && cumpleBusqueda;
   });
 
+  const exportarAuditoriaCSV = () => {
+    if (!logsFiltrados || logsFiltrados.length === 0) return;
+
+    const headers = [
+      'Fecha y Hora (ISO)',
+      'Fecha Local',
+      'Usuario',
+      'Email',
+      'Modulo',
+      'Accion',
+      'Entidad Afectada',
+      'ID Entidad',
+      'Direccion IP',
+      'Navegador / Cliente',
+      'Detalles JSON',
+    ];
+
+    const rows = logsFiltrados.map((item) => [
+      `"${new Date(item.creadoEn).toISOString()}"`,
+      `"${new Date(item.creadoEn).toLocaleString('es-ES')}"`,
+      `"${(item.usuarioNombre || '').replace(/"/g, '""')}"`,
+      `"${(item.usuarioEmail || '').replace(/"/g, '""')}"`,
+      `"${item.modulo || ''}"`,
+      `"${item.accion || ''}"`,
+      `"${item.entidadTipo || ''}"`,
+      `"${item.entidadId || ''}"`,
+      `"${item.ipAddress || ''}"`,
+      `"${(item.userAgent || '').replace(/"/g, '""')}"`,
+      `"${JSON.stringify(item.detalles || {}).replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `auditoria_${user?.consultorio?.nombre ? user.consultorio.nombre.replace(/\s+/g, '_').toLowerCase() : 'clinica'}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -451,7 +643,18 @@ export function SeguridadView() {
                   onChange={(e) => setBusqueda(e.target.value)}
                   className="w-72 text-xs"
                 />
-                <Button size="sm" variant="outline" onClick={fetchAuditoria} disabled={isLoadingLogs}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={exportarAuditoriaCSV}
+                  disabled={logsFiltrados.length === 0}
+                  className="text-xs shrink-0 cursor-pointer"
+                  title="Descargar los registros visibles en formato CSV / Excel"
+                >
+                  <Download className="size-3.5 mr-1.5 text-primary" />
+                  Descargar CSV
+                </Button>
+                <Button size="sm" variant="outline" onClick={fetchAuditoria} disabled={isLoadingLogs} title="Refrescar auditoría">
                   <RefreshCw className={`size-3.5 ${isLoadingLogs ? 'animate-spin' : ''}`} />
                 </Button>
               </div>
@@ -497,17 +700,17 @@ export function SeguridadView() {
                             </Badge>
                           </td>
                           <td className="p-2.5">
-                            <Badge
-                              className={`text-[10px] font-semibold ${
-                                item.accion.includes('ELIMINAR') || item.accion.includes('REVOCAR')
-                                  ? 'bg-red-500/15 text-red-700 border-red-200 dark:border-red-900'
-                                  : item.accion.includes('CREAR') || item.accion.includes('ACTIVAR')
-                                  ? 'bg-emerald-500/15 text-emerald-700 border-emerald-200 dark:border-emerald-900'
-                                  : 'bg-blue-500/15 text-blue-700 border-blue-200 dark:border-blue-900'
-                              }`}
-                            >
-                              {item.accion}
-                            </Badge>
+                            {(() => {
+                              const meta = getAccionInfo(item.accion);
+                              return (
+                                <div className="flex flex-col items-start gap-0.5">
+                                  <Badge className={`text-[10px] font-semibold ${meta.badgeClase}`}>
+                                    {meta.etiquetaCorta}
+                                  </Badge>
+                                  <span className="font-mono text-[9px] text-muted-foreground">{item.accion}</span>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="p-2.5 text-muted-foreground">
                             {item.entidadTipo ? `${item.entidadTipo} ${item.entidadId ? `(${item.entidadId.slice(0, 8)}...)` : ''}` : '—'}
@@ -520,7 +723,11 @@ export function SeguridadView() {
                               size="sm"
                               variant="ghost"
                               className="size-7 p-0"
-                              onClick={() => setSelectedLog(item)}
+                              onClick={() => {
+                                setSelectedLog(item);
+                                setModalTab('humano');
+                                setCopiadoJson(false);
+                              }}
                             >
                               <Eye className="size-3.5" />
                             </Button>
@@ -534,36 +741,430 @@ export function SeguridadView() {
             </CardContent>
           </Card>
 
-          {/* Modal Detalle JSON del Log */}
-          {selectedLog && (
-            <div className="fixed inset-0 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-              <div className="bg-card border border-border rounded-xl shadow-xl max-w-lg w-full p-5 space-y-4">
-                <div className="flex items-center justify-between border-b border-border pb-3">
-                  <div className="flex items-center gap-2">
-                    <FileCheck2 className="size-5 text-primary" />
-                    <h3 className="font-semibold text-base">Detalles del Evento de Auditoría</h3>
+          {/* Modal Detalle Humano / Técnico del Log */}
+          {selectedLog && (() => {
+            const meta = getAccionInfo(selectedLog.accion);
+            const detalles = selectedLog.detalles || {};
+
+            return (
+              <div className="fixed inset-0 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+                <div className="bg-card border border-border rounded-xl shadow-2xl max-w-2xl w-full p-6 space-y-5 my-8">
+                  {/* Cabecera del Modal */}
+                  <div className="flex items-start justify-between border-b border-border pb-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-xs font-semibold ${meta.badgeClase}`}>
+                          {meta.etiquetaCorta}
+                        </Badge>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {selectedLog.accion}
+                        </span>
+                      </div>
+                      <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
+                        {meta.titulo}
+                      </h3>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {meta.descripcion}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="size-8 p-0"
+                      onClick={() => setSelectedLog(null)}
+                    >
+                      <X className="size-4" />
+                    </Button>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => setSelectedLog(null)}>
-                    ✕
-                  </Button>
-                </div>
-                <div className="space-y-2 text-xs">
-                  <div><span className="font-semibold">Módulo / Acción:</span> {selectedLog.modulo} — {selectedLog.accion}</div>
-                  <div><span className="font-semibold">Usuario:</span> {selectedLog.usuarioNombre} ({selectedLog.usuarioEmail})</div>
-                  <div><span className="font-semibold">Navegador / Cliente:</span> <span className="font-mono">{selectedLog.userAgent || '—'}</span></div>
-                  <div>
-                    <span className="font-semibold">Payload y Metadatos:</span>
-                    <pre className="bg-muted p-3 rounded-md font-mono text-[11px] mt-1 overflow-x-auto max-h-48">
-                      {JSON.stringify(selectedLog.detalles || {}, null, 2)}
-                    </pre>
+
+                  {/* Ficha de Contexto del Evento */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-lg bg-muted/40 border border-border text-xs">
+                    <div className="space-y-1">
+                      <div className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                        <User className="size-3.5 text-primary" /> Usuario Responsable:
+                      </div>
+                      <div className="font-semibold text-foreground">
+                        {selectedLog.usuarioNombre}{' '}
+                        <span className="font-normal text-muted-foreground">({selectedLog.usuarioEmail})</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                        <Clock className="size-3.5 text-primary" /> Fecha y Hora:
+                      </div>
+                      <div className="font-semibold text-foreground">
+                        {new Date(selectedLog.creadoEn).toLocaleString('es-ES', {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                        <Globe className="size-3.5 text-primary" /> Dirección IP:
+                      </div>
+                      <div className="font-mono text-foreground font-semibold">
+                        {selectedLog.ipAddress || '127.0.0.1 (Red local)'}
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                        <Monitor className="size-3.5 text-primary" /> Dispositivo / Origen:
+                      </div>
+                      <div className="text-foreground truncate" title={selectedLog.userAgent || ''}>
+                        {parseDispositivo(selectedLog.userAgent)}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="flex justify-end pt-2">
-                  <Button size="sm" onClick={() => setSelectedLog(null)}>Cerrar</Button>
+
+                  {/* Selector de Pestañas (Vista Ejecutiva vs Vista Técnica) */}
+                  <div className="flex border-b border-border text-xs gap-4 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('humano')}
+                      className={`pb-2 border-b-2 transition-colors flex items-center gap-1.5 ${
+                        modalTab === 'humano'
+                          ? 'border-primary text-primary font-semibold'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Sparkles className="size-3.5" />
+                      Resumen Comprensible
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('json')}
+                      className={`pb-2 border-b-2 transition-colors flex items-center gap-1.5 ${
+                        modalTab === 'json'
+                          ? 'border-primary text-primary font-semibold'
+                          : 'border-transparent text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Code2 className="size-3.5" />
+                      Registro Técnico (JSON)
+                    </button>
+                  </div>
+
+                  {/* CONTENIDO PESTAÑA 1: VISTA COMPRENSIBLE */}
+                  {modalTab === 'humano' && (
+                    <div className="space-y-4 text-xs">
+                      {/* CASO: CONFIGURACION_ACTUALIZAR */}
+                      {selectedLog.accion === 'CONFIGURACION_ACTUALIZAR' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Nombre del Consultorio</span>
+                              <span className="font-semibold text-foreground text-sm">{detalles.nombre || '—'}</span>
+                            </div>
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Teléfono de Contacto</span>
+                              <span className="font-semibold text-foreground">{detalles.telefono || '—'}</span>
+                            </div>
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Correo Electrónico</span>
+                              <span className="font-semibold text-foreground">{detalles.email || '—'}</span>
+                            </div>
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Dirección Física</span>
+                              <span className="font-semibold text-foreground">{detalles.direccion || '—'}</span>
+                            </div>
+                          </div>
+
+                          {(detalles.colorPrimario || detalles.colorSecundario) && (
+                            <div className="p-3 rounded-lg border border-border bg-card space-y-2">
+                              <span className="text-muted-foreground block text-[11px] font-medium">Colores Corporativos de Marca</span>
+                              <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="size-5 rounded-full border border-border shadow-xs"
+                                    style={{ backgroundColor: detalles.colorPrimario || '#0284c7' }}
+                                  />
+                                  <span className="font-mono text-[11px]">Primario: {detalles.colorPrimario || '#0284c7'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <div
+                                    className="size-5 rounded-full border border-border shadow-xs"
+                                    style={{ backgroundColor: detalles.colorSecundario || '#0f172a' }}
+                                  />
+                                  <span className="font-mono text-[11px]">Secundario: {detalles.colorSecundario || '#0f172a'}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {detalles.modulosActivos && typeof detalles.modulosActivos === 'object' && (
+                            <div className="p-3 rounded-lg border border-border bg-card space-y-2">
+                              <span className="text-muted-foreground block text-[11px] font-medium">Estado de Módulos Clínicos</span>
+                              <div className="flex flex-wrap gap-2">
+                                {Object.entries(detalles.modulosActivos).map(([k, v]) => (
+                                  <Badge
+                                    key={k}
+                                    variant={v ? 'default' : 'secondary'}
+                                    className="text-[11px] capitalize"
+                                  >
+                                    {v ? '✓' : '✕'} {k.replace(/([A-Z])/g, ' $1')}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* CASO: USUARIO_CREAR o USUARIO_ACTUALIZAR */}
+                      {(selectedLog.accion === 'USUARIO_CREAR' || selectedLog.accion === 'USUARIO_ACTUALIZAR') && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Nombre del Colaborador</span>
+                              <span className="font-semibold text-foreground text-sm">
+                                {detalles.nombre} {detalles.apellido || ''}
+                              </span>
+                            </div>
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Correo de Acceso</span>
+                              <span className="font-semibold text-foreground">
+                                {detalles.email || detalles.usuarioAfectadoEmail || '—'}
+                              </span>
+                            </div>
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Rol Asignado</span>
+                              <Badge className="mt-1 font-semibold">
+                                {detalles.rol === 'ADMIN'
+                                  ? 'Administrador'
+                                  : detalles.rol === 'RECEPCION'
+                                  ? 'Recepción / Asistente'
+                                  : 'Médico / Especialista'}
+                              </Badge>
+                            </div>
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Especialidad Médica</span>
+                              <span className="font-semibold text-foreground">{detalles.especialidad || 'Atención General'}</span>
+                            </div>
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Matrícula Profesional</span>
+                              <span className="font-semibold text-foreground">{detalles.matriculaProfesional || 'Sin registrar'}</span>
+                            </div>
+                            <div className="p-3 rounded-lg border border-border bg-card">
+                              <span className="text-muted-foreground block text-[11px]">Teléfono de Contacto</span>
+                              <span className="font-semibold text-foreground">{detalles.telefono || 'Sin registrar'}</span>
+                            </div>
+                          </div>
+
+                          {detalles.passwordCambiado && (
+                            <div className="p-3 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-300 flex items-center gap-2">
+                              <KeyRound className="size-4 shrink-0" />
+                              <span>Se actualizó la contraseña de acceso para este colaborador.</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* CASO: USUARIO_ELIMINAR */}
+                      {selectedLog.accion === 'USUARIO_ELIMINAR' && (
+                        <div className="space-y-3">
+                          <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 space-y-2">
+                            <div className="font-semibold text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
+                              <UserMinus className="size-4" /> Colaborador Desvinculado
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-foreground pt-1">
+                              <div>
+                                <span className="text-muted-foreground block text-[11px]">Nombre:</span>
+                                <span className="font-semibold">
+                                  {detalles.usuarioEliminadoNombre || detalles.nombre || '—'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground block text-[11px]">Correo:</span>
+                                <span className="font-semibold">
+                                  {detalles.usuarioEliminadoEmail || detalles.email || '—'}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground block text-[11px]">Rol que ejercía:</span>
+                                <span className="font-semibold">
+                                  {detalles.usuarioEliminadoRol || detalles.rol || '—'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/50 border border-border text-[11px] text-muted-foreground leading-relaxed">
+                            🔒 <strong>Garantía de Trazabilidad:</strong> Se revocaron automáticamente todas las sesiones activas en cualquier dispositivo. Los expedientes, recetas y citas clínicas creadas previamente por este usuario se mantienen íntegros por normativa médico-legal.
+                          </div>
+                        </div>
+                      )}
+
+                      {/* CASO: USUARIO_SUSPENDER o USUARIO_ACTIVAR */}
+                      {(selectedLog.accion === 'USUARIO_SUSPENDER' || selectedLog.accion === 'USUARIO_ACTIVAR') && (
+                        <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+                          <div className="flex items-center gap-2">
+                            {selectedLog.accion === 'USUARIO_ACTIVAR' ? (
+                              <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-300">
+                                Acceso Reactivado
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-amber-500/15 text-amber-700 border-amber-300">
+                                Acceso Suspendido
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <span className="text-muted-foreground block text-[11px]">Colaborador:</span>
+                              <span className="font-semibold">{detalles.usuarioAfectadoNombre || detalles.nombre || '—'}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground block text-[11px]">Correo:</span>
+                              <span className="font-semibold">{detalles.usuarioAfectadoEmail || detalles.email || '—'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* CASO: BACKUPS */}
+                      {(selectedLog.accion === 'GENERAR_BACKUP' || selectedLog.accion === 'RESTAURAR_BACKUP') && (
+                        <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <span className="text-muted-foreground block text-[11px]">Archivo de Respaldo:</span>
+                              <span className="font-mono font-semibold">{detalles.nombreArchivo || detalles.archivo || 'backup.sql.enc'}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground block text-[11px]">Tamaño:</span>
+                              <span className="font-semibold">
+                                {detalles.tamanoBytes ? `${(detalles.tamanoBytes / 1024).toFixed(1)} KB` : '—'}
+                              </span>
+                            </div>
+                            <div className="col-span-full">
+                              <span className="text-muted-foreground block text-[11px]">Checksum SHA-256:</span>
+                              <span className="font-mono text-[10px] text-muted-foreground break-all">
+                                {detalles.checksumSha256 || 'SHA-256 Verificado'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* CASO: FALLBACK PARA CUALQUIER OTRA ACCIÓN */}
+                      {![
+                        'CONFIGURACION_ACTUALIZAR',
+                        'USUARIO_CREAR',
+                        'USUARIO_ACTUALIZAR',
+                        'USUARIO_ELIMINAR',
+                        'USUARIO_SUSPENDER',
+                        'USUARIO_ACTIVAR',
+                        'GENERAR_BACKUP',
+                        'RESTAURAR_BACKUP',
+                      ].includes(selectedLog.accion) && (
+                        <div>
+                          {Object.keys(detalles).length === 0 ? (
+                            <div className="p-6 text-center text-muted-foreground">
+                              Esta acción estándar del sistema se completó correctamente y no requirió parámetros adicionales.
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                              {Object.entries(detalles).map(([clave, valor]) => (
+                                <div key={clave} className="p-3 rounded-lg border border-border bg-card">
+                                  <span className="text-muted-foreground block text-[11px] capitalize">
+                                    {clave.replace(/([A-Z])/g, ' $1')}
+                                  </span>
+                                  <span className="font-semibold text-foreground break-all">
+                                    {typeof valor === 'object' ? JSON.stringify(valor) : String(valor)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* CONTENIDO PESTAÑA 2: VISTA TÉCNICA JSON */}
+                  {modalTab === 'json' && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          Payload crudo y metadatos forenses del evento:
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1.5"
+                          onClick={() => {
+                            const fullJson = JSON.stringify(
+                              {
+                                id: selectedLog.id,
+                                modulo: selectedLog.modulo,
+                                accion: selectedLog.accion,
+                                usuario: {
+                                  nombre: selectedLog.usuarioNombre,
+                                  email: selectedLog.usuarioEmail,
+                                },
+                                entidad: {
+                                  tipo: selectedLog.entidadTipo,
+                                  id: selectedLog.entidadId,
+                                },
+                                red: {
+                                  ip: selectedLog.ipAddress,
+                                  userAgent: selectedLog.userAgent,
+                                },
+                                fecha: selectedLog.creadoEn,
+                                detalles: selectedLog.detalles,
+                              },
+                              null,
+                              2,
+                            );
+                            navigator.clipboard.writeText(fullJson);
+                            setCopiadoJson(true);
+                            setTimeout(() => setCopiadoJson(false), 2000);
+                          }}
+                        >
+                          {copiadoJson ? <Check className="size-3 text-emerald-500" /> : <Copy className="size-3" />}
+                          {copiadoJson ? '¡Copiado!' : 'Copiar JSON'}
+                        </Button>
+                      </div>
+
+                      <pre className="bg-muted p-3.5 rounded-lg font-mono text-[11px] overflow-x-auto max-h-56 border border-border text-foreground">
+                        {JSON.stringify(
+                          {
+                            id: selectedLog.id,
+                            modulo: selectedLog.modulo,
+                            accion: selectedLog.accion,
+                            usuarioNombre: selectedLog.usuarioNombre,
+                            usuarioEmail: selectedLog.usuarioEmail,
+                            entidadTipo: selectedLog.entidadTipo,
+                            entidadId: selectedLog.entidadId,
+                            ipAddress: selectedLog.ipAddress,
+                            userAgent: selectedLog.userAgent,
+                            creadoEn: selectedLog.creadoEn,
+                            detalles: selectedLog.detalles,
+                          },
+                          null,
+                          2,
+                        )}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Pie del Modal */}
+                  <div className="flex justify-end pt-3 border-t border-border">
+                    <Button size="sm" onClick={() => setSelectedLog(null)}>
+                      Cerrar
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
