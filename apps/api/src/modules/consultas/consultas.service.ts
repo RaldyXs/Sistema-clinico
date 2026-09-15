@@ -34,6 +34,27 @@ export class ConsultasService {
   ) {}
 
   /**
+   * Lista las consultas clínicas del consultorio ordenadas cronológicamente.
+   */
+  async listar(consultorioId: string) {
+    const consultas = await this.consultaRepo.find({
+      where: { consultorioId },
+      relations: {
+        paciente: true,
+        profesional: true,
+      },
+      order: { fechaAtencion: 'DESC' },
+      take: 100,
+    });
+
+    return {
+      datos: consultas,
+      data: consultas,
+      total: consultas.length,
+    };
+  }
+
+  /**
    * Calcula el Índice de Masa Corporal (IMC) a partir del peso y la talla.
    *
    * Fórmula OMS: IMC = peso (kg) / (talla (m))^2

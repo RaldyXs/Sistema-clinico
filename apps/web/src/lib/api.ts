@@ -52,6 +52,19 @@ export async function apiRequest<T = any>(
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
+    // Si el backend responde 401 Unauthorized (token expirado o inválido) en peticiones autenticadas
+    if (response.status === 401 && !endpoint.includes('/auth/login')) {
+      localStorage.removeItem('token_clinico');
+      localStorage.removeItem('usuario_clinico');
+      window.dispatchEvent(
+        new CustomEvent('auth:expired', {
+          detail: {
+            message: 'Tu sesión ha expirado por seguridad (límite de 24 horas). Por favor, inicia sesión nuevamente.',
+          },
+        }),
+      );
+    }
+
     const errorMsg = Array.isArray(data.message)
       ? data.message.join(', ')
       : data.message || `Error HTTP ${response.status}`;

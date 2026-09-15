@@ -65,18 +65,22 @@ export class AuditoriaService {
 
   /**
    * Consulta el registro de auditoría del consultorio con filtros avanzados y paginación.
+   * Si es SuperAdmin, permite consultar la auditoría global de toda la plataforma.
    */
-  async listar(consultorioId: string, filtros: FiltrosAuditoriaDto = {}) {
+  async listar(consultorioId: string, filtros: FiltrosAuditoriaDto = {}, esSuperAdmin: boolean = false) {
     const limite = Math.min(filtros.limite ?? 50, 100);
     const pagina = Math.max(filtros.pagina ?? 1, 1);
     const skip = (pagina - 1) * limite;
 
     const qb = this.logRepo
       .createQueryBuilder('log')
-      .where('log.consultorioId = :consultorioId', { consultorioId })
       .orderBy('log.creadoEn', 'DESC')
       .take(limite)
       .skip(skip);
+
+    if (!esSuperAdmin) {
+      qb.where('log.consultorioId = :consultorioId', { consultorioId });
+    }
 
     if (filtros.modulo) {
       qb.andWhere('log.modulo = :modulo', { modulo: filtros.modulo.toUpperCase() });
@@ -133,9 +137,9 @@ export class AuditoriaService {
   }
 
   /**
-   * Retorna métricas analíticas de auditoría para el panel de seguridad de la clínica.
+   * Retorna métricas analíticas de auditoría para el panel de seguridad de la clínica (o global para SuperAdmin).
    */
-  async obtenerResumen(consultorioId: string) {
+  async obtenerResumen(consultorioId: string, esSuperAdmin: boolean = false) {
     const hoyInicio = new Date();
     hoyInicio.setHours(0, 0, 0, 0);
 
@@ -143,29 +147,28 @@ export class AuditoriaService {
     semanaInicio.setDate(semanaInicio.getDate() - 7);
     semanaInicio.setHours(0, 0, 0, 0);
 
-    const totalHoy = await this.logRepo.count({
-      where: {
-        consultorioId,
-        creadoEn: MoreThanOrEqual(hoyInicio),
-      },
-    });
+    const whereHoy: any = { creadoEn: MoreThanOrEqual(hoyInicio) };
+    const whereSemana: any = { creadoEn: MoreThanOrEqual(semanaInicio) };
+    if (!esSuperAdmin) {
+      whereHoy.consultorioId = consultorioId;
+      whereSemana.consultorioId = consultorioId;
+    }
 
-    const totalSemana = await this.logRepo.count({
-      where: {
-        consultorioId,
-        creadoEn: MoreThanOrEqual(semanaInicio),
-      },
-    });
+    const totalHoy = await this.logRepo.count({ where: whereHoy });
+    const totalSemana = await this.logRepo.count({ where: whereSemana });
 
     // Desglose por módulo
-    const rawModulos = await this.logRepo
+    const qbModulos = this.logRepo
       .createQueryBuilder('log')
       .select('log.modulo', 'modulo')
       .addSelect('COUNT(log.id)', 'conteo')
-      .where('log.consultorioId = :consultorioId', { consultorioId })
-      .andWhere('log.creadoEn >= :semanaInicio', { semanaInicio })
-      .groupBy('log.modulo')
-      .getRawMany();
+      .where('log.creadoEn >= :semanaInicio', { semanaInicio });
+
+    if (!esSuperAdmin) {
+      qbModulos.andWhere('log.consultorioId = :consultorioId', { consultorioId });
+    }
+
+    const rawModulos = await qbModulos.groupBy('log.modulo').getRawMany();
 
     const porModulo: Record<string, number> = {};
     for (const r of rawModulos) {
@@ -174,7 +177,7 @@ export class AuditoriaService {
 
     // Últimos 10 eventos críticos
     const ultimosEventos = await this.logRepo.find({
-      where: { consultorioId },
+      where: esSuperAdmin ? {} : { consultorioId },
       order: { creadoEn: 'DESC' },
       take: 10,
     });

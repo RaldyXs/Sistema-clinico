@@ -10,6 +10,7 @@ import { Paciente, TipoDocumento, Genero } from './entities/paciente.entity.js';
 import { CrearPacienteDto } from './dto/crear-paciente.dto.js';
 import { ActualizarPacienteDto } from './dto/actualizar-paciente.dto.js';
 import { FiltrosPacienteDto } from './dto/filtros-paciente.dto.js';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
 
 /**
  * Servicio de Pacientes (PacientesService).
@@ -26,12 +27,19 @@ export class PacientesService {
   constructor(
     @InjectRepository(Paciente)
     private readonly pacienteRepo: Repository<Paciente>,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
 
   /**
    * Registra un nuevo paciente vinculado automáticamente al consultorio del usuario.
    */
-  async crear(consultorioId: string, dto: CrearPacienteDto): Promise<Paciente> {
+  async crear(
+    consultorioId: string,
+    dto: CrearPacienteDto,
+    usuarioSolicitante?: any,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<Paciente> {
     const docNormalizado = (dto.documentoIdentidad || dto.dni || '').trim() || null;
     const tipoDoc = dto.tipoDocumento || TipoDocumento.DNI;
     const genero = dto.genero || (dto.sexo as any) || Genero.FEMENINO;
@@ -71,6 +79,32 @@ export class PacientesService {
 
     const guardado = await this.pacienteRepo.save(nuevoPaciente);
     this.logger.log(`Paciente creado: ${guardado.nombre} ${guardado.apellido} (${guardado.id}) en consultorio ${consultorioId}`);
+
+    const nombreUsuario = usuarioSolicitante
+      ? `${usuarioSolicitante.nombre ?? ''} ${usuarioSolicitante.apellido ?? ''}`.trim() || usuarioSolicitante.email
+      : 'Personal de la Clínica';
+
+    await this.auditoriaService.registrar({
+      consultorioId,
+      usuarioId: usuarioSolicitante?.id ?? null,
+      usuarioEmail: usuarioSolicitante?.email ?? 'personal',
+      usuarioNombre: nombreUsuario,
+      modulo: 'PACIENTES',
+      accion: 'PACIENTE_CREAR',
+      entidadTipo: 'Paciente',
+      entidadId: guardado.id,
+      detalles: {
+        pacienteId: guardado.id,
+        pacienteNombre: `${guardado.nombre} ${guardado.apellido}`.trim(),
+        documentoIdentidad: guardado.documentoIdentidad,
+        telefono: guardado.telefono,
+        email: guardado.email,
+        grupoSanguineo: guardado.grupoSanguineo,
+      },
+      ipAddress,
+      userAgent,
+    });
+
     return guardado;
   }
 
@@ -96,6 +130,9 @@ export class PacientesService {
     consultorioId: string,
     id: string,
     dto: ActualizarPacienteDto,
+    usuarioSolicitante?: any,
+    ipAddress?: string,
+    userAgent?: string,
   ): Promise<Paciente> {
     const paciente = await this.obtenerPorId(consultorioId, id);
 
@@ -141,6 +178,34 @@ export class PacientesService {
 
     const actualizado = await this.pacienteRepo.save(paciente);
     this.logger.log(`Paciente actualizado: ${actualizado.id}`);
+
+    const nombreUsuario = usuarioSolicitante
+      ? `${usuarioSolicitante.nombre ?? ''} ${usuarioSolicitante.apellido ?? ''}`.trim() || usuarioSolicitante.email
+      : 'Personal de la Clínica';
+
+    await this.auditoriaService.registrar({
+      consultorioId,
+      usuarioId: usuarioSolicitante?.id ?? null,
+      usuarioEmail: usuarioSolicitante?.email ?? 'personal',
+      usuarioNombre: nombreUsuario,
+      modulo: 'PACIENTES',
+      accion: 'PACIENTE_ACTUALIZAR',
+      entidadTipo: 'Paciente',
+      entidadId: actualizado.id,
+      detalles: {
+        pacienteId: actualizado.id,
+        pacienteNombre: `${actualizado.nombre} ${actualizado.apellido}`.trim(),
+        documentoIdentidad: actualizado.documentoIdentidad,
+        telefono: actualizado.telefono,
+        email: actualizado.email,
+        grupoSanguineo: actualizado.grupoSanguineo,
+        alergias: actualizado.alergias,
+        activo: actualizado.activo,
+      },
+      ipAddress,
+      userAgent,
+    });
+
     return actualizado;
   }
 
@@ -163,13 +228,13 @@ export class PacientesService {
       .where('p.consultorioId = :consultorioId', { consultorioId });
 
     // 1. Filtro por término de búsqueda (nombre, apellido, documento o teléfono)
-    if (termino && termino.trim() !== '') {
-      const limpio = termino.trim();
+    const busquedaEfectiva = (termino || filtros.busqueda || '').trim();
+    if (busquedaEfectiva !== '') {
       qb.andWhere(
         '(LOWER(p.nombre) LIKE :term OR LOWER(p.apellido) LIKE :term OR LOWER(CONCAT(p.nombre, \' \', p.apellido)) LIKE :term OR p.documentoIdentidad LIKE :termDoc OR p.telefono LIKE :termDoc)',
         {
-          term: `%${limpio.toLowerCase()}%`,
-          termDoc: `%${limpio}%`,
+          term: `%${busquedaEfectiva.toLowerCase()}%`,
+          termDoc: `%${busquedaEfectiva}%`,
         },
       );
     }
@@ -203,6 +268,7 @@ export class PacientesService {
 
     return {
       datos,
+      data: datos, // Alias compatible para vistas del frontend
       meta: {
         total,
         pagina,

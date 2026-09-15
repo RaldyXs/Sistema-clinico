@@ -12,17 +12,28 @@ import {
   Play,
   XCircle,
   UserCheck,
+  UserX,
+  Check,
   X,
   AlertCircle,
+  AlertTriangle,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export function CitasView() {
+  const { user } = useAuth();
+  const isRecepcion = user?.rolCodigo === 'RECEPCION';
   const [citas, setCitas] = React.useState<any[]>([]);
   const [pacientes, setPacientes] = React.useState<any[]>([]);
   const [medicos, setMedicos] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [filtroEstado, setFiltroEstado] = React.useState<string>('TODOS');
   const [showModalCrear, setShowModalCrear] = React.useState(false);
+
+  // Estado para modal de cancelación
+  const [citaACancelar, setCitaACancelar] = React.useState<any | null>(null);
+  const [motivoCancelacion, setMotivoCancelacion] = React.useState('Paciente solicitó cancelación');
+  const [cancelando, setCancelando] = React.useState(false);
 
   // Formulario nueva cita
   const [form, setForm] = React.useState(() => ({
@@ -39,12 +50,12 @@ export function CitasView() {
     setLoading(true);
     try {
       const [citasData, pacData, medData] = await Promise.all([
-        api.get('/citas'),
-        api.get('/pacientes'),
+        api.get('/citas').catch(() => []),
+        api.get('/pacientes?limite=100').catch(() => []),
         api.get('/usuarios/medicos').catch(() => []),
       ]);
-      setCitas(Array.isArray(citasData) ? citasData : citasData.data || []);
-      setPacientes(Array.isArray(pacData) ? pacData : pacData.data || []);
+      setCitas(Array.isArray(citasData) ? citasData : (citasData?.datos || citasData?.data || []));
+      setPacientes(Array.isArray(pacData) ? pacData : (pacData?.datos || pacData?.data || []));
       setMedicos(Array.isArray(medData) ? medData : []);
     } catch (err: any) {
       console.error(err);
@@ -57,12 +68,29 @@ export function CitasView() {
     cargarDatos();
   }, [cargarDatos]);
 
-  const cambiarEstado = async (id: string, accion: string) => {
+  const cambiarEstado = async (id: string, accion: string, payload: any = {}) => {
     try {
-      await api.patch(`/citas/${id}/${accion}`, {});
+      await api.patch(`/citas/${id}/${accion}`, payload);
       cargarDatos();
     } catch (err: any) {
       alert(err.message || 'Error al cambiar estado de la cita');
+    }
+  };
+
+  const handleConfirmarCancelacion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!citaACancelar) return;
+    setCancelando(true);
+    try {
+      await api.patch(`/citas/${citaACancelar.id}/cancelar`, {
+        motivoCancelacion: motivoCancelacion.trim() || 'Cancelada a solicitud del paciente',
+      });
+      setCitaACancelar(null);
+      cargarDatos();
+    } catch (err: any) {
+      alert(err.message || 'Error al cancelar la cita médica');
+    } finally {
+      setCancelando(false);
     }
   };
 
@@ -73,14 +101,17 @@ export function CitasView() {
 
     try {
       const inicio = new Date(form.fechaHoraInicio);
-      const fin = new Date(inicio.getTime() + form.duracionMinutos * 60000);
+      const doctorId = form.profesionalId || medicos[0]?.id;
+      if (!doctorId) {
+        throw new Error('Debes seleccionar un profesional médico para la cita');
+      }
 
       await api.post('/citas', {
         pacienteId: form.pacienteId,
-        profesionalId: form.profesionalId || undefined,
+        profesionalId: doctorId,
         fechaHoraInicio: inicio.toISOString(),
-        fechaHoraFin: fin.toISOString(),
-        motivo: form.motivo,
+        duracionMinutos: Number(form.duracionMinutos) || 30,
+        motivo: form.motivo.trim(),
       });
 
       setShowModalCrear(false);
@@ -125,6 +156,8 @@ export function CitasView() {
         return <Badge variant="success">Atendida</Badge>;
       case 'CANCELADA':
         return <Badge variant="destructive">Cancelada</Badge>;
+      case 'NO_ASISTIO':
+        return <Badge variant="outline" className="border-amber-500/40 text-amber-600 bg-amber-500/10">No Asistió</Badge>;
       default:
         return <Badge variant="outline">{estado}</Badge>;
     }
@@ -148,13 +181,13 @@ export function CitasView() {
 
       {/* Barra de filtros de estado */}
       <div className="flex flex-wrap items-center gap-2">
-        {['TODOS', 'PROGRAMADA', 'EN_ESPERA', 'EN_CONSULTA', 'ATENDIDA', 'CANCELADA'].map((st) => (
+        {['TODOS', 'PROGRAMADA', 'CONFIRMADA', 'EN_ESPERA', 'EN_CONSULTA', 'ATENDIDA', 'CANCELADA', 'NO_ASISTIO'].map((st) => (
           <Button
             key={st}
             variant={filtroEstado === st ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFiltroEstado(st)}
-            className="text-xs capitalize"
+            className="text-xs capitalize cursor-pointer"
           >
             {st.replace('_', ' ').toLowerCase()}
           </Button>
@@ -203,11 +236,16 @@ export function CitasView() {
                           {c.paciente?.nombre} {c.paciente?.apellido || ''}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          DNI: {c.paciente?.dni || 'N/D'}
+                          {c.paciente?.tipoDocumento || 'Doc'}: {c.paciente?.documentoIdentidad || c.paciente?.dni || 'S/D'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground max-w-xs truncate">
-                        {c.motivo}
+                      <td className="px-6 py-4 text-muted-foreground max-w-xs">
+                        <div className="truncate">{c.motivo}</div>
+                        {c.estado === 'CANCELADA' && c.motivoCancelacion && (
+                          <div className="text-[11px] text-destructive italic mt-0.5">
+                            Motivo: {c.motivoCancelacion}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-xs">
                         {c.profesional?.nombre
@@ -216,55 +254,126 @@ export function CitasView() {
                       </td>
                       <td className="px-6 py-4">{getBadgeEstadoCita(c.estado)}</td>
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
+                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
                           {c.estado === 'PROGRAMADA' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-xs h-7 text-sky-600 hover:bg-sky-500/10"
-                              onClick={() => cambiarEstado(c.id, 'registrar-llegada')}
-                              title="El paciente llegó a la sala de espera"
-                            >
-                              <UserCheck className="size-3.5 mr-1" />
-                              Llegada
-                            </Button>
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-7 text-indigo-600 hover:bg-indigo-500/10 cursor-pointer"
+                                onClick={() => cambiarEstado(c.id, 'confirmar')}
+                                title="Paciente confirma asistencia por teléfono/WhatsApp"
+                              >
+                                <Check className="size-3.5 mr-1" />
+                                Confirmar
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-7 text-sky-600 hover:bg-sky-500/10 cursor-pointer"
+                                onClick={() => cambiarEstado(c.id, 'registrar-llegada')}
+                                title="El paciente llegó a la sala de espera"
+                              >
+                                <UserCheck className="size-3.5 mr-1" />
+                                Llegó
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-7 text-amber-600 hover:bg-amber-500/10 cursor-pointer"
+                                onClick={() => {
+                                  if (confirm(`¿Marcar como "No Asistió" a ${c.paciente?.nombre}?`)) {
+                                    cambiarEstado(c.id, 'no-asistio');
+                                  }
+                                }}
+                                title="El turno pasó y el paciente no asistió"
+                              >
+                                <UserX className="size-3.5 mr-1" />
+                                No Asistió
+                              </Button>
+                            </>
+                          )}
+
+                          {c.estado === 'CONFIRMADA' && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-7 text-sky-600 hover:bg-sky-500/10 cursor-pointer"
+                                onClick={() => cambiarEstado(c.id, 'registrar-llegada')}
+                                title="El paciente llegó a la sala de espera"
+                              >
+                                <UserCheck className="size-3.5 mr-1" />
+                                Llegó
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs h-7 text-amber-600 hover:bg-amber-500/10 cursor-pointer"
+                                onClick={() => {
+                                  if (confirm(`¿Marcar como "No Asistió" a ${c.paciente?.nombre}?`)) {
+                                    cambiarEstado(c.id, 'no-asistio');
+                                  }
+                                }}
+                                title="El turno pasó y el paciente no asistió"
+                              >
+                                <UserX className="size-3.5 mr-1" />
+                                No Asistió
+                              </Button>
+                            </>
                           )}
 
                           {c.estado === 'EN_ESPERA' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-xs h-7 text-amber-600 hover:bg-amber-500/10"
-                              onClick={() => cambiarEstado(c.id, 'iniciar-consulta')}
-                              title="Hacer pasar al consultorio"
-                            >
-                              <Play className="size-3.5 mr-1" />
-                              Iniciar
-                            </Button>
+                            isRecepcion ? (
+                              <span className="text-[11px] text-amber-700 dark:text-amber-300 font-medium px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                                En sala de espera
+                              </span>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-7 text-amber-600 hover:bg-amber-500/10 cursor-pointer"
+                                onClick={() => cambiarEstado(c.id, 'iniciar-consulta')}
+                                title="Hacer pasar al consultorio"
+                              >
+                                <Play className="size-3.5 mr-1" />
+                                Iniciar
+                              </Button>
+                            )
                           )}
 
                           {c.estado === 'EN_CONSULTA' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-xs h-7 text-emerald-600 hover:bg-emerald-500/10"
-                              onClick={() => cambiarEstado(c.id, 'finalizar')}
-                              title="Finalizar y cerrar atención"
-                            >
-                              <CheckCircle className="size-3.5 mr-1" />
-                              Finalizar
-                            </Button>
+                            isRecepcion ? (
+                              <span className="text-[11px] text-emerald-700 dark:text-emerald-300 font-medium px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                                En consulta médica
+                              </span>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-xs h-7 text-emerald-600 hover:bg-emerald-500/10 cursor-pointer"
+                                onClick={() => cambiarEstado(c.id, 'finalizar')}
+                                title="Finalizar y cerrar atención"
+                              >
+                                <CheckCircle className="size-3.5 mr-1" />
+                                Finalizar
+                              </Button>
+                            )
                           )}
 
                           {!['ATENDIDA', 'CANCELADA', 'NO_ASISTIO'].includes(c.estado) && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-xs h-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => cambiarEstado(c.id, 'cancelar')}
-                              title="Cancelar turno"
+                              className="text-xs h-7 text-destructive hover:bg-destructive/10 cursor-pointer"
+                              onClick={() => {
+                                setCitaACancelar(c);
+                                setMotivoCancelacion('Paciente solicitó cancelación');
+                              }}
+                              title="Cancelar turno (libera horario)"
                             >
-                              <XCircle className="size-3.5" />
+                              <XCircle className="size-3.5 mr-1" />
+                              Cancelar
                             </Button>
                           )}
                         </div>
@@ -312,7 +421,7 @@ export function CitasView() {
                     <option value="">Seleccione un paciente...</option>
                     {pacientes.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.nombre} {p.apellido || ''} (DNI: {p.dni})
+                        {p.nombre} {p.apellido || ''} ({p.tipoDocumento || 'Doc'}: {p.documentoIdentidad || p.dni || 'S/D'})
                       </option>
                     ))}
                   </select>
@@ -376,6 +485,110 @@ export function CitasView() {
                 </Button>
                 <Button type="submit" disabled={guardando}>
                   {guardando ? 'Agendando...' : 'Confirmar Cita'}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL CANCELACIÓN DE CITA */}
+      {citaACancelar && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <Card className="max-w-md w-full shadow-2xl border-destructive/30">
+            <div className="p-6 border-b border-border flex items-center justify-between bg-destructive/5">
+              <div className="flex items-center gap-2.5 text-destructive">
+                <AlertTriangle className="size-5 shrink-0" />
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Cancelar Cita Médica</h3>
+                  <p className="text-xs text-muted-foreground">El horario quedará liberado en la agenda</p>
+                </div>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setCitaACancelar(null)}>
+                <X className="size-5" />
+              </Button>
+            </div>
+
+            <form onSubmit={handleConfirmarCancelacion}>
+              <div className="p-6 space-y-4">
+                <div className="p-3.5 rounded-lg bg-muted/40 border border-border text-xs space-y-1.5">
+                  <div className="font-semibold text-foreground text-sm">
+                    {citaACancelar.paciente?.nombre} {citaACancelar.paciente?.apellido || ''}
+                  </div>
+                  <div className="text-muted-foreground flex items-center gap-1.5">
+                    <Clock className="size-3.5 text-primary" />
+                    <span>{formatearFechaHora(citaACancelar.fechaHoraInicio)}</span>
+                  </div>
+                  <div className="text-muted-foreground">
+                    Motivo programado: <span className="text-foreground">{citaACancelar.motivo}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Motivo de la Cancelación *
+                  </label>
+                  <Input
+                    required
+                    value={motivoCancelacion}
+                    onChange={(e) => setMotivoCancelacion(e.target.value)}
+                    placeholder="Ej. Paciente solicitó cancelación telefónica"
+                  />
+                  
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[11px] text-muted-foreground">Motivos frecuentes:</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        'Paciente solicitó cancelación',
+                        'Reprogramará para otra fecha',
+                        'Imprevisto personal / laboral',
+                        'Problema de salud / internación',
+                        'Error de agendamiento',
+                      ].map((motivo) => (
+                        <button
+                          key={motivo}
+                          type="button"
+                          onClick={() => setMotivoCancelacion(motivo)}
+                          className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
+                            motivoCancelacion === motivo
+                              ? 'bg-destructive/15 text-destructive border-destructive/40 font-medium'
+                              : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                          }`}
+                        >
+                          {motivo}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 pt-0 flex items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setCitaACancelar(null)}
+                  disabled={cancelando}
+                >
+                  Regresar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  disabled={cancelando}
+                  className="cursor-pointer"
+                >
+                  {cancelando ? (
+                    <>
+                      <RefreshCw className="size-4 mr-2 animate-spin" />
+                      Cancelando...
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="size-4 mr-2" />
+                      Confirmar Cancelación
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

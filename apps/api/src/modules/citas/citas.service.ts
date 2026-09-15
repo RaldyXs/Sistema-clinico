@@ -455,10 +455,11 @@ export class CitasService {
   async cancelar(
     consultorioId: string,
     id: string,
-    dto: CancelarCitaDto,
+    dto?: CancelarCitaDto,
   ): Promise<Cita> {
+    const motivo = (dto?.motivoCancelacion || '').trim() || 'Cancelada a solicitud del paciente';
     return this.transicionarEstado(consultorioId, id, EstadoCita.CANCELADA, {
-      motivoCancelacion: dto.motivoCancelacion.trim(),
+      motivoCancelacion: motivo,
     });
   }
 

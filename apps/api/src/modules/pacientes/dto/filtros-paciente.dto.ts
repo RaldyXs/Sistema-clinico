@@ -20,9 +20,20 @@ export class FiltrosPacienteDto {
    * Busca coincidencias parciales (insensibles a mayúsculas) en:
    * nombre, apellido, nombre completo, documento de identidad y teléfono.
    */
+  @Transform(({ value, obj }) => {
+    const raw = value || obj?.busqueda;
+    return raw !== undefined && raw !== null ? String(raw).trim() : undefined;
+  })
   @IsOptional()
   @IsString({ message: 'El término de búsqueda debe ser una cadena de texto' })
   termino?: string;
+
+  /**
+   * Alias compatible para peticiones que envíen `busqueda`.
+   */
+  @IsOptional()
+  @IsString()
+  busqueda?: string;
 
   /**
    * Filtro por género biológico / filiación.

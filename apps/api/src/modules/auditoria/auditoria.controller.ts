@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
+import { UsuarioActual } from '../../common/decorators/usuario-actual.decorator.js';
 import { AuditoriaService } from './auditoria.service.js';
 
 @Controller('auditoria')
@@ -16,11 +17,15 @@ export class AuditoriaController {
   constructor(private readonly auditoriaService: AuditoriaService) {}
 
   /**
-   * Resumen analítico de eventos de seguridad y actividad para la clínica.
+   * Resumen analítico de eventos de seguridad y actividad para la clínica (o global para SuperAdmin).
    */
   @Get('resumen')
-  async obtenerResumen(@ConsultorioActual() consultorioId: string) {
-    return this.auditoriaService.obtenerResumen(consultorioId);
+  async obtenerResumen(
+    @ConsultorioActual() consultorioId: string,
+    @UsuarioActual() usuario: any,
+  ) {
+    const esSuperAdmin = usuario?.rolCodigo === 'SUPERADMIN' || usuario?.rol?.codigo === 'SUPERADMIN';
+    return this.auditoriaService.obtenerResumen(consultorioId, esSuperAdmin);
   }
 
   /**
@@ -40,6 +45,7 @@ export class AuditoriaController {
   @Get()
   async listar(
     @ConsultorioActual() consultorioId: string,
+    @UsuarioActual() usuario: any,
     @Query('modulo') modulo?: string,
     @Query('accion') accion?: string,
     @Query('usuarioId') usuarioId?: string,
@@ -48,14 +54,19 @@ export class AuditoriaController {
     @Query('limite') limite?: string,
     @Query('pagina') pagina?: string,
   ) {
-    return this.auditoriaService.listar(consultorioId, {
-      modulo,
-      accion,
-      usuarioId,
-      fechaInicio,
-      fechaFin,
-      limite: limite ? parseInt(limite, 10) : undefined,
-      pagina: pagina ? parseInt(pagina, 10) : undefined,
-    });
+    const esSuperAdmin = usuario?.rolCodigo === 'SUPERADMIN' || usuario?.rol?.codigo === 'SUPERADMIN';
+    return this.auditoriaService.listar(
+      consultorioId,
+      {
+        modulo,
+        accion,
+        usuarioId,
+        fechaInicio,
+        fechaFin,
+        limite: limite ? parseInt(limite, 10) : undefined,
+        pagina: pagina ? parseInt(pagina, 10) : undefined,
+      },
+      esSuperAdmin,
+    );
   }
 }

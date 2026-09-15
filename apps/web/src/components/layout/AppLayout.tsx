@@ -42,7 +42,16 @@ interface AppLayoutProps {
 
 export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps) {
   const { user, logout, quickLogin } = useAuth();
-  const [isDark, setIsDark] = React.useState(false);
+  const [isDark, setIsDark] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('theme_clinico');
+      if (saved) return saved === 'dark';
+      return document.documentElement.classList.contains('dark') ||
+             window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return false;
+    }
+  });
   const [isMobileOpen, setIsMobileOpen] = React.useState(false);
 
   const toggleTheme = () => {
@@ -50,12 +59,24 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
       const next = !prev;
       if (next) {
         document.documentElement.classList.add('dark');
+        try { localStorage.setItem('theme_clinico', 'dark'); } catch {}
       } else {
         document.documentElement.classList.remove('dark');
+        try { localStorage.setItem('theme_clinico', 'light'); } catch {}
       }
       return next;
     });
   };
+
+  React.useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+      try { localStorage.setItem('theme_clinico', 'dark'); } catch {}
+    } else {
+      document.documentElement.classList.remove('dark');
+      try { localStorage.setItem('theme_clinico', 'light'); } catch {}
+    }
+  }, [isDark]);
 
   const isSuperAdmin = user?.rolCodigo === 'SUPERADMIN';
   const isMedico = user?.rolCodigo === 'MEDICO';
@@ -177,10 +198,10 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
         <div className="p-3 border-t border-border/80 bg-muted/30 space-y-2">
           <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
             <span className="flex items-center gap-1">
-              <UserCheck className="size-3 text-emerald-500" /> Switch Rol / Clínica (Demo)
+              <UserCheck className="size-3 text-emerald-500" /> Switch Rol / Perfil (Demo)
             </span>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Button
               variant={isSuperAdmin ? "default" : "outline"}
               size="sm"
@@ -193,22 +214,51 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
             >
               👑 <span className="ml-1.5 font-semibold">Tú (SuperAdmin SaaS)</span>
             </Button>
-            <div className="grid grid-cols-2 gap-1">
+            
+            {/* Roles de la Clínica Del Sol */}
+            <div className="text-[9px] font-semibold text-muted-foreground uppercase pt-1">
+              Clínica Del Sol (Roles):
+            </div>
+            <div className="grid grid-cols-3 gap-1">
               <Button
-                variant={!isSuperAdmin && user?.consultorio?.nombre?.includes('Sol') ? "secondary" : "outline"}
+                variant={!isSuperAdmin && user?.email === 'dr.carlos@test.com' ? "secondary" : "outline"}
                 size="sm"
-                className="text-[11px] h-7 px-1.5 justify-center"
+                className="text-[10px] h-7 px-1 justify-center font-medium"
                 onClick={() => quickLogin('carlos')}
+                title="Director / Administrador de la clínica"
               >
-                Del Sol (Cliente)
+                🏥 Admin
               </Button>
               <Button
-                variant={!isSuperAdmin && user?.consultorio?.nombre?.includes('Rafael') ? "secondary" : "outline"}
+                variant={!isSuperAdmin && user?.email === 'medico@test.com' ? "secondary" : "outline"}
                 size="sm"
-                className="text-[11px] h-7 px-1.5 justify-center"
-                onClick={() => quickLogin('elena')}
+                className="text-[10px] h-7 px-1 justify-center font-medium text-sky-600 dark:text-sky-400"
+                onClick={() => quickLogin('medico')}
+                title="Médico asistencial con acceso a historias y recetas"
               >
-                San Rafael (Cliente)
+                🩺 Médico
+              </Button>
+              <Button
+                variant={!isSuperAdmin && user?.email === 'secretaria@test.com' ? "secondary" : "outline"}
+                size="sm"
+                className="text-[10px] h-7 px-1 justify-center font-medium text-purple-600 dark:text-purple-400"
+                onClick={() => quickLogin('secretaria')}
+                title="Secretaria con acceso exclusivo a citas y recepción de pacientes"
+              >
+                📋 Secretaria
+              </Button>
+            </div>
+
+            {/* Otra Clínica (Multi-Tenant) */}
+            <div className="pt-0.5">
+              <Button
+                variant={!isSuperAdmin && user?.email === 'elena.rios@test2.com' ? "secondary" : "outline"}
+                size="sm"
+                className="w-full text-[10px] h-6 px-1.5 justify-center border-border/80"
+                onClick={() => quickLogin('elena')}
+                title="Probar otra clínica aislada"
+              >
+                🏥 Dra. Elena (Clínica San Rafael)
               </Button>
             </div>
           </div>

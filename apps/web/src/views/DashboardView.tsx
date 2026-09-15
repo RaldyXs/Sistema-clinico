@@ -36,6 +36,10 @@ export function DashboardView({ onNavigate }: { onNavigate?: (tab: string) => vo
       setActividad(actividadData);
       setTopDiagnosticos(diagData);
     } catch (err: any) {
+      if (err?.statusCode === 401) {
+        // La sesión expiró o es inválida; el interceptor y AuthContext limpian y redirigen
+        return;
+      }
       setError(err.message || 'Error al cargar métricas del dashboard');
     } finally {
       setLoading(false);

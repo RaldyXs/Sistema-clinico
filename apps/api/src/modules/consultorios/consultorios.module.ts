@@ -4,6 +4,7 @@ import { Consultorio } from './entities/consultorio.entity.js';
 import { ConsultoriosService } from './consultorios.service.js';
 import { ConsultoriosController } from './consultorios.controller.js';
 import { TenantGuard } from '../../common/guards/tenant.guard.js';
+import { AuditoriaModule } from '../auditoria/auditoria.module.js';
 
 /**
  * Módulo de Consultorios (ConsultoriosModule).
@@ -11,7 +12,7 @@ import { TenantGuard } from '../../common/guards/tenant.guard.js';
  * Encapsula la administración de la organización (tenant).
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Consultorio])],
+  imports: [TypeOrmModule.forFeature([Consultorio]), AuditoriaModule],
   controllers: [ConsultoriosController],
   providers: [ConsultoriosService, TenantGuard],
   exports: [ConsultoriosService, TypeOrmModule],

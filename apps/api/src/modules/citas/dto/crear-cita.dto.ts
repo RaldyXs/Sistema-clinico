@@ -43,6 +43,10 @@ export class CrearCitaDto {
   @Max(480, { message: 'La duración máxima de una cita es de 480 minutos (8 horas)' })
   duracionMinutos?: number;
 
+  @IsOptional()
+  @IsString()
+  fechaHoraFin?: string;
+
   @IsNotEmpty({ message: 'El motivo de la consulta es obligatorio' })
   @IsString({ message: 'El motivo debe ser texto' })
   @MaxLength(255, { message: 'El motivo no puede exceder 255 caracteres' })

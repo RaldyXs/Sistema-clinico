@@ -45,11 +45,11 @@ export function RecetasView() {
     setLoading(true);
     try {
       const [recetasData, pacData] = await Promise.all([
-        api.get('/recetas'),
-        api.get('/pacientes'),
+        api.get('/recetas').catch(() => []),
+        api.get('/pacientes?limite=100').catch(() => []),
       ]);
-      setRecetas(Array.isArray(recetasData) ? recetasData : recetasData.data || []);
-      setPacientes(Array.isArray(pacData) ? pacData : pacData.data || []);
+      setRecetas(Array.isArray(recetasData) ? recetasData : (recetasData?.datos || recetasData?.data || []));
+      setPacientes(Array.isArray(pacData) ? pacData : (pacData?.datos || pacData?.data || []));
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -248,7 +248,7 @@ export function RecetasView() {
                     <option value="">Seleccione el paciente a prescribir...</option>
                     {pacientes.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.nombre} {p.apellido || ''} (DNI: {p.dni})
+                        {p.nombre} {p.apellido || ''} ({p.tipoDocumento || 'Doc'}: {p.documentoIdentidad || p.dni || 'S/D'})
                       </option>
                     ))}
                   </select>

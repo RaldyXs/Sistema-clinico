@@ -52,11 +52,11 @@ export function ConsultasView() {
     setLoading(true);
     try {
       const [consultasData, pacData] = await Promise.all([
-        api.get('/consultas'),
-        api.get('/pacientes'),
+        api.get('/consultas').catch(() => []),
+        api.get('/pacientes?limite=100').catch(() => []),
       ]);
-      setConsultas(Array.isArray(consultasData) ? consultasData : consultasData.data || []);
-      setPacientes(Array.isArray(pacData) ? pacData : pacData.data || []);
+      setConsultas(Array.isArray(consultasData) ? consultasData : (consultasData?.datos || consultasData?.data || []));
+      setPacientes(Array.isArray(pacData) ? pacData : (pacData?.datos || pacData?.data || []));
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -221,7 +221,7 @@ export function ConsultasView() {
                     <option value="">Seleccione el paciente en consulta...</option>
                     {pacientes.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.nombre} {p.apellido || ''} (DNI: {p.dni})
+                        {p.nombre} {p.apellido || ''} ({p.tipoDocumento || 'Doc'}: {p.documentoIdentidad || p.dni || 'S/D'})
                       </option>
                     ))}
                   </select>

@@ -5,6 +5,7 @@ import { ActualizarConfiguracionDto } from './dto/actualizar-configuracion.dto.j
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { TenantGuard } from '../../common/guards/tenant.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
+import { UsuarioActual } from '../../common/decorators/usuario-actual.decorator.js';
 
 /**
  * Controlador de Consultorios (ConsultoriosController).
@@ -42,9 +43,10 @@ export class ConsultoriosController {
   @Patch('configuracion')
   async actualizarConfiguracion(
     @ConsultorioActual() consultorioId: string,
+    @UsuarioActual() usuario: any,
     @Body() dto: ActualizarConfiguracionDto,
   ) {
-    return this.consultoriosService.actualizarConfiguracion(consultorioId, dto);
+    return this.consultoriosService.actualizarConfiguracion(consultorioId, dto, usuario);
   }
 
   /**

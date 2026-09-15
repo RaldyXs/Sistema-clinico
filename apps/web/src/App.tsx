@@ -16,20 +16,50 @@ import { RefreshCw } from 'lucide-react';
 
 function MainRouter() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [currentTab, setCurrentTab] = React.useState<NavTab>('dashboard');
+  const [currentTab, setCurrentTab] = React.useState<NavTab>(() => {
+    try {
+      const saved = localStorage.getItem('tab_clinica');
+      return (saved as NavTab) || 'dashboard';
+    } catch {
+      return 'dashboard';
+    }
+  });
+
+  const cambiarTab = React.useCallback((tab: NavTab) => {
+    setCurrentTab(tab);
+    try {
+      localStorage.setItem('tab_clinica', tab);
+    } catch {}
+  }, []);
 
   const isSuperAdmin = user?.rolCodigo === 'SUPERADMIN';
   const isAdmin = user?.rolCodigo === 'ADMIN' || isSuperAdmin;
+  const isMedico = user?.rolCodigo === 'MEDICO';
+  const isRecepcion = user?.rolCodigo === 'RECEPCION';
 
   React.useEffect(() => {
-    if (isSuperAdmin && currentTab !== 'saas' && currentTab !== 'reportes' && currentTab !== 'seguridad') {
-      setCurrentTab('saas');
-    } else if (!isSuperAdmin && currentTab === 'saas') {
-      setCurrentTab('dashboard');
-    } else if (!isAdmin && (currentTab === 'configuracion' || currentTab === 'seguridad')) {
-      setCurrentTab('dashboard');
+    if (isSuperAdmin) {
+      if (currentTab !== 'saas' && currentTab !== 'reportes' && currentTab !== 'seguridad') {
+        cambiarTab('saas');
+      }
+    } else if (isRecepcion) {
+      // Recepción / Secretaría SOLO tiene acceso a 'citas' y 'pacientes'
+      if (currentTab !== 'citas' && currentTab !== 'pacientes') {
+        cambiarTab('citas');
+      }
+    } else if (isMedico) {
+      // Médico asistencial: dashboard, pacientes, citas, consultas, recetas, ginecologia
+      // NO tiene acceso a configuración, seguridad, saas ni reportes contables
+      if (currentTab === 'configuracion' || currentTab === 'seguridad' || currentTab === 'saas' || currentTab === 'reportes') {
+        cambiarTab('dashboard');
+      }
+    } else if (isAdmin) {
+      // Admin de clínica tiene acceso total a su consultorio excepto el portal saas global
+      if (currentTab === 'saas') {
+        cambiarTab('dashboard');
+      }
     }
-  }, [isSuperAdmin, isAdmin, currentTab]);
+  }, [isSuperAdmin, isAdmin, isMedico, isRecepcion, currentTab, cambiarTab]);
 
   if (isLoading && !isAuthenticated) {
     return (
@@ -45,17 +75,17 @@ function MainRouter() {
   }
 
   return (
-    <AppLayout currentTab={currentTab} onSelectTab={setCurrentTab}>
-      {currentTab === 'dashboard' && <DashboardView onNavigate={(tab) => setCurrentTab(tab as NavTab)} />}
+    <AppLayout currentTab={currentTab} onSelectTab={cambiarTab}>
+      {currentTab === 'dashboard' && !isRecepcion && <DashboardView onNavigate={(tab) => cambiarTab(tab as NavTab)} />}
       {currentTab === 'pacientes' && <PacientesView />}
       {currentTab === 'citas' && <CitasView />}
-      {currentTab === 'consultas' && <ConsultasView />}
-      {currentTab === 'recetas' && <RecetasView />}
-      {currentTab === 'ginecologia' && <GinecologiaView />}
-      {currentTab === 'reportes' && <ReportesView />}
-      {currentTab === 'seguridad' && <SeguridadView />}
-      {currentTab === 'saas' && <SaasAdminView />}
-      {currentTab === 'configuracion' && <ConfiguracionView />}
+      {currentTab === 'consultas' && !isRecepcion && <ConsultasView />}
+      {currentTab === 'recetas' && !isRecepcion && <RecetasView />}
+      {currentTab === 'ginecologia' && !isRecepcion && <GinecologiaView />}
+      {currentTab === 'reportes' && isAdmin && <ReportesView />}
+      {currentTab === 'seguridad' && isAdmin && <SeguridadView />}
+      {currentTab === 'saas' && isSuperAdmin && <SaasAdminView />}
+      {currentTab === 'configuracion' && isAdmin && <ConfiguracionView />}
     </AppLayout>
   );
 }

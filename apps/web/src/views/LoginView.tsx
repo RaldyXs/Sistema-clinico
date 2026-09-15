@@ -13,13 +13,40 @@ import {
   AlertCircle,
   Building2,
   Sparkles,
+  Sun,
+  Moon,
 } from 'lucide-react';
 
 export function LoginView() {
-  const { login, quickLogin, isLoading } = useAuth();
+  const { login, quickLogin, isLoading, sessionExpiredMsg } = useAuth();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+
+  const [isDark, setIsDark] = React.useState(() => {
+    try {
+      const saved = localStorage.getItem('theme_clinico');
+      if (saved) return saved === 'dark';
+      return document.documentElement.classList.contains('dark') ||
+             window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleTheme = () => {
+    setIsDark((prev) => {
+      const next = !prev;
+      if (next) {
+        document.documentElement.classList.add('dark');
+        try { localStorage.setItem('theme_clinico', 'dark'); } catch {}
+      } else {
+        document.documentElement.classList.remove('dark');
+        try { localStorage.setItem('theme_clinico', 'light'); } catch {}
+      }
+      return next;
+    });
+  };
 
   // Modal Onboarding
   const [showOnboarding, setShowOnboarding] = React.useState(false);
@@ -43,7 +70,7 @@ export function LoginView() {
     }
   };
 
-  const handleQuickLogin = async (type: 'carlos' | 'elena' | 'superadmin') => {
+  const handleQuickLogin = async (type: 'carlos' | 'elena' | 'superadmin' | 'medico' | 'secretaria') => {
     setError(null);
     try {
       await quickLogin(type);
@@ -99,6 +126,19 @@ export function LoginView() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-muted/40 relative overflow-hidden">
+      {/* Botón selector de tema */}
+      <div className="absolute top-4 right-4 z-20">
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-9 rounded-xl shadow-xs border-border/80 bg-background/80 backdrop-blur-xs"
+          onClick={toggleTheme}
+          title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+        >
+          {isDark ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
+        </Button>
+      </div>
+
       {/* Círculos decorativos de fondo */}
       <div className="absolute -top-32 -left-32 size-96 rounded-full bg-primary/10 blur-3xl" />
       <div className="absolute -bottom-32 -right-32 size-96 rounded-full bg-sky-500/10 blur-3xl" />
@@ -115,10 +155,16 @@ export function LoginView() {
         </CardHeader>
 
         <CardContent className="pt-6 space-y-6">
-          {error && (
-            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm flex items-center gap-2">
+          {(error || sessionExpiredMsg) && (
+            <div
+              className={`p-3 rounded-lg border text-sm flex items-center gap-2 ${
+                error
+                  ? 'bg-destructive/10 border-destructive/20 text-destructive'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
+              }`}
+            >
               <AlertCircle className="size-4 shrink-0" />
-              <span>{error}</span>
+              <span>{error || sessionExpiredMsg}</span>
             </div>
           )}
 
@@ -198,23 +244,23 @@ export function LoginView() {
               </div>
             </Button>
 
-            {/* Opción 2: Clínicas Clientes */}
+            {/* Opción 2: Clínica Del Sol (Roles separados) */}
             <p className="text-[11px] text-muted-foreground pt-1">
-              O entra como <strong>Cliente de Clínica</strong> para ver la experiencia médica aislada:
+              O entra con un <strong>Rol de Clínica (Centro Médico Del Sol)</strong>:
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="justify-start text-xs h-auto py-2 px-3 border-sky-500/30 hover:bg-sky-500/10 text-left"
+                className="justify-start text-xs h-auto py-2 px-2.5 border-sky-500/30 hover:bg-sky-500/10 text-left"
                 onClick={() => handleQuickLogin('carlos')}
                 disabled={isLoading}
               >
                 <UserCheck className="size-3.5 text-sky-600 mr-1.5 shrink-0" />
-                <div>
-                  <div className="font-semibold text-foreground">Dr. Carlos</div>
-                  <div className="text-[10px] text-muted-foreground">Centro Médico Del Sol</div>
+                <div className="min-w-0">
+                  <div className="font-semibold text-foreground text-[11px] truncate">Dr. Carlos (Admin)</div>
+                  <div className="text-[10px] text-muted-foreground truncate">Acceso total clínica</div>
                 </div>
               </Button>
 
@@ -222,14 +268,47 @@ export function LoginView() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="justify-start text-xs h-auto py-2 px-3 border-emerald-500/30 hover:bg-emerald-500/10 text-left"
+                className="justify-start text-xs h-auto py-2 px-2.5 border-blue-500/30 hover:bg-blue-500/10 text-left"
+                onClick={() => handleQuickLogin('medico')}
+                disabled={isLoading}
+              >
+                <UserCheck className="size-3.5 text-blue-600 mr-1.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-semibold text-foreground text-[11px] truncate">Dr. Roberto (Médico)</div>
+                  <div className="text-[10px] text-muted-foreground truncate">Historias y recetas</div>
+                </div>
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="justify-start text-xs h-auto py-2 px-2.5 border-purple-500/30 hover:bg-purple-500/10 text-left"
+                onClick={() => handleQuickLogin('secretaria')}
+                disabled={isLoading}
+              >
+                <UserCheck className="size-3.5 text-purple-600 mr-1.5 shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-semibold text-foreground text-[11px] truncate">María (Secretaria)</div>
+                  <div className="text-[10px] text-muted-foreground truncate">Citas y pacientes</div>
+                </div>
+              </Button>
+            </div>
+
+            {/* Opción 3: Otra clínica */}
+            <div className="pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full justify-start text-xs h-auto py-1.5 px-3 border-emerald-500/30 hover:bg-emerald-500/10 text-left"
                 onClick={() => handleQuickLogin('elena')}
                 disabled={isLoading}
               >
                 <UserCheck className="size-3.5 text-emerald-600 mr-1.5 shrink-0" />
-                <div>
-                  <div className="font-semibold text-foreground">Dra. Elena</div>
-                  <div className="text-[10px] text-muted-foreground">Clínica San Rafael</div>
+                <div className="flex items-center justify-between w-full">
+                  <span className="font-semibold text-foreground text-[11px]">Dra. Elena (Admin Clínica San Rafael)</span>
+                  <span className="text-[10px] text-muted-foreground">Multi-tenant aislado</span>
                 </div>
               </Button>
             </div>

@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Request,
 } from '@nestjs/common';
 import { PacientesService } from './pacientes.service.js';
 import { CrearPacienteDto } from './dto/crear-paciente.dto.js';
@@ -44,9 +45,16 @@ export class PacientesController {
   @Post()
   async crear(
     @ConsultorioActual() consultorioId: string,
+    @Request() req: any,
     @Body() dto: CrearPacienteDto,
   ) {
-    return this.pacientesService.crear(consultorioId, dto);
+    return this.pacientesService.crear(
+      consultorioId,
+      dto,
+      req.user,
+      req.ip,
+      req.headers?.['user-agent'],
+    );
   }
 
   /**
@@ -78,9 +86,17 @@ export class PacientesController {
   @Patch(':id')
   async actualizar(
     @ConsultorioActual() consultorioId: string,
+    @Request() req: any,
     @Param('id') id: string,
     @Body() dto: ActualizarPacienteDto,
   ) {
-    return this.pacientesService.actualizar(consultorioId, id, dto);
+    return this.pacientesService.actualizar(
+      consultorioId,
+      id,
+      dto,
+      req.user,
+      req.ip,
+      req.headers?.['user-agent'],
+    );
   }
 }

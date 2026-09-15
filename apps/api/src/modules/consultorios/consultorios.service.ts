@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Consultorio } from './entities/consultorio.entity.js';
 import { ActualizarConsultorioDto } from './dto/actualizar-consultorio.dto.js';
 import { ActualizarConfiguracionDto } from './dto/actualizar-configuracion.dto.js';
+import { AuditoriaService } from '../auditoria/auditoria.service.js';
 
 /**
  * Servicio de Consultorios (ConsultoriosService).
@@ -15,6 +16,7 @@ export class ConsultoriosService {
   constructor(
     @InjectRepository(Consultorio)
     private readonly consultorioRepo: Repository<Consultorio>,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
 
   /**
@@ -52,7 +54,11 @@ export class ConsultoriosService {
    * Actualiza la configuración de identidad, colores de marca, horarios de apertura,
    * módulos activos y diseño de recetas del consultorio.
    */
-  async actualizarConfiguracion(id: string, dto: ActualizarConfiguracionDto): Promise<Consultorio> {
+  async actualizarConfiguracion(
+    id: string,
+    dto: ActualizarConfiguracionDto,
+    usuarioSolicitante?: any,
+  ): Promise<Consultorio> {
     const consultorio = await this.obtenerPorId(id);
 
     if (dto.nombre !== undefined) consultorio.nombre = dto.nombre.trim();
@@ -76,6 +82,26 @@ export class ConsultoriosService {
       };
     }
 
-    return this.consultorioRepo.save(consultorio);
+    const guardado = await this.consultorioRepo.save(consultorio);
+
+    await this.auditoriaService.registrar({
+      consultorioId: id,
+      usuarioId: usuarioSolicitante?.id ?? null,
+      usuarioEmail: usuarioSolicitante?.email ?? 'admin',
+      usuarioNombre: `${usuarioSolicitante?.nombre ?? ''} ${usuarioSolicitante?.apellido ?? ''}`.trim() || 'Administrador',
+      modulo: 'CONFIGURACION',
+      accion: 'CONFIGURACION_ACTUALIZAR',
+      entidadTipo: 'Consultorio',
+      entidadId: id,
+      detalles: {
+        nombre: guardado.nombre,
+        telefono: guardado.telefono,
+        direccion: guardado.direccion,
+        colorPrimario: guardado.colorPrimario,
+        modulosActivos: guardado.modulosActivos,
+      },
+    });
+
+    return guardado;
   }
 }

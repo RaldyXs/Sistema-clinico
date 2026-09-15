@@ -35,6 +35,14 @@ export class ConsultasController {
   constructor(private readonly consultasService: ConsultasService) {}
 
   /**
+   * Lista las consultas clínicas registradas en el consultorio del usuario autenticado.
+   */
+  @Get()
+  async listar(@ConsultorioActual() consultorioId: string) {
+    return this.consultasService.listar(consultorioId);
+  }
+
+  /**
    * Registra una nueva consulta clínica en el consultorio del usuario autenticado.
    *
    * Realiza validaciones automáticas:

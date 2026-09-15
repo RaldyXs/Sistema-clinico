@@ -23,9 +23,11 @@ interface AuthContextType {
   user: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  sessionExpiredMsg: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  quickLogin: (userType: 'carlos' | 'elena' | 'superadmin') => Promise<void>;
+  quickLogin: (userType: 'carlos' | 'elena' | 'superadmin' | 'medico' | 'secretaria') => Promise<void>;
+  clearSessionExpiredMsg: () => void;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -36,12 +38,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const cached = localStorage.getItem('usuario_clinico');
     return cached ? JSON.parse(cached) : null;
   });
+  const [sessionExpiredMsg, setSessionExpiredMsg] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
+
   const logout = React.useCallback(() => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('token_clinico');
     localStorage.removeItem('usuario_clinico');
+  }, []);
+
+  const clearSessionExpiredMsg = React.useCallback(() => {
+    setSessionExpiredMsg(null);
   }, []);
 
   const cargarPerfil = React.useCallback(async (authToken: string) => {
@@ -64,19 +72,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(perfil);
       localStorage.setItem('usuario_clinico', JSON.stringify(perfil));
     } catch {
-      // Si el token expiró
+      // Si el token expiró o es inválido, cerrar sesión limpiamente
       logout();
+      setSessionExpiredMsg('Tu sesión ha expirado por seguridad (límite de 24 horas). Por favor, inicia sesión nuevamente.');
     }
   }, [logout]);
 
+  // Escuchar eventos globales de 401 disparados por apiRequest
   React.useEffect(() => {
-    if (token && !user) {
+    const handleAuthExpired = (event: any) => {
+      logout();
+      setSessionExpiredMsg(
+        event?.detail?.message || 'Tu sesión ha expirado por seguridad. Por favor, inicia sesión nuevamente.',
+      );
+    };
+
+    window.addEventListener('auth:expired', handleAuthExpired);
+    return () => {
+      window.removeEventListener('auth:expired', handleAuthExpired);
+    };
+  }, [logout]);
+
+  // Verificar la validez del token en el arranque de la aplicación
+  React.useEffect(() => {
+    if (token) {
       cargarPerfil(token);
     }
-  }, [token, user, cargarPerfil]);
+  }, [token, cargarPerfil]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
+    setSessionExpiredMsg(null);
     try {
       const res = await api.post('/auth/login', { email, password });
       if (!res.accessToken) throw new Error('Token no recibido');
@@ -90,11 +116,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const quickLogin = async (userType: 'carlos' | 'elena' | 'superadmin') => {
+  const quickLogin = async (userType: 'carlos' | 'elena' | 'superadmin' | 'medico' | 'secretaria') => {
+    setSessionExpiredMsg(null);
     if (userType === 'superadmin') {
       await login('superadmin@saas.com', 'SuperAdmin1234!');
     } else if (userType === 'carlos') {
       await login('dr.carlos@test.com', 'Test1234!');
+    } else if (userType === 'medico') {
+      await login('medico@test.com', 'Test1234!');
+    } else if (userType === 'secretaria') {
+      await login('secretaria@test.com', 'Test1234!');
     } else {
       await login('elena.rios@test2.com', 'Test1234!');
     }
@@ -107,9 +138,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isAuthenticated: !!token,
         isLoading,
+        sessionExpiredMsg,
         login,
         logout,
         quickLogin,
+        clearSessionExpiredMsg,
       }}
     >
       {children}
