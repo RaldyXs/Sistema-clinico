@@ -263,6 +263,29 @@ export class RecetasPdfService {
     const yFirma = doc.page.height - 135;
     const xFirma = doc.page.width - doc.page.margins.right - 220;
 
+    // Si el médico tiene firma digital configurada (base64 o archivo)
+    if (receta.profesional?.firmaDigitalUrl) {
+      try {
+        const rawFirma = receta.profesional.firmaDigitalUrl;
+        let imgBuffer: Buffer | null = null;
+        if (rawFirma.startsWith('data:image/')) {
+          const base64Data = rawFirma.split(',')[1];
+          if (base64Data) {
+            imgBuffer = Buffer.from(base64Data, 'base64');
+          }
+        }
+        if (imgBuffer) {
+          doc.image(imgBuffer, xFirma + 25, yFirma - 48, {
+            fit: [150, 45],
+            align: 'center',
+            valign: 'center',
+          });
+        }
+      } catch {
+        // En caso de formato no compatible, continúa con el trazado estándar
+      }
+    }
+
     doc.moveTo(xFirma, yFirma).lineTo(xFirma + 200, yFirma).lineWidth(0.8).strokeColor('#94a3b8').stroke();
 
     const medicoFirma = [receta.profesional?.nombre, receta.profesional?.apellido]
@@ -275,11 +298,20 @@ export class RecetasPdfService {
       align: 'center',
     });
 
+    const especialidadTexto = receta.profesional?.especialidad ? `${receta.profesional.especialidad}` : 'Firma y Sello Profesional';
     doc.font('Helvetica').fontSize(8).fillColor(mutedColor);
-    doc.text('Firma y Sello Profesional', xFirma, yFirma + 17, {
+    doc.text(especialidadTexto, xFirma, yFirma + 17, {
       width: 200,
       align: 'center',
     });
+
+    if (receta.profesional?.matriculaProfesional) {
+      doc.font('Helvetica').fontSize(7.5).fillColor(primaryColor);
+      doc.text(`Mat. Profesional: ${receta.profesional.matriculaProfesional}`, xFirma, yFirma + 28, {
+        width: 200,
+        align: 'center',
+      });
+    }
 
     // ─── 8. PIE DE PÁGINA MÉDICO-LEGAL ─────────────────────────────────────────
     const yPie = doc.page.height - 55;

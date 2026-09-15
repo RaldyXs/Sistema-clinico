@@ -278,6 +278,7 @@ export class UsuariosService {
     if (dto.especialidad !== undefined) usuario.especialidad = dto.especialidad ? dto.especialidad.trim() : null;
     if (dto.matriculaProfesional !== undefined) usuario.matriculaProfesional = dto.matriculaProfesional ? dto.matriculaProfesional.trim() : null;
     if (dto.telefono !== undefined) usuario.telefono = dto.telefono ? dto.telefono.trim() : null;
+    if (dto.firmaDigitalUrl !== undefined) usuario.firmaDigitalUrl = dto.firmaDigitalUrl;
     if (dto.activo !== undefined) usuario.activo = dto.activo;
 
     if (dto.password) {

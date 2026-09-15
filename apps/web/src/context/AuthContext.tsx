@@ -9,6 +9,7 @@ export interface UserProfile {
   rolCodigo?: 'SUPERADMIN' | 'ADMIN' | 'MEDICO' | 'RECEPCION' | string;
   especialidad?: string | null;
   matriculaProfesional?: string | null;
+  firmaDigitalUrl?: string | null;
   twoFactorEnabled?: boolean;
   consultorioId: string;
   consultorio?: {
@@ -28,6 +29,7 @@ interface AuthContextType {
   logout: () => void;
   quickLogin: (userType: 'carlos' | 'elena' | 'superadmin' | 'medico' | 'secretaria') => Promise<void>;
   clearSessionExpiredMsg: () => void;
+  actualizarPerfilLocal: (parcial: Partial<UserProfile>) => void;
 }
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
@@ -66,6 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           'MEDICO',
         especialidad: data.especialidad,
         matriculaProfesional: data.matriculaProfesional,
+        firmaDigitalUrl: data.firmaDigitalUrl,
         consultorioId: data.consultorioId,
         consultorio: data.consultorio,
       };
@@ -77,6 +80,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSessionExpiredMsg('Tu sesión ha expirado por seguridad (límite de 24 horas). Por favor, inicia sesión nuevamente.');
     }
   }, [logout]);
+
+  const actualizarPerfilLocal = React.useCallback((parcial: Partial<UserProfile>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const actualizado = { ...prev, ...parcial };
+      localStorage.setItem('usuario_clinico', JSON.stringify(actualizado));
+      return actualizado;
+    });
+  }, []);
 
   // Escuchar eventos globales de 401 disparados por apiRequest
   React.useEffect(() => {
@@ -143,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         quickLogin,
         clearSessionExpiredMsg,
+        actualizarPerfilLocal,
       }}
     >
       {children}

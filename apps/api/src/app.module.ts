@@ -18,6 +18,7 @@ import { ReportesModule } from './modules/reportes/reportes.module.js';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module.js';
 import { BackupsModule } from './modules/backups/backups.module.js';
 import { SaasModule } from './modules/saas/saas.module.js';
+import { CajaModule } from './modules/caja/caja.module.js';
 
 /**
  * AppModule es el módulo raíz de la aplicación backend.
@@ -86,6 +87,9 @@ import { SaasModule } from './modules/saas/saas.module.js';
 
     // 17. Módulo de Planes, Suscripciones, Onboarding y SuperAdmin SaaS (Fase 10)
     SaasModule,
+
+    // 18. Módulo Financiero, Caja Diaria y Cobros (Fase 11)
+    CajaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

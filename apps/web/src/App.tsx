@@ -12,6 +12,7 @@ import { ReportesView } from '@/views/ReportesView';
 import { ConfiguracionView } from '@/views/ConfiguracionView';
 import { SeguridadView } from '@/views/SeguridadView';
 import { SaasAdminView } from '@/views/SaasAdminView';
+import { CajaView } from '@/views/CajaView';
 import { RefreshCw } from 'lucide-react';
 
 function MainRouter() {
@@ -43,14 +44,14 @@ function MainRouter() {
         cambiarTab('saas');
       }
     } else if (isRecepcion) {
-      // Recepción / Secretaría SOLO tiene acceso a 'citas' y 'pacientes'
-      if (currentTab !== 'citas' && currentTab !== 'pacientes') {
+      // Recepción / Secretaría tiene acceso a 'citas', 'pacientes' y 'caja'
+      if (currentTab !== 'citas' && currentTab !== 'pacientes' && currentTab !== 'caja') {
         cambiarTab('citas');
       }
     } else if (isMedico) {
       // Médico asistencial: dashboard, pacientes, citas, consultas, recetas, ginecologia
-      // NO tiene acceso a configuración, seguridad, saas ni reportes contables
-      if (currentTab === 'configuracion' || currentTab === 'seguridad' || currentTab === 'saas' || currentTab === 'reportes') {
+      // NO tiene acceso a configuración, seguridad, saas, caja ni reportes contables
+      if (currentTab === 'configuracion' || currentTab === 'seguridad' || currentTab === 'saas' || currentTab === 'reportes' || currentTab === 'caja') {
         cambiarTab('dashboard');
       }
     } else if (isAdmin) {
@@ -79,6 +80,7 @@ function MainRouter() {
       {currentTab === 'dashboard' && !isRecepcion && <DashboardView onNavigate={(tab) => cambiarTab(tab as NavTab)} />}
       {currentTab === 'pacientes' && <PacientesView />}
       {currentTab === 'citas' && <CitasView />}
+      {currentTab === 'caja' && (isRecepcion || isAdmin) && <CajaView />}
       {currentTab === 'consultas' && !isRecepcion && <ConsultasView />}
       {currentTab === 'recetas' && !isRecepcion && <RecetasView />}
       {currentTab === 'ginecologia' && !isRecepcion && <GinecologiaView />}

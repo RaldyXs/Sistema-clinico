@@ -18,6 +18,11 @@ import {
   Lock,
   Pencil,
   CheckCircle2,
+  Upload,
+  Download,
+  Trash2,
+  FolderOpen,
+  Paperclip,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -32,6 +37,19 @@ export function PacientesView() {
   const [historiaGinecologica, setHistoriaGinecologica] = React.useState<any | null>(null);
   const [embarazoActivo, setEmbarazoActivo] = React.useState<any | null>(null);
   const [loadingFicha, setLoadingFicha] = React.useState(false);
+
+  // Estados para repositorio de documentos y estudios
+  const [tabFicha, setTabFicha] = React.useState<'clinica' | 'documentos'>('clinica');
+  const [documentosPaciente, setDocumentosPaciente] = React.useState<any[]>([]);
+  const [cargandoDocs, setCargandoDocs] = React.useState(false);
+  const [archivoDoc, setArchivoDoc] = React.useState<File | null>(null);
+  const [formDoc, setFormDoc] = React.useState({
+    categoria: 'LABORATORIO',
+    descripcion: '',
+    fechaDocumento: new Date().toISOString().slice(0, 10),
+  });
+  const [subiendoDoc, setSubiendoDoc] = React.useState(false);
+  const [descargandoDocId, setDescargandoDocId] = React.useState<string | null>(null);
 
   // Formulario nuevo paciente
   const [form, setForm] = React.useState({
@@ -98,23 +116,132 @@ export function PacientesView() {
   const verFichaPaciente = async (p: any) => {
     setPacienteSeleccionado(p);
     setLoadingFicha(true);
+    setTabFicha('clinica');
     setHistoriaGinecologica(null);
     setEmbarazoActivo(null);
+    setDocumentosPaciente([]);
+    setArchivoDoc(null);
+
+    const promises: Promise<any>[] = [
+      cargarDocumentosPaciente(p.id),
+    ];
 
     if (!isRecepcion) {
-      try {
-        // Intentamos cargar la historia ginecológica y embarazo activo si aplica
-        const [hg, emb] = await Promise.all([
-          api.get(`/ginecologia/pacientes/${p.id}/historia-ginecologica`).catch(() => null),
-          api.get(`/ginecologia/embarazos/paciente/${p.id}/activo`).catch(() => null),
-        ]);
-        setHistoriaGinecologica(hg);
-        setEmbarazoActivo(emb);
-      } catch {
-        // Ignorar si no tiene historia ginecológica
-      }
+      promises.push(
+        api.get(`/ginecologia/pacientes/${p.id}/historia-ginecologica`)
+          .then((hg) => setHistoriaGinecologica(hg))
+          .catch(() => {}),
+        api.get(`/ginecologia/embarazos/paciente/${p.id}/activo`)
+          .then((emb) => setEmbarazoActivo(emb))
+          .catch(() => {}),
+      );
     }
-    setLoadingFicha(false);
+
+    try {
+      await Promise.all(promises);
+    } catch {
+      // Ignorar errores no críticos
+    } finally {
+      setLoadingFicha(false);
+    }
+  };
+
+  const cargarDocumentosPaciente = async (pacienteId: string) => {
+    setCargandoDocs(true);
+    try {
+      const data = await api.get(`/documentos/paciente/${pacienteId}`);
+      setDocumentosPaciente(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error al cargar documentos:', err);
+      setDocumentosPaciente([]);
+    } finally {
+      setCargandoDocs(false);
+    }
+  };
+
+  const handleSubirDocumento = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!archivoDoc || !pacienteSeleccionado) {
+      alert('Por favor selecciona un archivo para adjuntar');
+      return;
+    }
+    setSubiendoDoc(true);
+    try {
+      const fd = new FormData();
+      fd.append('archivo', archivoDoc);
+      fd.append('pacienteId', pacienteSeleccionado.id);
+      fd.append('categoria', formDoc.categoria);
+      if (formDoc.descripcion?.trim()) {
+        fd.append('descripcion', formDoc.descripcion.trim());
+      }
+      if (formDoc.fechaDocumento) {
+        fd.append('fechaDocumento', formDoc.fechaDocumento);
+      }
+
+      await api.upload('/documentos/subir', fd);
+      setArchivoDoc(null);
+      setFormDoc({
+        categoria: 'LABORATORIO',
+        descripcion: '',
+        fechaDocumento: new Date().toISOString().slice(0, 10),
+      });
+      const fileInput = document.getElementById('archivo-estudio-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+
+      await cargarDocumentosPaciente(pacienteSeleccionado.id);
+    } catch (err: any) {
+      alert(err.message || 'Error al subir documento');
+    } finally {
+      setSubiendoDoc(false);
+    }
+  };
+
+  const handleDescargarDocumento = async (doc: any) => {
+    setDescargandoDocId(doc.id);
+    try {
+      await api.downloadBlob(
+        `/documentos/${doc.id}/descargar`,
+        doc.nombreOriginal || `Documento_${doc.id}`,
+      );
+    } catch (err: any) {
+      alert(err.message || 'Error al descargar documento');
+    } finally {
+      setDescargandoDocId(null);
+    }
+  };
+
+  const handleEliminarDocumento = async (docId: string, nombre: string) => {
+    if (!confirm(`¿Deseas eliminar el documento "${nombre}" del expediente?`)) return;
+    try {
+      await api.delete(`/documentos/${docId}`);
+      if (pacienteSeleccionado) {
+        await cargarDocumentosPaciente(pacienteSeleccionado.id);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error al eliminar documento');
+    }
+  };
+
+  const getBadgeCategoriaDoc = (cat: string) => {
+    switch (cat) {
+      case 'LABORATORIO':
+        return <Badge variant="success">Laboratorio</Badge>;
+      case 'IMAGENOLOGIA':
+        return <Badge variant="info">Imagenología</Badge>;
+      case 'INFORME_EXTERNO':
+        return <Badge variant="warning">Informe Externo</Badge>;
+      case 'CONSENTIMIENTO':
+        return <Badge variant="secondary">Consentimiento</Badge>;
+      default:
+        return <Badge variant="outline">{cat || 'Otro'}</Badge>;
+    }
+  };
+
+  const formatTamanioBytes = (bytes: number) => {
+    if (!bytes) return '0 B';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const handleCrearPaciente = async (e: React.FormEvent) => {
@@ -409,13 +536,44 @@ export function PacientesView() {
               </div>
             </CardHeader>
 
+            {/* Selector de Pestañas en Ficha 360 */}
+            <div className="px-6 pt-2 border-b border-border flex items-center gap-2 bg-muted/20">
+              <button
+                type="button"
+                onClick={() => setTabFicha('clinica')}
+                className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  tabFicha === 'clinica'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <HeartPulse className="size-3.5" />
+                Historial Clínico & Ginecológico
+              </button>
+              <button
+                type="button"
+                onClick={() => setTabFicha('documentos')}
+                className={`pb-2.5 px-3 text-xs font-semibold border-b-2 transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  tabFicha === 'documentos'
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <FolderOpen className="size-3.5" />
+                Estudios & Documentos
+                <span className="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-primary/10 text-primary font-bold">
+                  {documentosPaciente.length}
+                </span>
+              </button>
+            </div>
+
             <CardContent className="p-6 space-y-6 overflow-y-auto flex-1">
               {loadingFicha ? (
                 <div className="py-12 text-center text-muted-foreground">
                   <RefreshCw className="size-6 animate-spin mx-auto mb-2 text-primary" />
                   Cargando expediente clínico...
                 </div>
-              ) : (
+              ) : tabFicha === 'clinica' ? (
                 <>
                   {/* Datos generales */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-lg bg-muted/30 border border-border/60 text-xs">
@@ -521,6 +679,181 @@ export function PacientesView() {
                     )}
                   </div>
                 </>
+              ) : (
+                /* PESTAÑA: ESTUDIOS Y DOCUMENTOS ADJUNTOS */
+                <div className="space-y-6">
+                  {/* Formulario para adjuntar documento */}
+                  <div className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Upload className="size-4 text-primary" />
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-primary">
+                        Adjuntar Nuevo Estudio o Archivo Clínico
+                      </h4>
+                    </div>
+
+                    <form onSubmit={handleSubirDocumento} className="space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Categoría del Estudio *</label>
+                          <select
+                            className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs shadow-xs outline-none focus:border-primary"
+                            value={formDoc.categoria}
+                            onChange={(e) => setFormDoc({ ...formDoc, categoria: e.target.value })}
+                          >
+                            <option value="LABORATORIO">Laboratorio / Análisis de Sangre</option>
+                            <option value="IMAGENOLOGIA">Imagenología (Ecografía, Rx, TAC, RMN)</option>
+                            <option value="INFORME_EXTERNO">Informe Externo / Epicrisis</option>
+                            <option value="CONSENTIMIENTO">Consentimiento Informado Firmado</option>
+                            <option value="OTRO">Otro Documento / Certificado</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold text-muted-foreground">Fecha del Estudio</label>
+                          <Input
+                            type="date"
+                            className="h-9 text-xs"
+                            value={formDoc.fechaDocumento}
+                            onChange={(e) => setFormDoc({ ...formDoc, fechaDocumento: e.target.value })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-muted-foreground">Título / Descripción del Estudio</label>
+                        <Input
+                          type="text"
+                          placeholder="Ej. Hemograma Completo, Ecografía Obstétrica 20 semanas, Biopsia..."
+                          className="h-9 text-xs"
+                          value={formDoc.descripcion}
+                          onChange={(e) => setFormDoc({ ...formDoc, descripcion: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+                        <div className="flex-1">
+                          <input
+                            type="file"
+                            id="archivo-estudio-input"
+                            accept=".pdf,image/*,.doc,.docx,.txt"
+                            required
+                            onChange={(e) => setArchivoDoc(e.target.files?.[0] || null)}
+                            className="text-xs file:mr-2 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-primary-foreground hover:file:opacity-90 cursor-pointer text-muted-foreground"
+                          />
+                        </div>
+
+                        <Button type="submit" size="sm" disabled={subiendoDoc || !archivoDoc} className="cursor-pointer gap-1 text-xs">
+                          {subiendoDoc ? (
+                            <>
+                              <RefreshCw className="size-3.5 animate-spin" />
+                              Subiendo...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="size-3.5" />
+                              Adjuntar al Expediente
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Listado de estudios adjuntos */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Paperclip className="size-4 text-primary" />
+                        Estudios y Archivos en Expediente ({documentosPaciente.length})
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={() => pacienteSeleccionado && cargarDocumentosPaciente(pacienteSeleccionado.id)}
+                      >
+                        <RefreshCw className={`size-3 ${cargandoDocs ? 'animate-spin' : ''}`} />
+                      </Button>
+                    </div>
+
+                    {cargandoDocs && documentosPaciente.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-muted-foreground">
+                        <RefreshCw className="size-5 animate-spin mx-auto mb-2 text-primary" />
+                        Cargando documentos adjuntos...
+                      </div>
+                    ) : documentosPaciente.length === 0 ? (
+                      <div className="p-8 text-center border-2 border-dashed border-border rounded-xl bg-muted/10 space-y-2">
+                        <FolderOpen className="size-8 mx-auto text-muted-foreground/50" />
+                        <p className="text-xs text-muted-foreground font-medium">
+                          No hay estudios o documentos adjuntos para este paciente.
+                        </p>
+                        <p className="text-[11px] text-muted-foreground/80 max-w-sm mx-auto">
+                          Utiliza el formulario superior para adjuntar análisis de laboratorio, ecografías, informes externos o consentimientos firmados.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-border border border-border rounded-xl overflow-hidden bg-card shadow-xs">
+                        {documentosPaciente.map((doc) => (
+                          <div
+                            key={doc.id}
+                            className="p-3.5 hover:bg-muted/30 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {getBadgeCategoriaDoc(doc.categoria)}
+                                <span className="font-semibold text-foreground">
+                                  {doc.descripcion || doc.nombreOriginal}
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-muted-foreground flex items-center gap-2">
+                                <span className="font-mono">{doc.nombreOriginal}</span>
+                                <span>•</span>
+                                <span>{formatTamanioBytes(doc.tamanoBytes)}</span>
+                                <span>•</span>
+                                <span>
+                                  {doc.fechaDocumento || new Date(doc.createdAt).toLocaleDateString()}
+                                </span>
+                                {doc.profesional && (
+                                  <>
+                                    <span>•</span>
+                                    <span>Subido por: Dr(a). {doc.profesional.nombre} {doc.profesional.apellido || ''}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs gap-1 cursor-pointer"
+                                onClick={() => handleDescargarDocumento(doc)}
+                                disabled={descargandoDocId === doc.id}
+                              >
+                                {descargandoDocId === doc.id ? (
+                                  <RefreshCw className="size-3 animate-spin" />
+                                ) : (
+                                  <Download className="size-3 text-primary" />
+                                )}
+                                Descargar / Ver
+                              </Button>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7 text-destructive hover:bg-destructive/10 cursor-pointer"
+                                onClick={() => handleEliminarDocumento(doc.id, doc.descripcion || doc.nombreOriginal)}
+                                title="Eliminar archivo adjunto"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>

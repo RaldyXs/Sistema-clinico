@@ -50,6 +50,10 @@ export class ActualizarUsuarioDto {
   telefono?: string;
 
   @IsOptional()
+  @IsString()
+  firmaDigitalUrl?: string;
+
+  @IsOptional()
   @IsBoolean()
   activo?: boolean;
 }

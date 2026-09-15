@@ -20,12 +20,14 @@ import {
   UserCheck,
   ShieldCheck,
   Globe2,
+  Banknote,
 } from 'lucide-react';
 
 export type NavTab =
   | 'dashboard'
   | 'pacientes'
   | 'citas'
+  | 'caja'
   | 'consultas'
   | 'recetas'
   | 'ginecologia'
@@ -95,6 +97,7 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
       return [
         { id: 'citas', label: 'Agenda de Citas', icon: <Calendar className="size-4" /> },
         { id: 'pacientes', label: 'Pacientes', icon: <Users className="size-4" /> },
+        { id: 'caja', label: 'Caja & Cobros', icon: <Banknote className="size-4" /> },
       ];
     }
 
@@ -114,6 +117,7 @@ export function AppLayout({ currentTab, onSelectTab, children }: AppLayoutProps)
       { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="size-4" /> },
       { id: 'pacientes', label: 'Pacientes', icon: <Users className="size-4" /> },
       { id: 'citas', label: 'Agenda de Citas', icon: <Calendar className="size-4" /> },
+      { id: 'caja', label: 'Caja & Cobros', icon: <Banknote className="size-4" /> },
       { id: 'consultas', label: 'Consultas Médicas', icon: <Stethoscope className="size-4" /> },
       { id: 'recetas', label: 'Recetas y PDF', icon: <FileText className="size-4" /> },
       { id: 'ginecologia', label: 'Ginecología & Obs.', icon: <Baby className="size-4" /> },

@@ -62,6 +62,9 @@ export class Usuario {
   @Column({ type: 'varchar', length: 50, nullable: true })
   telefono: string | null;
 
+  @Column({ name: 'firma_digital_url', type: 'text', nullable: true })
+  firmaDigitalUrl: string | null;
+
   @Column({ name: 'rol_id', type: 'uuid', nullable: true })
   rolId: string | null;
 

@@ -12,14 +12,140 @@ import {
   X,
   Pill,
   AlertCircle,
+  PenTool,
+  CheckCircle2,
+  Upload,
+  Eraser,
+  FileCheck,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 export function RecetasView() {
+  const { user, actualizarPerfilLocal } = useAuth();
   const [recetas, setRecetas] = React.useState<any[]>([]);
   const [pacientes, setPacientes] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [showModalCrear, setShowModalCrear] = React.useState(false);
   const [descargandoId, setDescargandoId] = React.useState<string | null>(null);
+
+  // Firma y sello digital del profesional
+  const [showModalFirma, setShowModalFirma] = React.useState(false);
+  const [firmaDataUrl, setFirmaDataUrl] = React.useState<string>(user?.firmaDigitalUrl || '');
+  const [matricula, setMatricula] = React.useState<string>(user?.matriculaProfesional || '');
+  const [especialidad, setEspecialidad] = React.useState<string>(user?.especialidad || '');
+  const [guardandoFirma, setGuardandoFirma] = React.useState(false);
+  const [firmaMsg, setFirmaMsg] = React.useState<string | null>(null);
+
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = React.useState(false);
+
+  const abrirModalFirma = () => {
+    setFirmaDataUrl(user?.firmaDigitalUrl || '');
+    setMatricula(user?.matriculaProfesional || '');
+    setEspecialidad(user?.especialidad || '');
+    setFirmaMsg(null);
+    setShowModalFirma(true);
+  };
+
+  const limpiarCanvas = () => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+    setFirmaDataUrl('');
+  };
+
+  const handleSubirImagenFirma = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      alert('La imagen no debe superar los 2 MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setFirmaDataUrl(base64);
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+          ctx?.clearRect(0, 0, canvas.width, canvas.height);
+          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = base64;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    setIsDrawing(true);
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'clientX' in e ? e.clientX : e.touches[0].clientX;
+    const clientY = 'clientY' in e ? e.clientY : e.touches[0].clientY;
+    ctx.beginPath();
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#0f172a';
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'clientX' in e ? e.clientX : e.touches[0].clientX;
+    const clientY = 'clientY' in e ? e.clientY : e.touches[0].clientY;
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      setFirmaDataUrl(canvas.toDataURL('image/png'));
+    }
+  };
+
+  const handleGuardarFirma = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    setGuardandoFirma(true);
+    setFirmaMsg(null);
+    try {
+      await api.patch(`/usuarios/${user.id}`, {
+        firmaDigitalUrl: firmaDataUrl || null,
+        matriculaProfesional: matricula.trim() || null,
+        especialidad: especialidad.trim() || null,
+      });
+      actualizarPerfilLocal({
+        firmaDigitalUrl: firmaDataUrl || null,
+        matriculaProfesional: matricula.trim() || null,
+        especialidad: especialidad.trim() || null,
+      });
+      setFirmaMsg('¡Firma y matrícula guardadas con éxito! Tus recetas emitidas se sellarán automáticamente.');
+      setTimeout(() => setShowModalFirma(false), 1600);
+    } catch (err: any) {
+      alert(err.message || 'Error al guardar firma');
+    } finally {
+      setGuardandoFirma(false);
+    }
+  };
 
   // Formulario nueva receta
   const [pacienteId, setPacienteId] = React.useState('');
@@ -107,7 +233,7 @@ export function RecetasView() {
       await api.post('/recetas', {
         pacienteId,
         medicamentos,
-        instruccionesGenerales,
+        indicacionesGenerales: instruccionesGenerales,
       });
 
       setShowModalCrear(false);
@@ -128,11 +254,47 @@ export function RecetasView() {
             Emisión con numeración correlativa por clínica y descarga de PDFs oficiales
           </p>
         </div>
-        <Button onClick={() => setShowModalCrear(true)}>
-          <Plus className="size-4 mr-2" />
-          Emitir Nueva Receta
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={abrirModalFirma} className="cursor-pointer">
+            <PenTool className="size-4 mr-2 text-primary" />
+            {user?.firmaDigitalUrl ? 'Mi Firma y Sello Digital' : 'Configurar Firma y Sello'}
+          </Button>
+          <Button onClick={() => setShowModalCrear(true)} className="cursor-pointer">
+            <Plus className="size-4 mr-2" />
+            Emitir Nueva Receta
+          </Button>
+        </div>
       </div>
+
+      {/* Banner informativo de firma digital */}
+      {user?.firmaDigitalUrl ? (
+        <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs text-emerald-800 dark:text-emerald-300">
+          <div className="flex items-center gap-2.5">
+            <FileCheck className="size-4 text-emerald-600 shrink-0" />
+            <span>
+              <strong>Firma y Sello Oficial Activos:</strong> Tus recetas se emitirán con tu rúbrica digitalizada, M.P. <strong>{user.matriculaProfesional || 'Sin mat.'}</strong> y especialidad ({user.especialidad || 'General'}).
+            </span>
+          </div>
+          <button
+            onClick={abrirModalFirma}
+            className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 underline hover:no-underline cursor-pointer"
+          >
+            Actualizar
+          </button>
+        </div>
+      ) : (
+        <div className="p-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-between text-xs text-amber-800 dark:text-amber-300">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="size-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Firma Digital pendiente:</strong> Aún no has digitalizado tu rúbrica o número de matrícula. Tus recetas saldrán con línea de firma en blanco.
+            </span>
+          </div>
+          <Button size="sm" variant="outline" onClick={abrirModalFirma} className="h-7 text-xs border-amber-500/40 text-amber-700 dark:text-amber-300 cursor-pointer">
+            <PenTool className="size-3 mr-1" /> Configurar Ahora
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -345,6 +507,154 @@ export function RecetasView() {
                 </Button>
                 <Button type="submit" disabled={guardando}>
                   {guardando ? 'Generando Receta y PDF...' : 'Emitir y Sellar Receta'}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL CONFIGURAR FIRMA Y SELLO DIGITAL */}
+      {showModalFirma && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <Card className="max-w-lg w-full shadow-2xl border-border">
+            <div className="p-5 border-b border-border flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <PenTool className="size-5 text-primary" />
+                  Firma y Sello Digital del Profesional
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Se estampará automáticamente en el pie de página de cada receta médica en PDF
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowModalFirma(false)}>
+                <X className="size-5" />
+              </Button>
+            </div>
+
+            <form onSubmit={handleGuardarFirma}>
+              <div className="p-5 space-y-4">
+                {firmaMsg && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs flex items-center gap-2">
+                    <CheckCircle2 className="size-4 shrink-0" />
+                    <span>{firmaMsg}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Especialidad Médica</label>
+                    <Input
+                      type="text"
+                      placeholder="Ej: Medicina General, Cardiología..."
+                      value={especialidad}
+                      onChange={(e) => setEspecialidad(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Matrícula Profesional (M.P. / M.N.)</label>
+                    <Input
+                      type="text"
+                      placeholder="Ej: M.P. 12345 / M.N. 98765"
+                      value={matricula}
+                      onChange={(e) => setMatricula(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Área de Dibujo / Carga de Firma */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      Trazo de Rúbrica o Firma Gráfica
+                    </label>
+                    <button
+                      type="button"
+                      onClick={limpiarCanvas}
+                      className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eraser className="size-3.5" /> Limpiar trazo
+                    </button>
+                  </div>
+
+                  <div className="border-2 border-dashed border-border rounded-xl bg-slate-50 dark:bg-slate-900/50 p-2 text-center flex flex-col items-center justify-center">
+                    <canvas
+                      ref={canvasRef}
+                      width={440}
+                      height={140}
+                      onMouseDown={startDrawing}
+                      onMouseMove={draw}
+                      onMouseUp={stopDrawing}
+                      onMouseLeave={stopDrawing}
+                      onTouchStart={startDrawing}
+                      onTouchMove={draw}
+                      onTouchEnd={stopDrawing}
+                      className="cursor-crosshair bg-white rounded-lg shadow-inner w-full max-w-[440px] h-[140px] touch-none"
+                    />
+                    <p className="text-[11px] text-muted-foreground mt-2">
+                      Firma con tu mouse, touchpad o pantalla táctil dentro del recuadro blanco
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-[11px] text-muted-foreground">O sube un archivo:</span>
+                    <label className="text-xs text-primary font-medium hover:underline cursor-pointer flex items-center gap-1">
+                      <Upload className="size-3.5" /> Cargar imagen PNG transparente / JPG
+                      <input
+                        type="file"
+                        accept="image/png, image/jpeg"
+                        className="hidden"
+                        onChange={handleSubirImagenFirma}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Previsualización del Sello Médico */}
+                <div className="p-3 bg-muted/40 rounded-xl border border-border">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground block mb-2">
+                    Vista previa de tu estampilla en Recetas PDF
+                  </span>
+                  <div className="flex flex-col items-center justify-center text-center p-3 bg-white dark:bg-slate-950 rounded-lg border border-border/80 shadow-xs">
+                    {firmaDataUrl ? (
+                      <img
+                        src={firmaDataUrl}
+                        alt="Firma Digital"
+                        className="h-16 max-w-[180px] object-contain mb-1"
+                      />
+                    ) : (
+                      <div className="h-16 flex items-center justify-center text-xs text-muted-foreground italic">
+                        (Sin trazo de firma)
+                      </div>
+                    )}
+                    <div className="w-48 border-t border-slate-400 dark:border-slate-600 mt-1 mb-1"></div>
+                    <div className="font-semibold text-xs text-foreground">
+                      Dr. {user?.nombre} {user?.apellido || ''}
+                    </div>
+                    <div className="text-[11px] text-muted-foreground font-mono">
+                      {matricula ? `M.P.: ${matricula}` : 'M.P.: Sin registrar'} {especialidad ? `• ${especialidad}` : ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-border flex items-center justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowModalFirma(false)} disabled={guardandoFirma}>
+                  Cerrar
+                </Button>
+                <Button type="submit" disabled={guardandoFirma} className="cursor-pointer">
+                  {guardandoFirma ? (
+                    <>
+                      <RefreshCw className="size-4 mr-2 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="size-4 mr-2" />
+                      Guardar Firma y Sello Oficial
+                    </>
+                  )}
                 </Button>
               </div>
             </form>

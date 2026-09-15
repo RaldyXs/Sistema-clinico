@@ -25,9 +25,12 @@ export async function apiRequest<T = any>(
   const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
   };
+
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const storedToken = token ?? localStorage.getItem('token_clinico');
   if (storedToken) {
@@ -43,9 +46,16 @@ export async function apiRequest<T = any>(
     return {} as T;
   }
 
-  // Si es un archivo binario o PDF
+  // Si es un archivo binario, PDF o petición de descarga
   const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/pdf')) {
+  if (
+    endpoint.includes('/descargar') ||
+    endpoint.includes('/pdf') ||
+    (contentType &&
+      (contentType.includes('application/pdf') ||
+        contentType.includes('application/octet-stream') ||
+        contentType.includes('image/')))
+  ) {
     return (await response.blob()) as unknown as T;
   }
 
@@ -86,6 +96,9 @@ export const api = {
 
   delete: <T = any>(endpoint: string, token?: string | null) =>
     apiRequest<T>(endpoint, { method: 'DELETE' }, token),
+
+  upload: <T = any>(endpoint: string, formData: FormData, token?: string | null) =>
+    apiRequest<T>(endpoint, { method: 'POST', body: formData }, token),
 
   downloadBlob: async (endpoint: string, filename: string, token?: string | null) => {
     const blob = await apiRequest<Blob>(endpoint, { method: 'GET' }, token);

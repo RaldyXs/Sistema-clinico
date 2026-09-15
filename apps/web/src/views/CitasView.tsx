@@ -17,6 +17,7 @@ import {
   X,
   AlertCircle,
   AlertTriangle,
+  Banknote,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -34,6 +35,49 @@ export function CitasView() {
   const [citaACancelar, setCitaACancelar] = React.useState<any | null>(null);
   const [motivoCancelacion, setMotivoCancelacion] = React.useState('Paciente solicitó cancelación');
   const [cancelando, setCancelando] = React.useState(false);
+
+  // Estado para cobro rápido de cita
+  const [citaACobrar, setCitaACobrar] = React.useState<any | null>(null);
+  const [formCobroCita, setFormCobroCita] = React.useState({
+    concepto: '',
+    montoTotal: 2000,
+    metodoPago: 'EFECTIVO',
+    montoRecibido: 2000,
+  });
+  const [cobrandoCita, setCobrandoCita] = React.useState(false);
+  const [cobroExitosoMsg, setCobroExitosoMsg] = React.useState<string | null>(null);
+
+  const abrirModalCobroCita = (cita: any) => {
+    setCitaACobrar(cita);
+    setFormCobroCita({
+      concepto: `Consulta - ${cita.motivo || 'Atención Médica'}`,
+      montoTotal: 2000,
+      metodoPago: 'EFECTIVO',
+      montoRecibido: 2000,
+    });
+  };
+
+  const handleConfirmarCobroCita = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!citaACobrar) return;
+    setCobrandoCita(true);
+    try {
+      const res = await api.post('/caja/pagos', {
+        pacienteId: citaACobrar.pacienteId,
+        citaId: citaACobrar.id,
+        concepto: formCobroCita.concepto,
+        montoTotal: Number(formCobroCita.montoTotal),
+        metodoPago: formCobroCita.metodoPago,
+        montoRecibido: formCobroCita.metodoPago === 'EFECTIVO' ? Number(formCobroCita.montoRecibido) : undefined,
+      });
+      setCitaACobrar(null);
+      setCobroExitosoMsg(`Cobro registrado con éxito en Caja. Folio: ${res.numeroRecibo}`);
+    } catch (err: any) {
+      alert(err.message || 'Error al registrar cobro. Verifica que la caja esté abierta en el menú Caja & Cobros.');
+    } finally {
+      setCobrandoCita(false);
+    }
+  };
 
   // Formulario nueva cita
   const [form, setForm] = React.useState(() => ({
@@ -178,6 +222,18 @@ export function CitasView() {
           Agendar Nueva Cita
         </Button>
       </div>
+
+      {cobroExitosoMsg && (
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="size-4" />
+            <span>{cobroExitosoMsg}</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => setCobroExitosoMsg(null)} className="h-6 px-2 text-xs">
+            Cerrar
+          </Button>
+        </div>
+      )}
 
       {/* Barra de filtros de estado */}
       <div className="flex flex-wrap items-center gap-2">
@@ -359,6 +415,19 @@ export function CitasView() {
                                 Finalizar
                               </Button>
                             )
+                          )}
+
+                          {c.estado !== 'CANCELADA' && (isRecepcion || user?.rolCodigo === 'ADMIN') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 cursor-pointer"
+                              onClick={() => abrirModalCobroCita(c)}
+                              title="Registrar cobro en Caja Diaria"
+                            >
+                              <Banknote className="size-3.5 mr-1" />
+                              Cobrar
+                            </Button>
                           )}
 
                           {!['ATENDIDA', 'CANCELADA', 'NO_ASISTIO'].includes(c.estado) && (
@@ -587,6 +656,111 @@ export function CitasView() {
                     <>
                       <XCircle className="size-4 mr-2" />
                       Confirmar Cancelación
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL COBRAR CITA */}
+      {citaACobrar && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <Card className="max-w-md w-full shadow-2xl border-border">
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Banknote className="size-5 text-emerald-600" />
+                  Cobrar Turno Médico
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Paciente: <strong className="text-foreground">{citaACobrar.paciente?.nombre} {citaACobrar.paciente?.apellido}</strong>
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setCitaACobrar(null)}>
+                <X className="size-5" />
+              </Button>
+            </div>
+
+            <form onSubmit={handleConfirmarCobroCita}>
+              <div className="p-6 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Concepto</label>
+                  <Input
+                    type="text"
+                    required
+                    value={formCobroCita.concepto}
+                    onChange={(e) => setFormCobroCita({ ...formCobroCita, concepto: e.target.value })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Monto a Cobrar ($)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      value={formCobroCita.montoTotal}
+                      onChange={(e) => setFormCobroCita({ ...formCobroCita, montoTotal: Number(e.target.value) })}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-muted-foreground">Método de Pago</label>
+                    <select
+                      className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm focus:ring-2 focus:ring-ring"
+                      value={formCobroCita.metodoPago}
+                      onChange={(e) => setFormCobroCita({ ...formCobroCita, metodoPago: e.target.value })}
+                    >
+                      <option value="EFECTIVO">Efectivo</option>
+                      <option value="TARJETA_DEBITO">Tarjeta Débito</option>
+                      <option value="TARJETA_CREDITO">Tarjeta Crédito</option>
+                      <option value="TRANSFERENCIA">Transferencia / QR</option>
+                      <option value="OBRA_SOCIAL_COPAGO">Copago Seguro / Obra Social</option>
+                    </select>
+                  </div>
+                </div>
+
+                {formCobroCita.metodoPago === 'EFECTIVO' && (
+                  <div className="p-3 bg-muted/40 rounded-lg border border-border space-y-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground">Efectivo Recibido:</span>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="w-28 h-8 text-right font-medium"
+                        value={formCobroCita.montoRecibido}
+                        onChange={(e) => setFormCobroCita({ ...formCobroCita, montoRecibido: Number(e.target.value) })}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-xs font-semibold pt-1 border-t border-border">
+                      <span>Vuelto / Cambio:</span>
+                      <span className={`font-mono text-sm ${Number(formCobroCita.montoRecibido) >= Number(formCobroCita.montoTotal) ? 'text-emerald-600 font-bold' : 'text-destructive'}`}>
+                        ${Math.max(0, Number(formCobroCita.montoRecibido) - Number(formCobroCita.montoTotal)).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 pt-0 flex items-center justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setCitaACobrar(null)} disabled={cobrandoCita}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={cobrandoCita} className="bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer">
+                  {cobrandoCita ? (
+                    <>
+                      <RefreshCw className="size-4 mr-2 animate-spin" />
+                      Registrando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="size-4 mr-2" />
+                      Confirmar y Emitir Recibo
                     </>
                   )}
                 </Button>

@@ -66,6 +66,7 @@ export function ConfiguracionView() {
     especialidad: '',
     matriculaProfesional: '',
     rolCodigo: 'MEDICO',
+    firmaDigitalUrl: '',
     password: '',
   });
   const [guardandoEditarUser, setGuardandoEditarUser] = React.useState(false);
@@ -166,6 +167,7 @@ export function ConfiguracionView() {
       especialidad: u.especialidad || '',
       matriculaProfesional: u.matriculaProfesional || '',
       rolCodigo: u.rolCodigo || 'MEDICO',
+      firmaDigitalUrl: u.firmaDigitalUrl || '',
       password: '',
     });
     setShowModalEditarUsuario(true);
@@ -184,6 +186,7 @@ export function ConfiguracionView() {
         telefono: formEditarUser.telefono ? formEditarUser.telefono.trim() : null,
         especialidad: formEditarUser.especialidad ? formEditarUser.especialidad.trim() : null,
         matriculaProfesional: formEditarUser.matriculaProfesional ? formEditarUser.matriculaProfesional.trim() : null,
+        firmaDigitalUrl: formEditarUser.firmaDigitalUrl ? formEditarUser.firmaDigitalUrl : null,
         rolCodigo: formEditarUser.rolCodigo,
       };
 
@@ -768,6 +771,57 @@ export function ConfiguracionView() {
                     />
                   </div>
                 </div>
+
+                {formEditarUser.rolCodigo === 'MEDICO' && (
+                  <div className="space-y-2 p-3 rounded-lg bg-muted/40 border border-border">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-muted-foreground">
+                        Firma / Sello Digital del Médico (Para Recetas PDF)
+                      </label>
+                      {formEditarUser.firmaDigitalUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setFormEditarUser({ ...formEditarUser, firmaDigitalUrl: '' })}
+                          className="text-[11px] text-destructive hover:underline cursor-pointer"
+                        >
+                          Remover firma
+                        </button>
+                      )}
+                    </div>
+                    {formEditarUser.firmaDigitalUrl ? (
+                      <div className="flex items-center gap-3 bg-white dark:bg-slate-900 p-2 rounded border border-border">
+                        <img
+                          src={formEditarUser.firmaDigitalUrl}
+                          alt="Firma"
+                          className="h-10 max-w-[140px] object-contain"
+                        />
+                        <span className="text-xs text-emerald-600 font-medium">✓ Firma activa cargada</span>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground italic">Sin firma digital asignada</p>
+                    )}
+                    <label className="inline-flex items-center gap-1.5 text-xs text-primary font-medium cursor-pointer hover:underline pt-1">
+                      <span>📁 Cargar imagen PNG/JPG de firma</span>
+                      <input
+                        type="file"
+                        accept="image/png, image/jpeg"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = (ev) => {
+                            setFormEditarUser((prev) => ({
+                              ...prev,
+                              firmaDigitalUrl: ev.target?.result as string,
+                            }));
+                          };
+                          reader.readAsDataURL(file);
+                        }}
+                      />
+                    </label>
+                  </div>
+                )}
 
                 <div className="space-y-1 pt-1">
                   <label className="text-xs font-semibold text-muted-foreground">

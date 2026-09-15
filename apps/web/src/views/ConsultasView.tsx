@@ -12,7 +12,10 @@ import {
   X,
   FileCheck,
   AlertCircle,
+  Search,
+  BookOpen,
 } from 'lucide-react';
+import { CATALOGO_CIE10 } from '@/data/cie10';
 
 export function ConsultasView() {
   const [consultas, setConsultas] = React.useState<any[]>([]);
@@ -39,6 +42,18 @@ export function ConsultasView() {
 
   const [guardando, setGuardando] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+
+  // Asistente predictivo CIE-10
+  const [busquedaCie10, setBusquedaCie10] = React.useState('');
+  const [mostrarDropdownCie, setMostrarDropdownCie] = React.useState(false);
+
+  const sugerenciasCie = React.useMemo(() => {
+    if (!busquedaCie10.trim()) return [];
+    const q = busquedaCie10.toLowerCase().trim();
+    return CATALOGO_CIE10.filter(
+      (item) => item.codigo.toLowerCase().includes(q) || item.nombre.toLowerCase().includes(q) || item.categoria.toLowerCase().includes(q)
+    ).slice(0, 8);
+  }, [busquedaCie10]);
 
   const imcCalculado = React.useMemo(() => {
     if (form.pesoKg > 0 && form.tallaCm > 0) {
@@ -286,24 +301,113 @@ export function ConsultasView() {
                   </div>
                 </div>
 
-                {/* Diagnóstico y CIE-10 */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="sm:col-span-2 space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Diagnóstico Principal *</label>
-                    <Input
-                      required
-                      placeholder="Ej. Rinofaringitis aguda, Embarazo normal"
-                      value={form.diagnosticoPrincipal}
-                      onChange={(e) => setForm({ ...form, diagnosticoPrincipal: e.target.value })}
-                    />
+                {/* Diagnóstico y Asistente Predictivo CIE-10 */}
+                <div className="p-3 bg-muted/20 border border-border rounded-lg space-y-2 relative">
+                  <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <BookOpen className="size-3.5 text-primary" /> Asistente de Diagnósticos CIE-10
+                    </span>
+                    <span className="text-[10px] lowercase font-normal text-muted-foreground">
+                      Buscador predictivo por código o patología
+                    </span>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Código CIE-10</label>
+
+                  {/* Buscador predictivo */}
+                  <div className="relative">
+                    <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Ej. J00, Z34"
-                      value={form.codigoCie10}
-                      onChange={(e) => setForm({ ...form, codigoCie10: e.target.value.toUpperCase() })}
+                      placeholder="Escribe para buscar (ej. hiper, diabetes, asma, control, J00)..."
+                      value={busquedaCie10}
+                      onChange={(e) => {
+                        setBusquedaCie10(e.target.value);
+                        setMostrarDropdownCie(true);
+                      }}
+                      onFocus={() => {
+                        if (busquedaCie10) setMostrarDropdownCie(true);
+                      }}
+                      className="pl-9 h-8 text-xs bg-background"
                     />
+
+                    {mostrarDropdownCie && sugerenciasCie.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-xl z-50 max-h-48 overflow-y-auto divide-y divide-border">
+                        {sugerenciasCie.map((item) => (
+                          <div
+                            key={item.codigo}
+                            onClick={() => {
+                              setForm((prev) => ({
+                                ...prev,
+                                codigoCie10: item.codigo,
+                                diagnosticoPrincipal: item.nombre,
+                              }));
+                              setBusquedaCie10('');
+                              setMostrarDropdownCie(false);
+                            }}
+                            className="p-2 text-xs hover:bg-muted/50 cursor-pointer flex items-center justify-between transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-bold text-primary px-1.5 py-0.5 bg-primary/10 rounded text-[11px]">
+                                {item.codigo}
+                              </span>
+                              <span className="font-medium text-foreground">{item.nombre}</span>
+                            </div>
+                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {item.categoria}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Chips de diagnósticos frecuentes */}
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    <span className="text-[10px] font-semibold text-muted-foreground self-center">Frecuentes:</span>
+                    {[
+                      { c: 'I10', n: 'Hipertensión esencial (primaria)' },
+                      { c: 'E11.9', n: 'Diabetes mellitus tipo 2' },
+                      { c: 'J00', n: 'Rinofaringitis aguda [resfriado común]' },
+                      { c: 'Z34.9', n: 'Supervisión de embarazo normal' },
+                      { c: 'K29.7', n: 'Gastritis, no especificada' },
+                      { c: 'Z00.0', n: 'Examen médico general / Chequeo' },
+                    ].map((d) => (
+                      <button
+                        key={d.c}
+                        type="button"
+                        onClick={() => {
+                          setForm((prev) => ({
+                            ...prev,
+                            codigoCie10: d.c,
+                            diagnosticoPrincipal: d.n,
+                          }));
+                        }}
+                        className="text-[10px] px-2 py-0.5 rounded-full border border-border bg-background hover:bg-primary/10 hover:border-primary/40 hover:text-primary transition-colors text-muted-foreground"
+                      >
+                        {d.c} {d.n.split(' ')[0]}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Inputs de confirmación/edición */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-border/60">
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-[11px] font-semibold text-muted-foreground">Diagnóstico Principal Seleccionado *</label>
+                      <Input
+                        required
+                        placeholder="Ej. Rinofaringitis aguda, Hipertensión arterial"
+                        value={form.diagnosticoPrincipal}
+                        onChange={(e) => setForm({ ...form, diagnosticoPrincipal: e.target.value })}
+                        className="h-8 text-xs font-medium"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-muted-foreground">Código CIE-10</label>
+                      <Input
+                        placeholder="Ej. J00, I10"
+                        value={form.codigoCie10}
+                        onChange={(e) => setForm({ ...form, codigoCie10: e.target.value.toUpperCase() })}
+                        className="h-8 text-xs font-mono font-bold text-primary"
+                      />
+                    </div>
                   </div>
                 </div>
 
