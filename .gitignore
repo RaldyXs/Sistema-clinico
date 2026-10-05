@@ -9,6 +9,8 @@ coverage/
 # Environment variables
 .env
 .env.*
+*.env
+mint.env
 !.env.example
 
 # Logs
@@ -35,6 +37,7 @@ Thumbs.db
 Desktop.ini
 
 # Temporary files
+scratch/
 *.tmp
 *.temp
 *.swp

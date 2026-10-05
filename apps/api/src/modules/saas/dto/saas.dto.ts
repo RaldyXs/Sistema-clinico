@@ -68,3 +68,34 @@ export class CambiarEstadoTenantDto {
   @IsBoolean()
   activo: boolean;
 }
+
+export class SolicitarPlanDto {
+  @IsString()
+  @IsIn(['BASICO', 'PROFESIONAL', 'ENTERPRISE'], {
+    message: 'El plan debe ser BASICO, PROFESIONAL o ENTERPRISE',
+  })
+  planCodigo: string;
+
+  @IsString()
+  @IsOptional()
+  @IsIn(['MENSUAL', 'ANUAL'])
+  periodo?: string = 'MENSUAL';
+
+  @IsString()
+  @IsNotEmpty({ message: 'El número de referencia o comprobante de la transferencia es obligatorio' })
+  referenciaTransferencia: string;
+
+  @IsString()
+  @IsOptional()
+  bancoOrigen?: string;
+
+  @IsString()
+  @IsOptional()
+  notas?: string;
+}
+
+export class RechazarSolicitudPlanDto {
+  @IsString()
+  @IsOptional()
+  motivo?: string;
+}

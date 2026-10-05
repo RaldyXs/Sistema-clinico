@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Plan } from './entities/plan.entity.js';
 import { Suscripcion } from './entities/suscripcion.entity.js';
+import { SolicitudPlan } from './entities/solicitud-plan.entity.js';
 import { Consultorio } from '../consultorios/entities/consultorio.entity.js';
 import { Usuario } from '../usuarios/entities/usuario.entity.js';
 import { Rol } from '../roles/entities/rol.entity.js';
@@ -17,6 +18,7 @@ import { SaasController } from './saas.controller.js';
     TypeOrmModule.forFeature([
       Plan,
       Suscripcion,
+      SolicitudPlan,
       Consultorio,
       Usuario,
       Rol,

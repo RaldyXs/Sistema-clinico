@@ -4,6 +4,8 @@ import { ActualizarConsultorioDto } from './dto/actualizar-consultorio.dto.js';
 import { ActualizarConfiguracionDto } from './dto/actualizar-configuracion.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { TenantGuard } from '../../common/guards/tenant.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 import { UsuarioActual } from '../../common/decorators/usuario-actual.decorator.js';
 
@@ -39,8 +41,11 @@ export class ConsultoriosController {
 
   /**
    * Actualiza la configuración, colores de marca, horarios y diseño de recetas del consultorio.
+   * Restringido estrictamente a Administradores del consultorio o SuperAdmin.
    */
   @Patch('configuracion')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'SUPERADMIN')
   async actualizarConfiguracion(
     @ConsultorioActual() consultorioId: string,
     @UsuarioActual() usuario: any,

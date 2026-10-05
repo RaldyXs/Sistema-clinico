@@ -1,0 +1,92 @@
+services:
+  # ----------------------------------------------------------------------------
+  # 1. Base de Datos: PostgreSQL 16 (Oficial y Ligera)
+  # ----------------------------------------------------------------------------
+  db:
+    image: postgres:16-alpine
+    container_name: clinica_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sistema_clinico}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tu_password_seguro}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-sistema_clinico}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - clinica_net
+
+  # ----------------------------------------------------------------------------
+  # 2. Backend: NestJS API
+  # ----------------------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: clinica_api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-staging}
+      API_PORT: 3000
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-tu_password_seguro}@db:5432/${POSTGRES_DB:-sistema_clinico}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:-clave_secreta_cambiar_obligatoriamente_en_env}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-superadmin@saas.com}
+      SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD:-AdminSeguro2026!}
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - uploads_data:/app/uploads
+    expose:
+      - "3000"
+    ports:
+      # Expuesto por si se requiere consumir la API directamente
+      - "3000:3000"
+    networks:
+      - clinica_net
+
+  # ----------------------------------------------------------------------------
+  # 3. Frontend Web: React + Nginx (Reverse Proxy & SPA)
+  # ----------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        # En producción con Nginx, /api redirige directamente a la API sin problemas de CORS
+        VITE_API_URL: /api
+    container_name: clinica_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      # Puerto HTTP estándar
+      - "80:80"
+    networks:
+      - clinica_net
+
+# ------------------------------------------------------------------------------
+# Volúmenes Persistentes (Tus datos sobreviven a reinicios y actualizaciones)
+# ------------------------------------------------------------------------------
+volumes:
+  postgres_data:
+    name: clinica_postgres_data
+  uploads_data:
+    name: clinica_uploads_data
+
+# ------------------------------------------------------------------------------
+# Red Privada entre Contenedores
+# ------------------------------------------------------------------------------
+networks:
+  clinica_net:
+    name: clinica_network
+    driver: bridge

@@ -1,0 +1,34 @@
+# Ignorar dependencias locales de Windows
+node_modules/
+**/node_modules/
+
+# Ignorar builds previos
+dist/
+build/
+coverage/
+**/dist/
+**/build/
+
+# Ignorar entorno y credenciales locales
+.env
+.env.*
+!.env.example
+
+# Git y metadata
+.git/
+.github/
+
+# Logs y temporales
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+*.tmp
+
+# Uploads locales
+uploads/
+**/uploads/
+
+# IDE
+.vscode/
+.idea/

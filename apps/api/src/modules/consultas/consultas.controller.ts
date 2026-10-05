@@ -15,6 +15,8 @@ import { FiltrosHistorialClinicoDto } from './dto/filtros-historial-clinico.dto.
 import { ActualizarDiagnosticoTratamientoDto } from './dto/actualizar-diagnostico-tratamiento.dto.js';
 import { AnularConsultaDto } from './dto/anular-consulta.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 import { UsuarioActual } from '../../common/decorators/usuario-actual.decorator.js';
 
@@ -44,14 +46,11 @@ export class ConsultasController {
 
   /**
    * Registra una nueva consulta clínica en el consultorio del usuario autenticado.
-   *
-   * Realiza validaciones automáticas:
-   * - Paciente y médico pertenecen al mismo consultorio.
-   * - Cita vinculada (si aplica) pertenece a la clínica y al paciente.
-   * - Previene consultas duplicadas para una misma cita.
-   * - Calcula automáticamente el IMC a partir del peso y la talla.
+   * Restringido exclusivamente al profesional médico (MEDICO, ADMIN).
    */
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('MEDICO', 'ADMIN', 'SUPERADMIN')
   async crear(
     @ConsultorioActual() consultorioId: string,
     @UsuarioActual('id') usuarioId: string,
@@ -132,9 +131,11 @@ export class ConsultasController {
 
   /**
    * Actualiza el diagnóstico, plan de tratamiento, notas o signos vitales de una consulta médica.
-   * Regla médico-legal: solo se permite modificar consultas en estado BORRADOR.
+   * Regla médico-legal: solo se permite modificar consultas en estado BORRADOR por personal médico.
    */
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('MEDICO', 'ADMIN', 'SUPERADMIN')
   async actualizar(
     @ConsultorioActual() consultorioId: string,
     @Param('id') id: string,
@@ -145,14 +146,11 @@ export class ConsultasController {
 
   /**
    * Completa y sella formalmente el acto médico.
-   *
-   * Acciones ejecutadas:
-   * - Verifica que exista diagnóstico principal registrado.
-   * - Cambia el estado a COMPLETADA y sella con cerradaEn.
-   * - Bloquea la consulta contra futuras modificaciones.
-   * - Si proviene de una cita en agenda, marca automáticamente la cita como ATENDIDA.
+   * Restringido exclusivamente al facultativo médico tratante o administrador.
    */
   @Patch(':id/completar')
+  @UseGuards(RolesGuard)
+  @Roles('MEDICO', 'ADMIN', 'SUPERADMIN')
   async completar(
     @ConsultorioActual() consultorioId: string,
     @Param('id') id: string,
@@ -162,8 +160,11 @@ export class ConsultasController {
 
   /**
    * Anula una consulta médica de forma excepcional requiriendo justificación.
+   * Restringido a facultativos médicos y administradores clínicos.
    */
   @Patch(':id/anular')
+  @UseGuards(RolesGuard)
+  @Roles('MEDICO', 'ADMIN', 'SUPERADMIN')
   async anular(
     @ConsultorioActual() consultorioId: string,
     @Param('id') id: string,

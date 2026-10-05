@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import type { Response as ExpressResponse } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -21,6 +22,19 @@ export class BackupsController {
   constructor(private readonly backupsService: BackupsService) {}
 
   /**
+   * Helper de seguridad RBAC: solo el Administrador de la clínica o SuperAdmin
+   * pueden generar, listar o descargar copias de seguridad de historias clínicas.
+   */
+  private verificarAdmin(req: any) {
+    const rol = req.user?.rol?.codigo || req.user?.rolCodigo;
+    if (rol !== 'ADMIN' && rol !== 'SUPERADMIN') {
+      throw new ForbiddenException(
+        'Acceso restringido: Solo el Administrador de la clínica o SuperAdmin pueden gestionar copias de seguridad.',
+      );
+    }
+  }
+
+  /**
    * Genera un nuevo respaldo lógico completo e independiente del consultorio.
    */
   @Post('generar')
@@ -29,6 +43,7 @@ export class BackupsController {
     @ConsultorioActual() consultorioId: string,
     @Request() req: any,
   ) {
+    this.verificarAdmin(req);
     const ip = req.ip || req.connection?.remoteAddress;
     const ua = req.headers['user-agent'];
     return this.backupsService.generarBackup(consultorioId, req.user.id, ip, ua);
@@ -38,7 +53,11 @@ export class BackupsController {
    * Lista los respaldos históricos generados para la clínica.
    */
   @Get()
-  async listarBackups(@ConsultorioActual() consultorioId: string) {
+  async listarBackups(
+    @ConsultorioActual() consultorioId: string,
+    @Request() req: any,
+  ) {
+    this.verificarAdmin(req);
     return this.backupsService.listarBackups(consultorioId);
   }
 
@@ -49,7 +68,9 @@ export class BackupsController {
   async verificarIntegridad(
     @ConsultorioActual() consultorioId: string,
     @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: any,
   ) {
+    this.verificarAdmin(req);
     return this.backupsService.verificarIntegridad(consultorioId, id);
   }
 
@@ -63,6 +84,7 @@ export class BackupsController {
     @Request() req: any,
     @Response() res: ExpressResponse,
   ) {
+    this.verificarAdmin(req);
     const ip = req.ip || req.connection?.remoteAddress;
     const ua = req.headers['user-agent'];
     const info = await this.backupsService.obtenerRutaDescarga(consultorioId, id, req.user.id, ip, ua);

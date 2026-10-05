@@ -7,6 +7,8 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 import { UsuarioActual } from '../../common/decorators/usuario-actual.decorator.js';
 import { AuditoriaService } from './auditoria.service.js';
@@ -18,8 +20,11 @@ export class AuditoriaController {
 
   /**
    * Resumen analítico de eventos de seguridad y actividad para la clínica (o global para SuperAdmin).
+   * Restringido a Administradores de la clínica o SuperAdmin.
    */
   @Get('resumen')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'SUPERADMIN')
   async obtenerResumen(
     @ConsultorioActual() consultorioId: string,
     @UsuarioActual() usuario: any,
@@ -30,8 +35,11 @@ export class AuditoriaController {
 
   /**
    * Trazabilidad de acceso a la ficha clínica de un paciente (Cumplimiento HIPAA).
+   * Restringido a Médicos y Administradores clínicos.
    */
   @Get('paciente/:pacienteId')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'MEDICO', 'SUPERADMIN')
   async obtenerHistorialPaciente(
     @ConsultorioActual() consultorioId: string,
     @Param('pacienteId', ParseUUIDPipe) pacienteId: string,
@@ -41,8 +49,11 @@ export class AuditoriaController {
 
   /**
    * Listado paginado y filtrable de eventos de auditoría del consultorio.
+   * Restringido a Administradores de la clínica o SuperAdmin.
    */
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'SUPERADMIN')
   async listar(
     @ConsultorioActual() consultorioId: string,
     @UsuarioActual() usuario: any,

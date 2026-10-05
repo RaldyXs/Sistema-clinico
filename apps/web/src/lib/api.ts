@@ -3,7 +3,9 @@
  * Gestiona automáticamente el token JWT y los encabezados de autenticación.
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const defaultHost = typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost';
+const isStandardWebPort = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80');
+const API_BASE_URL = import.meta.env.VITE_API_URL || (isStandardWebPort ? '/api' : `http://${defaultHost}:3000`);
 
 export class ApiError extends Error {
   statusCode: number;
@@ -59,7 +61,15 @@ export async function apiRequest<T = any>(
     return (await response.blob()) as unknown as T;
   }
 
-  const data = await response.json().catch(() => ({}));
+  const text = await response.text();
+  let data: any = null;
+  if (text && text.trim().length > 0) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
+  }
 
   if (!response.ok) {
     // Si el backend responde 401 Unauthorized (token expirado o inválido) en peticiones autenticadas

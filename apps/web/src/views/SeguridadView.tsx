@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -250,23 +251,12 @@ export function SeguridadView() {
     if (!token) return;
     setIsLoadingLogs(true);
     try {
-      const [resResumen, resLogs] = await Promise.all([
-        fetch('http://localhost:3000/auditoria/resumen', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch('http://localhost:3000/auditoria?limite=50', {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [dataResumen, dataLogs] = await Promise.all([
+        api.get('/auditoria/resumen'),
+        api.get('/auditoria?limite=50'),
       ]);
-
-      if (resResumen.ok) {
-        const data = await resResumen.json();
-        setResumen(data);
-      }
-      if (resLogs.ok) {
-        const data = await resLogs.json();
-        setLogs(data.logs || []);
-      }
+      setResumen(dataResumen);
+      setLogs(dataLogs.logs || []);
     } catch (e) {
       console.error('Error cargando auditoría:', e);
     } finally {
@@ -277,13 +267,8 @@ export function SeguridadView() {
   const fetchSesiones = React.useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:3000/auth/sesiones', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSesiones(data);
-      }
+      const data = await api.get('/auth/sesiones');
+      setSesiones(data);
     } catch (e) {
       console.error('Error cargando sesiones:', e);
     }
@@ -292,13 +277,8 @@ export function SeguridadView() {
   const fetchBackups = React.useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:3000/backups', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setBackups(data);
-      }
+      const data = await api.get('/backups');
+      setBackups(data);
     } catch (e) {
       console.error('Error cargando backups:', e);
     }
@@ -318,15 +298,9 @@ export function SeguridadView() {
   const handleIniciarSetup2fa = async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:3000/auth/2fa/setup', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSetupData(data);
-        setMensaje2fa(null);
-      }
+      const data = await api.post('/auth/2fa/setup', {});
+      setSetupData(data);
+      setMensaje2fa(null);
     } catch (e) {
       console.error('Error al iniciar 2FA:', e);
     }
@@ -335,25 +309,14 @@ export function SeguridadView() {
   const handleConfirmar2fa = async () => {
     if (!token || !totpCodeInput) return;
     try {
-      const res = await fetch('http://localhost:3000/auth/2fa/confirmar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ codigo: totpCodeInput }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setIs2faActive(true);
-        setRecoveryCodes(data.recoveryCodes || []);
-        setSetupData(null);
-        setTotpCodeInput('');
-        setMensaje2fa('¡Autenticación de doble factor habilitada correctamente!');
-      } else {
-        setMensaje2fa(data.message || 'Código incorrecto');
-      }
-    } catch (e) {
+      const data = await api.post('/auth/2fa/confirmar', { codigo: totpCodeInput });
+      setIs2faActive(true);
+      setRecoveryCodes(data.recoveryCodes || []);
+      setSetupData(null);
+      setTotpCodeInput('');
+      setMensaje2fa('¡Autenticación de doble factor habilitada correctamente!');
+    } catch (e: any) {
+      setMensaje2fa(e.message || 'Código incorrecto');
       console.error('Error confirmando 2FA:', e);
     }
   };
@@ -361,26 +324,15 @@ export function SeguridadView() {
   const handleDesactivar2fa = async () => {
     if (!token || !disablePassword || !disableTotp) return;
     try {
-      const res = await fetch('http://localhost:3000/auth/2fa/desactivar', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ password: disablePassword, codigo: disableTotp }),
-      });
-      if (res.ok) {
-        setIs2faActive(false);
-        setShowDisableModal(false);
-        setDisablePassword('');
-        setDisableTotp('');
-        setRecoveryCodes([]);
-        setMensaje2fa('2FA desactivado correctamente');
-      } else {
-        const data = await res.json();
-        setMensaje2fa(data.message || 'Error al desactivar 2FA');
-      }
-    } catch (e) {
+      await api.post('/auth/2fa/desactivar', { password: disablePassword, codigo: disableTotp });
+      setIs2faActive(false);
+      setShowDisableModal(false);
+      setDisablePassword('');
+      setDisableTotp('');
+      setRecoveryCodes([]);
+      setMensaje2fa('2FA desactivado correctamente');
+    } catch (e: any) {
+      setMensaje2fa(e.message || 'Error al desactivar 2FA');
       console.error('Error desactivando 2FA:', e);
     }
   };
@@ -388,17 +340,10 @@ export function SeguridadView() {
   const handleRevocarSesion = async (id: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:3000/auth/sesiones/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        fetchSesiones();
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        alert(errData.message || 'No se pudo revocar la sesión');
-      }
-    } catch (e) {
+      await api.delete(`/auth/sesiones/${id}`);
+      fetchSesiones();
+    } catch (e: any) {
+      alert(e.message || 'No se pudo revocar la sesión');
       console.error('Error revocando sesión:', e);
     }
   };
@@ -406,13 +351,8 @@ export function SeguridadView() {
   const handleRevocarOtrasSesiones = async () => {
     if (!token) return;
     try {
-      const res = await fetch('http://localhost:3000/auth/sesiones/otras', {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        fetchSesiones();
-      }
+      await api.delete('/auth/sesiones/otras');
+      fetchSesiones();
     } catch (e) {
       console.error('Error revocando otras sesiones:', e);
     }
@@ -423,13 +363,8 @@ export function SeguridadView() {
     if (!token) return;
     setIsGeneratingBackup(true);
     try {
-      const res = await fetch('http://localhost:3000/backups/generar', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        await fetchBackups();
-      }
+      await api.post('/backups/generar', {});
+      await fetchBackups();
     } catch (e) {
       console.error('Error generando backup:', e);
     } finally {
@@ -440,17 +375,12 @@ export function SeguridadView() {
   const handleVerificarIntegridad = async (id: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:3000/backups/${id}/verificar`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const data = await api.get(`/backups/${id}/verificar`);
+      setVerificacionResultado({
+        backupId: id,
+        valido: data.valido,
+        mensaje: data.mensaje,
       });
-      if (res.ok) {
-        const data = await res.json();
-        setVerificacionResultado({
-          backupId: id,
-          valido: data.valido,
-          mensaje: data.mensaje,
-        });
-      }
     } catch (e) {
       console.error('Error verificando integridad:', e);
     }
@@ -459,20 +389,7 @@ export function SeguridadView() {
   const handleDescargarBackup = async (id: string, nombreArchivo: string) => {
     if (!token) return;
     try {
-      const res = await fetch(`http://localhost:3000/backups/${id}/descargar`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = nombreArchivo;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
+      await api.downloadBlob(`/backups/${id}/descargar`, nombreArchivo);
     } catch (e) {
       console.error('Error descargando backup:', e);
     }
@@ -533,24 +450,24 @@ export function SeguridadView() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2.5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-border pb-2.5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <ShieldCheck className="size-7 text-primary" />
+          <h1 className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-1.5">
+            <ShieldCheck className="size-4.5 text-primary" />
             Seguridad Avanzada, Auditoría y Respaldos
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Cumplimiento normativo HIPAA / GDPR, trazabilidad de accesos clínicos, autenticación en dos factores (2FA) y copias de seguridad aisladas por clínica.
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Cumplimiento normativo, trazabilidad de accesos, 2FA y copias de seguridad aisladas por clínica.
           </p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex items-center p-1 bg-muted rounded-lg border border-border">
+        <div className="flex items-center p-0.5 bg-muted rounded-md border border-border">
           <button
             onClick={() => setActiveTab('auditoria')}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+            className={`px-2.5 py-1 text-xs font-semibold rounded transition-all ${
               activeTab === 'auditoria' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >

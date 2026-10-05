@@ -8,17 +8,24 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import bcrypt from 'bcryptjs';
 import { Plan } from './entities/plan.entity.js';
 import { Suscripcion, EstadoSuscripcion } from './entities/suscripcion.entity.js';
+import { SolicitudPlan, EstadoSolicitudPlan } from './entities/solicitud-plan.entity.js';
 import { Consultorio } from '../consultorios/entities/consultorio.entity.js';
 import { Usuario } from '../usuarios/entities/usuario.entity.js';
 import { Rol } from '../roles/entities/rol.entity.js';
 import { Paciente } from '../pacientes/entities/paciente.entity.js';
 import { Consulta } from '../consultas/entities/consulta.entity.js';
 import { AuditoriaService } from '../auditoria/auditoria.service.js';
-import { OnboardingDto, CambiarPlanDto, CambiarEstadoTenantDto } from './dto/saas.dto.js';
+import {
+  OnboardingDto,
+  CambiarPlanDto,
+  CambiarEstadoTenantDto,
+  SolicitarPlanDto,
+} from './dto/saas.dto.js';
 
 @Injectable()
 export class SaasService implements OnModuleInit {
@@ -30,6 +37,9 @@ export class SaasService implements OnModuleInit {
 
     @InjectRepository(Suscripcion)
     private readonly suscripcionRepo: Repository<Suscripcion>,
+
+    @InjectRepository(SolicitudPlan)
+    private readonly solicitudPlanRepo: Repository<SolicitudPlan>,
 
     @InjectRepository(Consultorio)
     private readonly consultorioRepo: Repository<Consultorio>,
@@ -48,6 +58,7 @@ export class SaasService implements OnModuleInit {
 
     private readonly jwtService: JwtService,
     private readonly auditoriaService: AuditoriaService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -62,7 +73,12 @@ export class SaasService implements OnModuleInit {
    * Sembrado de la organización matriz y cuenta maestra de SuperAdmin de la plataforma SaaS.
    */
   async seedSuperAdminInicial() {
-    const superAdminEmail = 'superadmin@saas.com';
+    // En producción, no ejecutar seeds automáticos
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      return;
+    }
+
+    const superAdminEmail = this.configService.get<string>('SUPERADMIN_EMAIL', 'superadmin@saas.com');
     const existe = await this.usuarioRepo.findOne({ where: { email: superAdminEmail } });
     if (existe) return;
 
@@ -103,8 +119,9 @@ export class SaasService implements OnModuleInit {
       rolSuperAdmin = await this.rolRepo.save(rolSuperAdmin);
     }
 
-    // 3. Creamos el usuario SuperAdmin
-    const passwordHash = await bcrypt.hash('SuperAdmin1234!', 10);
+    // 3. Creamos el usuario SuperAdmin con contraseña desde variable de entorno
+    const superAdminPassword = this.configService.get<string>('SUPERADMIN_PASSWORD', 'SuperAdmin1234!');
+    const passwordHash = await bcrypt.hash(superAdminPassword, 10);
     const superAdminUser = this.usuarioRepo.create({
       nombre: 'Super',
       apellido: 'Administrador SaaS',
@@ -154,7 +171,7 @@ export class SaasService implements OnModuleInit {
           general: true,
           recetas: true,
           documentos: true,
-          ginecologia: false,
+          ginecologia: true,
           reportes: true,
         },
       },
@@ -262,7 +279,18 @@ export class SaasService implements OnModuleInit {
       telefono: dto.telefono ? dto.telefono.trim() : null,
       direccion: dto.direccion ? dto.direccion.trim() : null,
       email: emailNormalizado,
-      modulosActivos: plan.modulosIncluidos,
+      modulosActivos: {
+        general: true,
+        citas: true,
+        pacientes: true,
+        caja: true,
+        recetas: true,
+        documentos: true,
+        ginecologia: true,
+        reportes: true,
+        auditoria: true,
+        ...(plan.modulosIncluidos || {}),
+      },
       activo: true,
     });
     const consultorioGuardado = await this.consultorioRepo.save(nuevoConsultorio);
@@ -496,6 +524,227 @@ export class SaasService implements OnModuleInit {
       mensaje: `Plan actualizado exitosamente a ${nuevoPlan.nombre}`,
       plan: nuevoPlan,
       suscripcion: nuevaSuscripcion,
+    };
+  }
+
+  /**
+   * Registra una solicitud de cambio/renovación de plan por transferencia bancaria.
+   * Queda en estado PENDIENTE a la espera de verificación manual por el SuperAdmin.
+   */
+  async solicitarPlan(consultorioId: string, dto: SolicitarPlanDto, usuario?: any) {
+    const plan = await this.planRepo.findOne({
+      where: { codigo: dto.planCodigo.toUpperCase(), activo: true },
+    });
+    if (!plan) {
+      throw new NotFoundException('El plan seleccionado no existe o no está disponible');
+    }
+
+    const consultorio = await this.consultorioRepo.findOne({ where: { id: consultorioId } });
+    if (!consultorio) {
+      throw new NotFoundException('Consultorio no encontrado');
+    }
+
+    // 1. Validar que la clínica no intente solicitar el mismo plan que ya tiene activo
+    const suscripcionActual = await this.suscripcionRepo.findOne({
+      where: { consultorioId },
+      order: { creadoEn: 'DESC' },
+      relations: { plan: true },
+    });
+
+    if (
+      suscripcionActual &&
+      (suscripcionActual.planId === plan.id || suscripcionActual.plan?.codigo === plan.codigo)
+    ) {
+      throw new BadRequestException(
+        `Tu clínica ya cuenta con el ${plan.nombre} activo. Selecciona un plan diferente para cambiar o mejorar.`,
+      );
+    }
+
+    // 2. Validar que no exista una solicitud previa en revisión
+    const solicitudPendiente = await this.solicitudPlanRepo.findOne({
+      where: {
+        consultorioId,
+        estado: EstadoSolicitudPlan.PENDIENTE,
+      },
+    });
+    if (solicitudPendiente) {
+      throw new BadRequestException(
+        'Ya tienes una solicitud de plan pendiente de revisión por el Administrador.',
+      );
+    }
+
+    const periodo = dto.periodo === 'ANUAL' ? 'ANUAL' : 'MENSUAL';
+    const monto = Number(periodo === 'ANUAL' ? plan.precioAnual : plan.precioMensual);
+
+    const solicitud = this.solicitudPlanRepo.create({
+      consultorioId,
+      planId: plan.id,
+      plan,
+      periodo,
+      monto,
+      referenciaTransferencia: dto.referenciaTransferencia.trim(),
+      bancoOrigen: dto.bancoOrigen ? dto.bancoOrigen.trim() : null,
+      notas: dto.notas ? dto.notas.trim() : null,
+      estado: EstadoSolicitudPlan.PENDIENTE,
+    });
+
+    const guardada = await this.solicitudPlanRepo.save(solicitud);
+
+    await this.auditoriaService.registrar({
+      consultorioId,
+      usuarioId: usuario?.id,
+      usuarioEmail: usuario?.email,
+      usuarioNombre: usuario?.nombre,
+      modulo: 'SAAS',
+      accion: 'SOLICITUD_PLAN_TRANSFERENCIA',
+      entidadTipo: 'SolicitudPlan',
+      entidadId: guardada.id,
+      detalles: {
+        plan: plan.codigo,
+        monto,
+        referencia: dto.referenciaTransferencia,
+        periodo,
+      },
+    });
+
+    return {
+      mensaje: 'Solicitud enviada correctamente. El Administrador verificará la transferencia y activará tu plan.',
+      solicitud: guardada,
+    };
+  }
+
+  /**
+   * Obtiene la solicitud pendiente más reciente de la clínica actual (para mostrar estado en UI).
+   */
+  async obtenerMiSolicitudPendiente(consultorioId: string) {
+    return this.solicitudPlanRepo.findOne({
+      where: {
+        consultorioId,
+        estado: EstadoSolicitudPlan.PENDIENTE,
+      },
+      order: { creadoEn: 'DESC' },
+      relations: { plan: true },
+    });
+  }
+
+  /**
+   * Panel SuperAdmin: Lista todas las solicitudes de planes por transferencia.
+   */
+  async listarSolicitudes(soloPendientes = true) {
+    const where: any = {};
+    if (soloPendientes) {
+      where.estado = EstadoSolicitudPlan.PENDIENTE;
+    }
+    return this.solicitudPlanRepo.find({
+      where,
+      order: { creadoEn: 'DESC' },
+      relations: { consultorio: true, plan: true },
+    });
+  }
+
+  /**
+   * Panel SuperAdmin: Aprueba una solicitud de transferencia bancaria y activa el plan en la clínica.
+   */
+  async aprobarSolicitudPlan(solicitudId: string, superAdminId: string) {
+    const solicitud = await this.solicitudPlanRepo.findOne({
+      where: { id: solicitudId },
+      relations: { consultorio: true, plan: true },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException('Solicitud no encontrada');
+    }
+
+    if (solicitud.estado !== EstadoSolicitudPlan.PENDIENTE) {
+      throw new BadRequestException(`Esta solicitud ya fue procesada anteriormente (${solicitud.estado})`);
+    }
+
+    const plan = solicitud.plan;
+    const consultorio = solicitud.consultorio;
+
+    // 1. Marcamos solicitud como Aprobada
+    solicitud.estado = EstadoSolicitudPlan.APROBADA;
+    solicitud.revisadoPorId = superAdminId;
+    solicitud.revisadoEn = new Date();
+    await this.solicitudPlanRepo.save(solicitud);
+
+    // 2. Actualizamos módulos activos del consultorio
+    consultorio.modulosActivos = plan.modulosIncluidos;
+    await this.consultorioRepo.save(consultorio);
+
+    // 3. Creamos o actualizamos la suscripción
+    const ahora = new Date();
+    const fechaFin = new Date(ahora);
+    fechaFin.setDate(fechaFin.getDate() + (solicitud.periodo === 'ANUAL' ? 365 : 30));
+
+    const nuevaSuscripcion = this.suscripcionRepo.create({
+      consultorioId: consultorio.id,
+      planId: plan.id,
+      plan,
+      estado: EstadoSuscripcion.ACTIVA,
+      periodo: solicitud.periodo,
+      fechaInicio: ahora,
+      fechaFin,
+      precioCobrado: solicitud.monto,
+      renovacionAutomatica: false,
+    });
+    await this.suscripcionRepo.save(nuevaSuscripcion);
+
+    await this.auditoriaService.registrar({
+      consultorioId: consultorio.id,
+      modulo: 'SAAS',
+      accion: 'APROBAR_SOLICITUD_PLAN',
+      entidadTipo: 'SolicitudPlan',
+      entidadId: solicitud.id,
+      detalles: {
+        plan: plan.codigo,
+        monto: solicitud.monto,
+        referencia: solicitud.referenciaTransferencia,
+      },
+    });
+
+    return {
+      mensaje: `Plan ${plan.nombre} activado exitosamente para ${consultorio.nombre}`,
+      solicitud,
+      suscripcion: nuevaSuscripcion,
+    };
+  }
+
+  /**
+   * Panel SuperAdmin: Declina / rechaza una solicitud de transferencia bancaria no confirmada.
+   */
+  async rechazarSolicitudPlan(solicitudId: string, superAdminId: string, motivo?: string) {
+    const solicitud = await this.solicitudPlanRepo.findOne({
+      where: { id: solicitudId },
+      relations: { consultorio: true, plan: true },
+    });
+
+    if (!solicitud) {
+      throw new NotFoundException('Solicitud no encontrada');
+    }
+
+    if (solicitud.estado !== EstadoSolicitudPlan.PENDIENTE) {
+      throw new BadRequestException(`Esta solicitud ya fue procesada anteriormente (${solicitud.estado})`);
+    }
+
+    solicitud.estado = EstadoSolicitudPlan.RECHAZADA;
+    solicitud.motivoRechazo = motivo || 'Transferencia no reflejada en cuenta bancaria';
+    solicitud.revisadoPorId = superAdminId;
+    solicitud.revisadoEn = new Date();
+    await this.solicitudPlanRepo.save(solicitud);
+
+    await this.auditoriaService.registrar({
+      consultorioId: solicitud.consultorioId,
+      modulo: 'SAAS',
+      accion: 'RECHAZAR_SOLICITUD_PLAN',
+      entidadTipo: 'SolicitudPlan',
+      entidadId: solicitud.id,
+      detalles: { motivo: solicitud.motivoRechazo },
+    });
+
+    return {
+      mensaje: 'Solicitud de plan rechazada',
+      solicitud,
     };
   }
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
@@ -100,6 +101,7 @@ interface PacienteSimple {
 }
 
 export function CajaView() {
+  const { user } = useAuth();
   const [dataActiva, setDataActiva] = useState<SesionActivaData | null>(null);
   const [pagos, setPagos] = useState<PagoItem[]>([]);
   const [pacientes, setPacientes] = useState<PacienteSimple[]>([]);
@@ -207,7 +209,8 @@ export function CajaView() {
       });
       setShowModalCerrar(false);
       setMensajeExito('Turno de caja cerrado y arqueo registrado.');
-      await cargarDatos();
+      setPestanaActual('historico');
+      await Promise.all([cargarDatos(), cargarHistorico()]);
     } catch (err: any) {
       setMensajeError(err.message || 'Error al cerrar caja');
     } finally {
@@ -217,6 +220,14 @@ export function CajaView() {
 
   const handleRegistrarCobro = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formCobro.pacienteId) {
+      setMensajeError('Por favor selecciona un paciente de la lista.');
+      return;
+    }
+    if (!formCobro.montoTotal || Number(formCobro.montoTotal) <= 0) {
+      setMensajeError('El monto total debe ser mayor a 0.');
+      return;
+    }
     setGuardando(true);
     setMensajeError(null);
     try {
@@ -290,40 +301,40 @@ export function CajaView() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2.5">
       {/* Alertas */}
       {mensajeExito && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-sm flex items-center justify-between">
+        <div className="p-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-md text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="size-4 shrink-0" />
+            <CheckCircle2 className="size-3.5 shrink-0" />
             <span>{mensajeExito}</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setMensajeExito(null)} className="h-6 w-6">
-            <X className="size-3.5" />
+          <Button variant="ghost" size="icon" onClick={() => setMensajeExito(null)} className="h-5 w-5">
+            <X className="size-3" />
           </Button>
         </div>
       )}
 
       {mensajeError && (
-        <div className="p-3 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 rounded-lg text-sm flex items-center justify-between">
+        <div className="p-2 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 rounded-md text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <AlertCircle className="size-4 shrink-0" />
+            <AlertCircle className="size-3.5 shrink-0" />
             <span>{mensajeError}</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setMensajeError(null)} className="h-6 w-6">
-            <X className="size-3.5" />
+          <Button variant="ghost" size="icon" onClick={() => setMensajeError(null)} className="h-5 w-5">
+            <X className="size-3" />
           </Button>
         </div>
       )}
 
       {/* Cabecera y Estado de Caja */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
-            <Banknote className="size-7 text-primary" />
+          <h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground flex items-center gap-2">
+            <Banknote className="size-5 text-primary" />
             Caja Diaria & Cobros de Recepción
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground">
             Control de turnos de recepción, arqueo en tiempo real y emisión de comprobantes
           </p>
         </div>
@@ -700,7 +711,9 @@ export function CajaView() {
                     <th className="px-4 py-3 text-right">Fondo Inicial</th>
                     <th className="px-4 py-3 text-right">Efectivo Esperado</th>
                     <th className="px-4 py-3 text-right">Efectivo Real</th>
-                    <th className="px-4 py-3 text-center">Diferencia</th>
+                    <th className="px-4 py-3 text-center" title="Diferencia de Arqueo: Efectivo Real en Cajón menos Efectivo Esperado">
+                      Dif. Arqueo
+                    </th>
                     <th className="px-4 py-3 text-center">Estado</th>
                   </tr>
                 </thead>
@@ -745,8 +758,19 @@ export function CajaView() {
                                   ? 'text-sky-600 border-sky-500/40 bg-sky-500/10'
                                   : 'text-rose-600 border-rose-500/40 bg-rose-500/10'
                               }
+                              title={
+                                Number(ses.diferencia) === 0
+                                  ? 'Caja cuadrada: El dinero físico contó exactamente lo esperado'
+                                  : Number(ses.diferencia) > 0
+                                  ? 'Sobrante en cajón'
+                                  : 'Faltante en cajón'
+                              }
                             >
-                              {Number(ses.diferencia) > 0 ? `+$${ses.diferencia}` : `$${ses.diferencia}`}
+                              {Number(ses.diferencia) === 0
+                                ? '$0.00 (Cuadrada)'
+                                : Number(ses.diferencia) > 0
+                                ? `+$${Number(ses.diferencia).toLocaleString()} (Sobrante)`
+                                : `-$${Math.abs(Number(ses.diferencia)).toLocaleString()} (Faltante)`}
                             </Badge>
                           ) : (
                             '-'
@@ -1108,105 +1132,134 @@ export function CajaView() {
 
       {/* MODAL 4: RECIBO OFICIAL IMPRIMIBLE */}
       {showModalRecibo && reciboActual && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <Card className="max-w-md w-full shadow-2xl border-border bg-card">
-            <div className="p-4 border-b border-border flex items-center justify-between no-print">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs z-50 flex items-center justify-center p-4 print:p-0 print:m-0 print:static print:bg-transparent print:backdrop-blur-none">
+          <Card className="max-w-md w-full shadow-2xl border-border bg-card print:border-none print:shadow-none print:bg-transparent print:max-w-none print:p-0 print:m-0">
+            <div className="p-4 border-b border-border flex items-center justify-between no-print print:hidden">
               <div className="flex items-center gap-2">
                 <Printer className="size-4 text-primary" />
-                <h3 className="font-semibold text-foreground text-sm">Recibo Oficial de Pago</h3>
+                <div>
+                  <h3 className="font-semibold text-foreground text-sm">Recibo Oficial de Pago</h3>
+                  <p className="text-[10px] text-muted-foreground">Vista previa de impresión para caja</p>
+                </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setShowModalRecibo(false)}>
                 <X className="size-4" />
               </Button>
             </div>
 
-            <div id="recibo-imprimible" className="p-6 space-y-4 text-xs">
-              {/* Membrete del Recibo */}
-              <div className="text-center pb-3 border-b border-border space-y-1">
-                <h2 className="text-base font-bold text-primary tracking-wide uppercase">
-                  COMPROBANTE OFICIAL DE PAGO
-                </h2>
-                <div className="text-sm font-mono font-bold text-foreground">
-                  {reciboActual.numeroRecibo}
-                </div>
-                <div className="text-[11px] text-muted-foreground">
-                  Fecha: {new Date(reciboActual.creadoEn).toLocaleDateString('es-ES')} • {new Date(reciboActual.creadoEn).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+            <div id="recibo-imprimible" className="p-6 space-y-4 text-xs bg-white text-slate-900 print:p-2">
+              {/* Membrete Institucional de la Clínica */}
+              <div className="text-center pb-3 border-b border-slate-200 print:border-black space-y-0.5">
+                <h1 className="text-sm font-black tracking-wider uppercase text-slate-900">
+                  {user?.consultorio?.nombre || 'Centro Médico Clínico'}
+                </h1>
+                {user?.consultorio?.direccion && (
+                  <p className="text-[10px] text-slate-500 print:text-black">{user.consultorio.direccion}</p>
+                )}
+                {user?.consultorio?.telefono && (
+                  <p className="text-[10px] text-slate-500 print:text-black">Tel: {user.consultorio.telefono}</p>
+                )}
+                <div className="pt-1.5">
+                  <h2 className="text-xs font-black tracking-widest uppercase text-primary print:text-black">
+                    COMPROBANTE OFICIAL DE PAGO
+                  </h2>
+                  <div className="text-sm font-mono font-black text-slate-900 mt-0.5">
+                    {reciboActual.numeroRecibo}
+                  </div>
+                  <div className="text-[10px] text-slate-500 print:text-slate-800">
+                    Fecha: {new Date(reciboActual.creadoEn).toLocaleDateString('es-ES')} • {new Date(reciboActual.creadoEn).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
                 </div>
               </div>
 
               {/* Datos del Paciente */}
-              <div className="space-y-1 bg-muted/30 p-2.5 rounded-md">
+              <div className="space-y-1 bg-slate-50 p-2.5 rounded-md border border-slate-200 print:border-slate-300">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Paciente:</span>
-                  <strong className="text-foreground">{reciboActual.paciente?.nombre} {reciboActual.paciente?.apellido || ''}</strong>
+                  <span className="text-slate-500 print:text-black">Paciente:</span>
+                  <strong className="text-slate-900 font-bold">{reciboActual.paciente?.nombre} {reciboActual.paciente?.apellido || ''}</strong>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Documento:</span>
-                  <span>{reciboActual.paciente?.documentoIdentidad || 'S/D'}</span>
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-slate-500 print:text-black">Documento:</span>
+                  <span className="font-mono text-slate-900">{reciboActual.paciente?.documentoIdentidad || 'S/D'}</span>
                 </div>
               </div>
 
               {/* Detalle del Cobro */}
               <div className="space-y-2">
-                <div className="flex justify-between font-semibold border-b border-border pb-1">
+                <div className="flex justify-between font-bold border-b border-slate-300 pb-1 text-slate-900 uppercase text-[11px]">
                   <span>Concepto</span>
                   <span>Importe</span>
                 </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>{reciboActual.concepto}</span>
-                  <span className="font-mono font-semibold text-foreground">${Number(reciboActual.montoTotal).toLocaleString()}</span>
+                <div className="flex justify-between text-slate-700">
+                  <span className="font-medium">{reciboActual.concepto}</span>
+                  <span className="font-mono font-bold text-slate-900">${Number(reciboActual.montoTotal).toLocaleString()}</span>
                 </div>
                 {reciboActual.montoCopago && (
-                  <div className="flex justify-between text-muted-foreground text-[11px]">
-                    <span>Copago cubierto por paciente:</span>
+                  <div className="flex justify-between text-slate-600 text-[11px]">
+                    <span>Copago paciente:</span>
                     <span className="font-mono">${Number(reciboActual.montoCopago).toLocaleString()}</span>
                   </div>
                 )}
                 {reciboActual.coberturaSeguro && (
-                  <div className="flex justify-between text-muted-foreground text-[11px]">
+                  <div className="flex justify-between text-slate-600 text-[11px]">
                     <span>Cobertura Aseguradora ({reciboActual.nombreAseguradora || 'Seguro'}):</span>
                     <span className="font-mono">${Number(reciboActual.coberturaSeguro).toLocaleString()}</span>
                   </div>
                 )}
               </div>
 
-              {/* Total y Método */}
-              <div className="border-t-2 border-primary/30 pt-2 space-y-1">
-                <div className="flex justify-between font-bold text-sm text-foreground">
+              {/* Total y Método de Pago */}
+              <div className="border-t-2 border-slate-900 pt-2 space-y-1">
+                <div className="flex justify-between font-black text-sm text-slate-900">
                   <span>TOTAL PAGADO:</span>
-                  <span className="font-mono text-primary text-base">${Number(reciboActual.montoTotal).toLocaleString()}</span>
+                  <span className="font-mono text-base text-primary print:text-black">${Number(reciboActual.montoTotal).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-muted-foreground text-[11px]">
+                <div className="flex justify-between text-slate-600 text-[11px]">
                   <span>Método de Pago:</span>
-                  <span className="font-medium text-foreground">{reciboActual.metodoPago.replace('_', ' ')}</span>
+                  <span className="font-bold text-slate-900">{reciboActual.metodoPago.replace('_', ' ')}</span>
                 </div>
                 {reciboActual.cambioDevuelto && Number(reciboActual.cambioDevuelto) > 0 && (
-                  <div className="flex justify-between text-muted-foreground text-[11px]">
-                    <span>Cambio Entregado:</span>
-                    <span className="font-mono text-emerald-600">${Number(reciboActual.cambioDevuelto).toLocaleString()}</span>
+                  <div className="flex justify-between text-slate-600 text-[11px]">
+                    <span>Cambio / Vuelto entregado:</span>
+                    <span className="font-mono font-bold text-emerald-700 print:text-black">${Number(reciboActual.cambioDevuelto).toLocaleString()}</span>
                   </div>
                 )}
               </div>
 
-              {/* Pie de Recibo */}
-              <div className="pt-4 border-t border-border text-center space-y-1 text-[10px] text-muted-foreground">
-                <p>Atendido por: {reciboActual.registradoPor?.nombre || 'Recepción'}</p>
-                <p>¡Gracias por confiar en nuestro servicio médico!</p>
+              {/* Sello y Pie de Recibo */}
+              <div className="pt-6 border-t border-slate-200 print:border-black text-center space-y-1.5 text-[10px]">
+                <div className="w-36 border-t border-slate-400 print:border-black mx-auto mb-1 pt-1">
+                  <span className="text-[9px] uppercase tracking-wider text-slate-600 print:text-black">Firma / Sello Caja</span>
+                </div>
+                <p className="text-slate-600 print:text-black">
+                  Atendido por: <strong>{reciboActual.registradoPor?.nombre || 'Caja / Recepción'}</strong>
+                </p>
+                <p className="text-[9px] text-slate-400 print:text-slate-600 italic">
+                  Constancia oficial de cobro y pago de atención médica.
+                </p>
+                <p className="font-semibold text-primary print:text-black text-[10px] pt-1">
+                  ¡Gracias por confiar en nuestro servicio médico!
+                </p>
               </div>
             </div>
 
-            <div className="p-4 border-t border-border flex items-center justify-end gap-2 no-print">
-              <Button variant="outline" size="sm" onClick={() => setShowModalRecibo(false)}>
-                Cerrar
-              </Button>
-              <Button
-                size="sm"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                onClick={() => window.print()}
-              >
-                <Printer className="size-4 mr-1.5" />
-                Imprimir Recibo
-              </Button>
+            <div className="p-4 border-t border-border flex items-center justify-between no-print print:hidden bg-muted/20">
+              <span className="text-[11px] text-muted-foreground">
+                Listo para impresora térmica (80mm) o estándar
+              </span>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowModalRecibo(false)}>
+                  Cerrar
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-xs"
+                  onClick={() => window.print()}
+                >
+                  <Printer className="size-4 mr-1.5" />
+                  Imprimir Recibo
+                </Button>
+              </div>
             </div>
           </Card>
         </div>

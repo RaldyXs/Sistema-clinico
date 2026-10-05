@@ -15,7 +15,10 @@ export interface UserProfile {
   consultorio?: {
     id: string;
     nombre: string;
+    telefono?: string | null;
+    direccion?: string | null;
     colorPrimario?: string;
+    modulosActivos?: Record<string, boolean>;
   };
 }
 
@@ -69,12 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         especialidad: data.especialidad,
         matriculaProfesional: data.matriculaProfesional,
         firmaDigitalUrl: data.firmaDigitalUrl,
-        consultorioId: data.consultorioId,
+        consultorioId: data.consultorioId || data.consultorio?.id || null,
         consultorio: data.consultorio,
       };
       setUser(perfil);
       localStorage.setItem('usuario_clinico', JSON.stringify(perfil));
-    } catch {
+    } catch (err: any) {
+      console.error('Error al cargar perfil:', err);
       // Si el token expiró o es inválido, cerrar sesión limpiamente
       logout();
       setSessionExpiredMsg('Tu sesión ha expirado por seguridad (límite de 24 horas). Por favor, inicia sesión nuevamente.');
@@ -128,18 +132,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isSandboxOrDev =
+    import.meta.env.DEV ||
+    (typeof window !== 'undefined' &&
+      (window.location.hostname.includes('192.168.') ||
+        window.location.hostname.includes('10.') ||
+        window.location.hostname.includes('172.') ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1'));
+
   const quickLogin = async (userType: 'carlos' | 'elena' | 'superadmin' | 'medico' | 'secretaria') => {
+    if (!isSandboxOrDev) return;
     setSessionExpiredMsg(null);
     if (userType === 'superadmin') {
-      await login('superadmin@saas.com', 'SuperAdmin1234!');
+      await login('superadmin@saas.com', 'AdminSeguro2026!');
     } else if (userType === 'carlos') {
       await login('dr.carlos@test.com', 'Test1234!');
     } else if (userType === 'medico') {
       await login('medico@test.com', 'Test1234!');
     } else if (userType === 'secretaria') {
-      await login('secretaria@test.com', 'Test1234!');
+      await login('recepcion@test.com', 'Test1234!');
     } else {
-      await login('elena.rios@test2.com', 'Test1234!');
+      await login('dr.carlos@test.com', 'Test1234!');
     }
   };
 

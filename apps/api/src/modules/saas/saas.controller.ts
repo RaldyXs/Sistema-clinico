@@ -5,20 +5,38 @@ import {
   Patch,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
   ParseUUIDPipe,
   HttpCode,
   HttpStatus,
+  ForbiddenException,
 } from '@nestjs/common';
 import { SaasService } from './saas.service.js';
-import { OnboardingDto, CambiarPlanDto, CambiarEstadoTenantDto } from './dto/saas.dto.js';
+import {
+  OnboardingDto,
+  CambiarPlanDto,
+  CambiarEstadoTenantDto,
+  SolicitarPlanDto,
+  RechazarSolicitudPlanDto,
+} from './dto/saas.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 
 @Controller('saas')
 export class SaasController {
   constructor(private readonly saasService: SaasService) {}
+
+  /**
+   * Helper para verificar rol SuperAdmin
+   */
+  private verificarSuperAdmin(req: any) {
+    const rol = req.user?.rol?.codigo || req.user?.rolCodigo;
+    if (rol !== 'SUPERADMIN') {
+      throw new ForbiddenException('Acceso denegado: Se requiere rol SuperAdmin');
+    }
+  }
 
   // ==================== ENDPOINTS PÚBLICOS ====================
 
@@ -31,7 +49,7 @@ export class SaasController {
   }
 
   /**
-   * Onboarding público: Registro autónomo de una nueva clínica/consultorio.
+   * Onboarding de clínica.
    */
   @Post('onboarding')
   @HttpCode(HttpStatus.CREATED)
@@ -53,7 +71,30 @@ export class SaasController {
   }
 
   /**
-   * Permite al consultorio ascender o modificar su plan (Upgrade/Downgrade).
+   * Solicita formalmente un cambio o mejora de plan aportando comprobante de transferencia bancaria.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('solicitar-plan')
+  @HttpCode(HttpStatus.CREATED)
+  async solicitarPlan(
+    @ConsultorioActual() consultorioId: string,
+    @Body() dto: SolicitarPlanDto,
+    @Request() req: any,
+  ) {
+    return this.saasService.solicitarPlan(consultorioId, dto, req.user);
+  }
+
+  /**
+   * Consulta si la clínica tiene una solicitud de cambio de plan pendiente de revisión.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('mi-solicitud-pendiente')
+  async obtenerMiSolicitudPendiente(@ConsultorioActual() consultorioId: string) {
+    return this.saasService.obtenerMiSolicitudPendiente(consultorioId);
+  }
+
+  /**
+   * Permite al consultorio ascender o modificar su plan directamente.
    */
   @UseGuards(JwtAuthGuard)
   @Post('cambiar-plan')
@@ -68,11 +109,68 @@ export class SaasController {
   // ==================== ENDPOINTS SUPERADMIN / PLATAFORMA ====================
 
   /**
+   * Panel SuperAdmin: Alta manual de una clínica (tras recibir transferencia inicial).
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('crear-clinica')
+  @HttpCode(HttpStatus.CREATED)
+  async crearClinicaSuperAdmin(@Body() dto: OnboardingDto, @Request() req: any) {
+    this.verificarSuperAdmin(req);
+    const ip = req.ip || req.connection?.remoteAddress;
+    const ua = req.headers['user-agent'];
+    return this.saasService.onboarding(dto, ip, ua);
+  }
+
+  /**
+   * Panel SuperAdmin: Lista solicitudes de planes y pagos por transferencia pendientes.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('solicitudes')
+  async listarSolicitudes(
+    @Query('pendientes') pendientes: string,
+    @Request() req: any,
+  ) {
+    this.verificarSuperAdmin(req);
+    const soloPendientes = pendientes !== 'false';
+    return this.saasService.listarSolicitudes(soloPendientes);
+  }
+
+  /**
+   * Panel SuperAdmin: Aprueba una transferencia bancaria y activa el plan.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('solicitudes/:id/aprobar')
+  @HttpCode(HttpStatus.OK)
+  async aprobarSolicitudPlan(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: any,
+  ) {
+    this.verificarSuperAdmin(req);
+    return this.saasService.aprobarSolicitudPlan(id, req.user.id);
+  }
+
+  /**
+   * Panel SuperAdmin: Rechaza una solicitud de transferencia bancaria no confirmada.
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('solicitudes/:id/rechazar')
+  @HttpCode(HttpStatus.OK)
+  async rechazarSolicitudPlan(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: RechazarSolicitudPlanDto,
+    @Request() req: any,
+  ) {
+    this.verificarSuperAdmin(req);
+    return this.saasService.rechazarSolicitudPlan(id, req.user.id, dto.motivo);
+  }
+
+  /**
    * Panel SuperAdmin: Métricas globales consolidadas de la plataforma SaaS.
    */
   @UseGuards(JwtAuthGuard)
   @Get('dashboard')
-  async obtenerDashboardGlobal() {
+  async obtenerDashboardGlobal(@Request() req: any) {
+    this.verificarSuperAdmin(req);
     return this.saasService.obtenerDashboardGlobal();
   }
 
@@ -81,7 +179,8 @@ export class SaasController {
    */
   @UseGuards(JwtAuthGuard)
   @Get('consultorios')
-  async listarTodosConsultorios() {
+  async listarTodosConsultorios(@Request() req: any) {
+    this.verificarSuperAdmin(req);
     return this.saasService.listarTodosConsultorios();
   }
 
@@ -93,7 +192,9 @@ export class SaasController {
   async cambiarEstadoConsultorio(
     @Param('id', ParseUUIDPipe) consultorioId: string,
     @Body() dto: CambiarEstadoTenantDto,
+    @Request() req: any,
   ) {
+    this.verificarSuperAdmin(req);
     return this.saasService.cambiarEstadoConsultorio(consultorioId, dto);
   }
 
@@ -105,7 +206,9 @@ export class SaasController {
   async cambiarPlanTenant(
     @Param('id', ParseUUIDPipe) consultorioId: string,
     @Body() dto: CambiarPlanDto,
+    @Request() req: any,
   ) {
+    this.verificarSuperAdmin(req);
     return this.saasService.cambiarPlan(consultorioId, dto);
   }
 }

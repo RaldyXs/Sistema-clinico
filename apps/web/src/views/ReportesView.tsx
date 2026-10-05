@@ -87,21 +87,21 @@ export function ReportesView() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2.5">
       {/* Cabecera y botón exportar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <BarChart3 className="size-6 text-primary" />
+          <h1 className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-1.5">
+            <BarChart3 className="size-4 text-primary" />
             Reportes Clínicos y Estadísticas
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground">
             Productividad médica, ausentismo de citas, horas pico y epidemiología
           </p>
         </div>
-        <Button onClick={descargarCsv} disabled={exportando} variant="outline">
-          <Download className="size-4 mr-2" />
-          {exportando ? 'Generando...' : 'Exportar a Excel / CSV'}
+        <Button onClick={descargarCsv} disabled={exportando} variant="outline" size="sm" className="h-7 text-xs px-2.5">
+          <Download className="size-3.5 mr-1" />
+          {exportando ? 'Generando...' : 'Exportar CSV'}
         </Button>
       </div>
 

@@ -16,6 +16,8 @@ import { RegistrarPagoDto } from './dto/registrar-pago.dto.js';
 import { AnularPagoDto } from './dto/anular-pago.dto.js';
 import { FiltrosCajaDto } from './dto/filtros-caja.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 
 @UseGuards(JwtAuthGuard)
@@ -115,8 +117,11 @@ export class CajaController {
 
   /**
    * Anula un cobro con justificación obligatoria.
+   * Restringido a Administradores de la clínica o SuperAdmin por control de auditoría financiera.
    */
   @Patch('pagos/:id/anular')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'SUPERADMIN')
   async anularPago(
     @ConsultorioActual() consultorioId: string,
     @Request() req: any,

@@ -78,39 +78,39 @@ export function GinecologiaView() {
   }, [dbp, cc, ca, lf]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2.5">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Baby className="size-6 text-pink-500" />
+        <h1 className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-1.5">
+          <Baby className="size-4.5 text-pink-500" />
           Especialidad de Ginecología y Obstetricia
         </h1>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           Herramientas de cálculo gestacional, biometría fetal Hadlock y seguimiento prenatal
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
         {/* CALCULADORA OBSTÉTRICA FUR / FPP */}
         <Card className="border-pink-500/20 shadow-xs">
-          <CardHeader className="border-b border-border/60 pb-4">
-            <CardTitle className="text-base flex items-center gap-2 text-pink-600 dark:text-pink-400">
-              <Calculator className="size-4" />
+          <CardHeader className="border-b border-border/60 py-2 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5 text-pink-600 dark:text-pink-400">
+              <Calculator className="size-3.5" />
               Calculadora Obstétrica (Regla de Naegele)
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-[10px]">
               Determina edad gestacional exacta, fecha probable de parto y calendario ecográfico
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-6 space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                <Calendar className="size-3.5" /> Fecha de Última Regla (FUR)
+          <CardContent className="p-3 pt-2 space-y-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                <Calendar className="size-3" /> Fecha de Última Regla (FUR)
               </label>
               <Input
                 type="date"
                 value={fur}
                 onChange={(e) => setFur(e.target.value)}
-                className="max-w-xs"
+                className="max-w-xs h-7 text-xs"
               />
             </div>
 
@@ -166,22 +166,23 @@ export function GinecologiaView() {
 
         {/* BIOMETRÍA FETAL HADLOCK */}
         <Card className="border-sky-500/20 shadow-xs">
-          <CardHeader className="border-b border-border/60 pb-4">
-            <CardTitle className="text-base flex items-center gap-2 text-sky-600 dark:text-sky-400">
-              <HeartPulse className="size-4" />
+          <CardHeader className="border-b border-border/60 py-2 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5 text-sky-600 dark:text-sky-400">
+              <HeartPulse className="size-3.5" />
               Biometría Fetal y Peso Fetal Estimado (Hadlock)
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-[10px]">
               Cálculo biométrico automático del PFE en gramos a partir de 4 medidas ecográficas
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground">
+          <CardContent className="p-3 pt-2 space-y-3">
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-muted-foreground">
                   DBP (Diámetro Biparietal) en mm
                 </label>
                 <Input
+                  className="h-7 text-xs"
                   type="number"
                   value={dbp}
                   onChange={(e) => setDbp(parseFloat(e.target.value) || 0)}

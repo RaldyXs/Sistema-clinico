@@ -355,25 +355,25 @@ export function PacientesView() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2.5">
       {/* Barra superior */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Expedientes de Pacientes</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-base sm:text-lg font-bold tracking-tight">Expedientes de Pacientes</h1>
+          <p className="text-[11px] text-muted-foreground">
             Gestión integral de historias clínicas, fichas de filiación y antecedentes
           </p>
         </div>
-        <Button onClick={() => setShowModalCrear(true)}>
-          <UserPlus className="size-4 mr-2" />
+        <Button size="sm" onClick={() => setShowModalCrear(true)} className="h-7 text-xs px-2.5">
+          <UserPlus className="size-3.5 mr-1.5" />
           Registrar Paciente
         </Button>
       </div>
 
       {mensajeExito && (
-        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm flex items-center justify-between gap-2">
+        <div className="p-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="size-4 shrink-0" />
+            <CheckCircle2 className="size-3.5 shrink-0" />
             <span>{mensajeExito}</span>
           </div>
           <button
@@ -387,18 +387,18 @@ export function PacientesView() {
       )}
 
       {/* Buscador */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <div className="relative flex-1 max-w-md">
-          <Search className="size-4 absolute left-3 top-2.5 text-muted-foreground" />
+          <Search className="size-3.5 absolute left-2.5 top-2 text-muted-foreground" />
           <Input
-            className="pl-9"
+            className="pl-8 h-7 text-xs"
             placeholder="Buscar por nombre, apellido o DNI..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button variant="outline" size="sm" onClick={cargarPacientes}>
-          <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+        <Button variant="outline" size="sm" onClick={cargarPacientes} className="h-7 px-2">
+          <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
@@ -416,36 +416,36 @@ export function PacientesView() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase bg-muted/50 text-muted-foreground border-b border-border">
+              <table className="w-full text-xs text-left">
+                <thead className="text-[11px] uppercase bg-muted/50 text-muted-foreground border-b border-border">
                   <tr>
-                    <th className="px-6 py-3 font-semibold">Paciente</th>
-                    <th className="px-6 py-3 font-semibold">DNI / Documento</th>
-                    <th className="px-6 py-3 font-semibold">Contacto</th>
-                    <th className="px-6 py-3 font-semibold">Grupo Sang.</th>
-                    <th className="px-6 py-3 font-semibold">Estado</th>
-                    <th className="px-6 py-3 font-semibold text-right">Acciones</th>
+                    <th className="px-3.5 py-2 font-semibold">Paciente</th>
+                    <th className="px-3.5 py-2 font-semibold">DNI / Documento</th>
+                    <th className="px-3.5 py-2 font-semibold">Contacto</th>
+                    <th className="px-3.5 py-2 font-semibold">Grupo Sang.</th>
+                    <th className="px-3.5 py-2 font-semibold">Estado</th>
+                    <th className="px-3.5 py-2 font-semibold text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {pacientes.map((p) => (
                     <tr key={p.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4 font-medium text-foreground">
-                        <div className="flex items-center gap-2.5">
-                          <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                      <td className="px-3.5 py-2.5 font-medium text-foreground">
+                        <div className="flex items-center gap-2">
+                          <div className="size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
                             {p.nombre[0]}
                             {p.apellido?.[0] || ''}
                           </div>
                           <div>
-                            <div>
+                            <div className="font-semibold">
                               {p.nombre} {p.apellido || ''}
                             </div>
-                            <div className="text-xs text-muted-foreground">{p.genero || p.sexo || 'Femenino'}</div>
+                            <div className="text-[11px] text-muted-foreground">{p.genero || p.sexo || 'Femenino'}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-mono text-muted-foreground">{p.documentoIdentidad || p.dni || 'S/D'}</td>
-                      <td className="px-6 py-4 text-xs text-muted-foreground space-y-0.5">
+                      <td className="px-3.5 py-2.5 font-mono text-muted-foreground">{p.documentoIdentidad || p.dni || 'S/D'}</td>
+                      <td className="px-3.5 py-2.5 text-[11px] text-muted-foreground space-y-0.5">
                         {p.telefono && (
                           <div className="flex items-center gap-1">
                             <Phone className="size-3" /> {p.telefono}
@@ -457,20 +457,20 @@ export function PacientesView() {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4">
-                        <Badge variant="outline">{p.grupoSanguineo || 'N/D'}</Badge>
+                      <td className="px-3.5 py-2.5">
+                        <Badge variant="outline" className="text-[10px] py-0 px-1.5">{p.grupoSanguineo || 'N/D'}</Badge>
                       </td>
-                      <td className="px-6 py-4">
-                        <Badge variant={p.activo ? 'success' : 'secondary'}>
+                      <td className="px-3.5 py-2.5">
+                        <Badge variant={p.activo ? 'success' : 'secondary'} className="text-[10px] py-0 px-2">
                           {p.activo ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-8 gap-1 text-xs"
+                            className="h-7 gap-1 text-xs cursor-pointer"
                             title="Editar datos del paciente"
                             onClick={() => abrirModalEditar(p)}
                           >
@@ -480,10 +480,10 @@ export function PacientesView() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 gap-1.5 text-xs"
+                            className="h-7 gap-1.5 text-xs cursor-pointer text-primary hover:bg-primary/10"
                             onClick={() => verFichaPaciente(p)}
                           >
-                            <Eye className="size-4" />
+                            <Eye className="size-3.5" />
                             Ficha 360°
                           </Button>
                         </div>

@@ -63,7 +63,17 @@ export class Consultorio {
   @Column({
     name: 'modulos_activos',
     type: 'jsonb',
-    default: { ginecologia: true, general: true, recetas: true, documentos: true },
+    default: {
+      general: true,
+      citas: true,
+      pacientes: true,
+      caja: true,
+      recetas: true,
+      documentos: true,
+      ginecologia: true,
+      reportes: true,
+      auditoria: true,
+    },
   })
   modulosActivos: Record<string, boolean>;
 

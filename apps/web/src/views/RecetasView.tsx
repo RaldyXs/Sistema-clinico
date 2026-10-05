@@ -246,22 +246,22 @@ export function RecetasView() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Recetas Médicas y Prescripciones</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-base sm:text-lg font-bold tracking-tight">Recetas Médicas y Prescripciones</h1>
+          <p className="text-[11px] text-muted-foreground">
             Emisión con numeración correlativa por clínica y descarga de PDFs oficiales
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={abrirModalFirma} className="cursor-pointer">
-            <PenTool className="size-4 mr-2 text-primary" />
-            {user?.firmaDigitalUrl ? 'Mi Firma y Sello Digital' : 'Configurar Firma y Sello'}
+        <div className="flex items-center gap-1.5">
+          <Button variant="outline" size="sm" onClick={abrirModalFirma} className="cursor-pointer h-7 text-xs px-2.5">
+            <PenTool className="size-3 mr-1 text-primary" />
+            {user?.firmaDigitalUrl ? 'Firma y Sello' : 'Configurar Firma'}
           </Button>
-          <Button onClick={() => setShowModalCrear(true)} className="cursor-pointer">
-            <Plus className="size-4 mr-2" />
-            Emitir Nueva Receta
+          <Button size="sm" onClick={() => setShowModalCrear(true)} className="cursor-pointer h-7 text-xs px-2.5">
+            <Plus className="size-3.5 mr-1" />
+            Emitir Receta
           </Button>
         </div>
       </div>
@@ -309,52 +309,52 @@ export function RecetasView() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs uppercase bg-muted/50 text-muted-foreground border-b border-border">
+              <table className="w-full text-xs text-left">
+                <thead className="text-[11px] uppercase bg-muted/50 text-muted-foreground border-b border-border">
                   <tr>
-                    <th className="px-6 py-3 font-semibold">Folio / Número</th>
-                    <th className="px-6 py-3 font-semibold">Fecha</th>
-                    <th className="px-6 py-3 font-semibold">Paciente</th>
-                    <th className="px-6 py-3 font-semibold">Fármacos</th>
-                    <th className="px-6 py-3 font-semibold">Estado</th>
-                    <th className="px-6 py-3 font-semibold text-right">PDF Oficial</th>
+                    <th className="px-3.5 py-2 font-semibold">Folio / Número</th>
+                    <th className="px-3.5 py-2 font-semibold">Fecha</th>
+                    <th className="px-3.5 py-2 font-semibold">Paciente</th>
+                    <th className="px-3.5 py-2 font-semibold">Fármacos</th>
+                    <th className="px-3.5 py-2 font-semibold">Estado</th>
+                    <th className="px-3.5 py-2 font-semibold text-right">PDF Oficial</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {recetas.map((r) => (
                     <tr key={r.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4 font-mono font-bold text-primary">
+                      <td className="px-3.5 py-2.5 font-mono font-bold text-primary">
                         {r.numeroReceta}
                       </td>
-                      <td className="px-6 py-4 text-xs text-muted-foreground">
+                      <td className="px-3.5 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(r.fechaEmision).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3.5 py-2.5">
                         <div className="font-semibold">
                           {r.paciente?.nombre} {r.paciente?.apellido || ''}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-[11px] text-muted-foreground">
                           DNI: {r.paciente?.dni || 'N/D'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-xs">
+                      <td className="px-3.5 py-2.5 text-xs">
                         <div className="font-medium">
                           {r.medicamentos?.length || 0} medicamento(s)
                         </div>
-                        <div className="text-muted-foreground truncate max-w-xs">
+                        <div className="text-muted-foreground truncate max-w-xs text-[11px]">
                           {r.medicamentos?.map((m: any) => m.medicamento).join(', ')}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <Badge variant={r.estado === 'EMITIDA' ? 'success' : 'destructive'}>
+                      <td className="px-3.5 py-2.5">
+                        <Badge variant={r.estado === 'EMITIDA' ? 'success' : 'destructive'} className="text-[10px] py-0 px-2">
                           {r.estado}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-8 gap-1 text-xs border-primary/30 text-primary hover:bg-primary/10"
+                          className="h-7 gap-1 text-xs border-primary/30 text-primary hover:bg-primary/10 cursor-pointer"
                           disabled={descargandoId === r.id}
                           onClick={() => descargarPdf(r.id, r.numeroReceta)}
                         >

@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -39,7 +41,10 @@ import { CajaModule } from './modules/caja/caja.module.js';
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
         autoLoadEntities: true,
-        synchronize: true, // Sincroniza los modelos con la DB (solo para desarrollo local)
+        synchronize: configService.get<string>('NODE_ENV') !== 'production',
+        ssl: configService.get<string>('DB_SSL') === 'true'
+          ? { rejectUnauthorized: false }
+          : false,
       }),
     }),
 
@@ -90,8 +95,22 @@ import { CajaModule } from './modules/caja/caja.module.js';
 
     // 18. Módulo Financiero, Caja Diaria y Cobros (Fase 11)
     CajaModule,
+
+    // 19. Rate Limiting global (Protección anti fuerza bruta y DoS)
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 120,
+      },
+    ]),
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -16,6 +16,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { RegistroDto } from './dto/registro.dto.js';
 import { Verify2faDto, Disable2faDto, Login2faDto } from './dto/two-factor.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -28,6 +29,11 @@ export class AuthController {
     return this.authService.registro(dto, ip, ua);
   }
 
+  /**
+   * Endpoint de autenticación principal.
+   * Límite de 30 intentos por minuto para mitigar ataques de fuerza bruta sin bloquear usuarios legítimos.
+   */
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @Request() req: any) {
@@ -36,6 +42,11 @@ export class AuthController {
     return this.authService.login(dto, ip, ua);
   }
 
+  /**
+   * Verificación de segundo factor (2FA).
+   * Límite de 30 intentos por minuto.
+   */
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Post('login-2fa')
   @HttpCode(HttpStatus.OK)
   async login2fa(@Body() dto: Login2faDto, @Request() req: any) {
@@ -59,6 +70,7 @@ export class AuthController {
       consultorio: {
         id: usuario.consultorio?.id ?? usuario.consultorioId,
         nombre: usuario.consultorio?.nombre,
+        modulosActivos: usuario.consultorio?.modulosActivos,
       },
     };
   }

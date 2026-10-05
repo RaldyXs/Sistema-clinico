@@ -125,6 +125,7 @@ export class AuthService {
         consultorio: {
           id: consultorioGuardado.id,
           nombre: consultorioGuardado.nombre,
+          modulosActivos: consultorioGuardado.modulosActivos,
         },
       },
     };
@@ -223,6 +224,7 @@ export class AuthService {
         consultorio: {
           id: usuario.consultorio.id,
           nombre: usuario.consultorio.nombre,
+          modulosActivos: usuario.consultorio.modulosActivos,
         },
       },
     };

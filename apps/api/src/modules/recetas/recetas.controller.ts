@@ -15,6 +15,8 @@ import { CrearRecetaDto } from './dto/crear-receta.dto.js';
 import { FiltrosRecetasDto } from './dto/filtros-recetas.dto.js';
 import { AnularRecetaDto } from './dto/anular-receta.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
 import { ConsultorioActual } from '../../common/decorators/consultorio-actual.decorator.js';
 import { UsuarioActual } from '../../common/decorators/usuario-actual.decorator.js';
 
@@ -32,8 +34,11 @@ export class RecetasController {
 
   /**
    * Emite una nueva receta médica con numeración correlativa garantizada por clínica.
+   * Restringido exclusivamente al acto médico (MEDICO, ADMIN).
    */
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('MEDICO', 'ADMIN', 'SUPERADMIN')
   async crear(
     @ConsultorioActual() consultorioId: string,
     @UsuarioActual('id') profesionalId: string,
@@ -86,8 +91,11 @@ export class RecetasController {
 
   /**
    * Invalida formalmente una receta médica especificando el motivo médico o administrativo.
+   * Restringido a facultativos médicos y administradores de clínica.
    */
   @Patch(':id/anular')
+  @UseGuards(RolesGuard)
+  @Roles('MEDICO', 'ADMIN', 'SUPERADMIN')
   async anular(
     @ConsultorioActual() consultorioId: string,
     @Param('id') id: string,

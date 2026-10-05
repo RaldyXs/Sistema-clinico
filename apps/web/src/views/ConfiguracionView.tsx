@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Settings,
   Users,
-  Palette,
+  Building2,
   UserPlus,
   RefreshCw,
   CheckCircle2,
@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export function ConfiguracionView() {
-  const { user } = useAuth();
+  const { user, actualizarPerfilLocal } = useAuth();
   const isAdmin = user?.rolCodigo === 'ADMIN' || user?.rolCodigo === 'SUPERADMIN';
 
   const [config, setConfig] = React.useState<any>(null);
@@ -39,6 +39,13 @@ export function ConfiguracionView() {
   const [planesDisponibles, setPlanesDisponibles] = React.useState<any[]>([]);
   const [showModalPlan, setShowModalPlan] = React.useState(false);
   const [planSeleccionado, setPlanSeleccionado] = React.useState('PROFESIONAL');
+  const [periodoSeleccionado, setPeriodoSeleccionado] = React.useState<'MENSUAL' | 'ANUAL'>('MENSUAL');
+  const [solicitudPendiente, setSolicitudPendiente] = React.useState<any | null>(null);
+  const [formTransferencia, setFormTransferencia] = React.useState({
+    referencia: '',
+    bancoOrigen: '',
+    notas: '',
+  });
   const [cambiandoPlan, setCambiandoPlan] = React.useState(false);
 
   // Formulario nuevo usuario
@@ -79,21 +86,42 @@ export function ConfiguracionView() {
     }
     setLoading(true);
     try {
-      const [cfg, users, sub, pls] = await Promise.all([
+      const [cfg, users, sub, pls, solPend] = await Promise.all([
         api.get('/consultorios/configuracion').catch(() => null),
         api.get('/usuarios').catch(() => []),
         api.get('/saas/mi-suscripcion').catch(() => null),
         api.get('/saas/planes').catch(() => []),
+        api.get('/saas/mi-solicitud-pendiente').catch(() => null),
       ]);
+      if (cfg) {
+        cfg.modulosActivos = {
+          general: true,
+          citas: true,
+          pacientes: true,
+          caja: true,
+          recetas: true,
+          ginecologia: true,
+          reportes: true,
+          documentos: true,
+          auditoria: true,
+          ...(cfg.modulosActivos || {}),
+        };
+      }
       setConfig(cfg);
       setUsuarios(Array.isArray(users) ? users : []);
       if (sub) {
         setSuscripcionInfo(sub);
-        setPlanSeleccionado(sub.plan?.codigo || 'PROFESIONAL');
       }
       if (Array.isArray(pls)) {
         setPlanesDisponibles(pls);
+        // Preseleccionar un plan diferente al actual de la clínica
+        const planActual = sub?.plan?.codigo;
+        const otro = pls.find((p: any) => p.codigo !== planActual);
+        if (otro) {
+          setPlanSeleccionado(otro.codigo);
+        }
       }
+      setSolicitudPendiente(solPend?.id ? solPend : null);
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -101,12 +129,23 @@ export function ConfiguracionView() {
     }
   }, [isAdmin]);
 
+  const abrirModalPlan = () => {
+    const planActual = suscripcionInfo?.plan?.codigo;
+    if (!planSeleccionado || planSeleccionado === planActual) {
+      const otro = planesDisponibles.find((p: any) => p.codigo !== planActual);
+      if (otro) {
+        setPlanSeleccionado(otro.codigo);
+      }
+    }
+    setShowModalPlan(true);
+  };
+
   React.useEffect(() => {
     cargarDatos();
   }, [cargarDatos]);
 
-  const handleGuardarConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGuardarConfig = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setGuardandoConfig(true);
     setMensajeExito(null);
 
@@ -116,13 +155,22 @@ export function ConfiguracionView() {
         telefono: config.telefono,
         direccion: config.direccion,
         email: config.email,
-        colorPrimario: config.colorPrimario,
-        colorSecundario: config.colorSecundario,
+        colorPrimario: config.colorPrimario || '#0284c7',
+        colorSecundario: config.colorSecundario || '#0f172a',
         horarioAtencion: config.horarioAtencion,
         modulosActivos: config.modulosActivos,
       });
       setConfig(updated);
-      setMensajeExito('Configuración y marca guardadas correctamente.');
+      if (user?.consultorio) {
+        actualizarPerfilLocal({
+          consultorio: {
+            ...user.consultorio,
+            nombre: updated.nombre,
+            modulosActivos: updated.modulosActivos,
+          },
+        });
+      }
+      setMensajeExito('Información institucional de la clínica guardada correctamente.');
     } catch (err: any) {
       alert(err.message || 'Error al guardar configuración');
     } finally {
@@ -230,18 +278,31 @@ export function ConfiguracionView() {
     }
   };
 
-  const handleCambiarPlan = async () => {
+  const handleSolicitarPlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formTransferencia.referencia.trim()) {
+      alert('Por favor ingresa el número de comprobante o referencia de tu transferencia bancaria.');
+      return;
+    }
+    if (planSeleccionado === suscripcionInfo?.plan?.codigo) {
+      alert('Tu clínica ya tiene activo este plan. Por favor selecciona un plan diferente para cambiar o mejorar.');
+      return;
+    }
     setCambiandoPlan(true);
     try {
-      await api.post('/saas/cambiar-plan', {
+      await api.post('/saas/solicitar-plan', {
         planCodigo: planSeleccionado,
-        periodo: 'MENSUAL',
+        periodo: periodoSeleccionado,
+        referenciaTransferencia: formTransferencia.referencia.trim(),
+        bancoOrigen: formTransferencia.bancoOrigen.trim() || undefined,
+        notas: formTransferencia.notas.trim() || undefined,
       });
       setShowModalPlan(false);
-      setMensajeExito(`¡Plan de la clínica actualizado exitosamente a ${planSeleccionado}!`);
+      setFormTransferencia({ referencia: '', bancoOrigen: '', notas: '' });
+      setMensajeExito('¡Solicitud enviada exitosamente! El Administrador verificará la transferencia y activará tu plan.');
       await cargarDatos();
     } catch (err: any) {
-      alert(err.message || 'Error al modificar plan');
+      alert(err.message || 'Error al solicitar cambio de plan');
     } finally {
       setCambiandoPlan(false);
     }
@@ -271,255 +332,244 @@ export function ConfiguracionView() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Settings className="size-6 text-primary" />
-          Configuración y Administración de la Clínica
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Identidad de marca, horarios de atención, personal asistencial y módulos activos
-        </p>
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-base sm:text-lg font-bold tracking-tight flex items-center gap-1.5">
+            <Settings className="size-4 text-primary" />
+            Configuración y Administración de la Clínica
+          </h1>
+          <p className="text-[11px] text-muted-foreground">
+            Datos institucionales, equipo de trabajo y capacidad de tu suscripción
+          </p>
+        </div>
       </div>
 
       {mensajeExito && (
-        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-2">
-          <CheckCircle2 className="size-4 shrink-0" />
+        <div className="p-2 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-2">
+          <CheckCircle2 className="size-3.5 shrink-0" />
           <span>{mensajeExito}</span>
         </div>
       )}
 
-      {/* TARJETA DE PLAN Y SUSCRIPCIÓN SAAS DE LA CLÍNICA */}
+      {/* Alerta de Solicitud de Plan / Transferencia Bancaria en Revisión */}
+      {solicitudPendiente?.id && (
+        <div className="p-2 px-2.5 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between gap-2 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2 min-w-0">
+            <Clock className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <div className="min-w-0 truncate text-[11px]">
+              <span className="font-semibold">
+                Cambio a {solicitudPendiente.plan?.nombre?.toLowerCase().startsWith('plan') ? solicitudPendiente.plan?.nombre : `Plan ${solicitudPendiente.plan?.nombre || 'Nuevo'}`} en Verificación:
+              </span>{' '}
+              <span className="text-muted-foreground">
+                Ref <span className="font-mono font-bold text-foreground">#{solicitudPendiente.referenciaTransferencia}</span> (${solicitudPendiente.monto} {solicitudPendiente.periodo}). Se activará tras confirmación bancaria.
+              </span>
+            </div>
+          </div>
+          <Badge variant="outline" className="text-[9px] py-0 px-1.5 border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/20 font-semibold shrink-0">
+            Pendiente Aprobación
+          </Badge>
+        </div>
+      )}
+
+      {/* TARJETA DE PLAN Y SUSCRIPCIÓN SAAS DE LA CLÍNICA (BARRA HORIZONTAL COMPACTA) */}
       {suscripcionInfo && (
-        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-card to-card shadow-sm overflow-hidden">
-          <CardHeader className="border-b border-border/60 pb-4 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                <Crown className="size-5" />
+        <Card className="border-primary/30 bg-gradient-to-r from-primary/5 via-card to-card shadow-xs overflow-hidden">
+          <div className="py-2 px-3 flex flex-col md:flex-row md:items-center justify-between gap-2.5">
+            {/* Info izquierda */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="size-7 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
+                <Crown className="size-3.5" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base font-bold">
-                    {suscripcionInfo.plan?.nombre || 'Plan Activo'}
-                  </CardTitle>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-foreground">{suscripcionInfo.plan?.nombre || 'Plan Activo'}</span>
                   <Badge
                     variant={suscripcionInfo.suscripcion?.estado === 'ACTIVA' ? 'default' : 'secondary'}
-                    className="text-[10px] font-semibold"
+                    className="text-[8.5px] py-0 px-1 font-semibold"
                   >
                     {suscripcionInfo.suscripcion?.estado === 'PRUEBA'
-                      ? 'Prueba Gratuita (14 días)'
-                      : 'Suscripción Activa'}
+                      ? 'Prueba (14 d)'
+                      : 'Activa'}
                   </Badge>
                 </div>
-                <CardDescription className="text-xs mt-0.5 flex items-center gap-2">
-                  <span>Facturación {suscripcionInfo.suscripcion?.periodo === 'ANUAL' ? 'Anual' : 'Mensual'}</span>
+                <div className="text-[9.5px] text-muted-foreground flex items-center gap-1 leading-none mt-0.5">
+                  <span>Fact. {suscripcionInfo.suscripcion?.periodo === 'ANUAL' ? 'Anual' : 'Mensual'}</span>
                   <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="size-3 text-muted-foreground" />
-                    {suscripcionInfo.suscripcion?.diasRestantes} días restantes en el ciclo actual
+                  <span className="flex items-center gap-0.5">
+                    <Clock className="size-2 text-muted-foreground" />
+                    {suscripcionInfo.suscripcion?.diasRestantes} días rest.
                   </span>
-                </CardDescription>
+                </div>
               </div>
             </div>
 
+            {/* Medidores de consumo inline */}
+            <div className="flex-1 grid grid-cols-2 gap-3 max-w-lg">
+              <div className="space-y-0.5">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Users className="size-2.5 text-primary" /> Capacidad Usuarios
+                  </span>
+                  <span className="font-semibold text-[10px]">
+                    {suscripcionInfo.consumo?.usuarios?.actual ?? suscripcionInfo.consumo?.medicos?.actual ?? 0} / {suscripcionInfo.consumo?.usuarios?.maximo ?? suscripcionInfo.consumo?.medicos?.maximo ?? 0}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      ((suscripcionInfo.consumo?.usuarios?.porcentaje ?? suscripcionInfo.consumo?.medicos?.porcentaje ?? 0) >= 90)
+                        ? 'bg-destructive'
+                        : 'bg-primary'
+                    }`}
+                    style={{ width: `${Math.min(100, suscripcionInfo.consumo?.usuarios?.porcentaje ?? suscripcionInfo.consumo?.medicos?.porcentaje ?? 0)}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-0.5">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-muted-foreground flex items-center gap-1">
+                    <Users className="size-2.5 text-emerald-500" /> Capacidad Pacientes
+                  </span>
+                  <span className="font-semibold text-[10px]">
+                    {suscripcionInfo.consumo?.pacientes?.actual ?? 0} / {suscripcionInfo.consumo?.pacientes?.maximo ?? 0}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      (suscripcionInfo.consumo?.pacientes?.porcentaje ?? 0) >= 90
+                        ? 'bg-destructive'
+                        : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.min(100, suscripcionInfo.consumo?.pacientes?.porcentaje ?? 0)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Botón cambiar plan */}
             <Button
               size="sm"
-              onClick={() => setShowModalPlan(true)}
-              className="gap-1.5 shrink-0 shadow-xs"
+              onClick={abrirModalPlan}
+              className="gap-1 shrink-0 shadow-xs h-6.5 text-[11px] px-2"
             >
-              <Zap className="size-3.5" /> Cambiar / Mejorar Plan
+              <Zap className="size-2.5" /> Cambiar Plan
             </Button>
-          </CardHeader>
-
-          <CardContent className="pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Medidor de Médicos */}
-            <div className="p-3 rounded-lg border border-border/80 bg-background/60 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-muted-foreground flex items-center gap-1.5">
-                  <Users className="size-3.5 text-primary" /> Capacidad de Usuarios (Médicos y Personal)
-                </span>
-                <span className="font-semibold text-foreground">
-                  {suscripcionInfo.consumo?.usuarios?.actual ?? suscripcionInfo.consumo?.medicos?.actual ?? 0} / {suscripcionInfo.consumo?.usuarios?.maximo ?? suscripcionInfo.consumo?.medicos?.maximo ?? 0} colaboradores
-                </span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${
-                    ((suscripcionInfo.consumo?.usuarios?.porcentaje ?? suscripcionInfo.consumo?.medicos?.porcentaje ?? 0) >= 90)
-                      ? 'bg-destructive'
-                      : 'bg-primary'
-                  }`}
-                  style={{ width: `${Math.min(100, suscripcionInfo.consumo?.usuarios?.porcentaje ?? suscripcionInfo.consumo?.medicos?.porcentaje ?? 0)}%` }}
-                />
-              </div>
-              <div className="text-[11px] text-muted-foreground text-right">
-                {suscripcionInfo.consumo?.usuarios?.porcentaje ?? suscripcionInfo.consumo?.medicos?.porcentaje ?? 0}% de cupo utilizado
-              </div>
-            </div>
-
-            {/* Medidor de Pacientes */}
-            <div className="p-3 rounded-lg border border-border/80 bg-background/60 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-muted-foreground flex items-center gap-1.5">
-                  <Users className="size-3.5 text-emerald-500" /> Capacidad de Pacientes
-                </span>
-                <span className="font-semibold text-foreground">
-                  {suscripcionInfo.consumo?.pacientes?.actual ?? 0} / {suscripcionInfo.consumo?.pacientes?.maximo ?? 0} expedientes
-                </span>
-              </div>
-              <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full transition-all duration-300 ${
-                    (suscripcionInfo.consumo?.pacientes?.porcentaje ?? 0) >= 90
-                      ? 'bg-destructive'
-                      : 'bg-emerald-500'
-                  }`}
-                  style={{ width: `${Math.min(100, suscripcionInfo.consumo?.pacientes?.porcentaje ?? 0)}%` }}
-                />
-              </div>
-              <div className="text-[11px] text-muted-foreground text-right">
-                {suscripcionInfo.consumo?.pacientes?.porcentaje ?? 0}% de cupo utilizado
-              </div>
-            </div>
-          </CardContent>
+          </div>
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* BRANDING Y AJUSTES DE CONSULTORIO */}
-        <Card>
-          <CardHeader className="border-b border-border/60 pb-4">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Palette className="size-4 text-primary" />
-              Identidad de Marca y Horarios
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
+        {/* DATOS DE LA CLÍNICA Y MEMBRETE OFICIAL */}
+        <Card className="shadow-xs">
+          <CardHeader className="border-b border-border/60 py-2 px-3">
+            <CardTitle className="text-xs flex items-center gap-1.5">
+              <Building2 className="size-3.5 text-primary" />
+              Datos de la Clínica & Membrete Oficial
             </CardTitle>
-            <CardDescription>Colores corporativos y datos institucionales</CardDescription>
+            <CardDescription className="text-[10px]">Información institucional para recetas médicas y recibos de cobro</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
-            <form onSubmit={handleGuardarConfig} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Nombre del Consultorio</label>
+          <CardContent className="p-2.5 pt-2">
+            <form onSubmit={handleGuardarConfig} className="space-y-2.5">
+              <div className="space-y-0.5">
+                <label className="text-[10px] font-semibold text-muted-foreground">Nombre de la Clínica / Centro Médico</label>
                 <Input
+                  className="h-7 text-xs"
+                  placeholder="Ej. Clínica Médica San Lucas"
                   value={config?.nombre || ''}
                   onChange={(e) => setConfig({ ...config, nombre: e.target.value })}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground">Teléfono</label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <label className="text-[10px] font-semibold text-muted-foreground">Teléfono / WhatsApp de Citas</label>
                   <Input
+                    className="h-7 text-xs"
+                    placeholder="+1 (809) 555-0199"
                     value={config?.telefono || ''}
                     onChange={(e) => setConfig({ ...config, telefono: e.target.value })}
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground">Email de Contacto</label>
+                <div className="space-y-0.5">
+                  <label className="text-[10px] font-semibold text-muted-foreground">Email de Contacto Público (Membrete)</label>
                   <Input
                     type="email"
+                    className="h-7 text-xs"
+                    placeholder="contacto@clinica.com"
                     value={config?.email || ''}
                     onChange={(e) => setConfig({ ...config, email: e.target.value })}
                   />
+                  <p className="text-[9px] text-muted-foreground/80 leading-tight">
+                    Aparece impreso en recetas y facturas. No altera tu usuario de acceso.
+                  </p>
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground">Dirección Física</label>
+              <div className="space-y-0.5">
+                <label className="text-[10px] font-semibold text-muted-foreground">Dirección Física (Pie de Recetas y Facturas)</label>
                 <Input
+                  className="h-7 text-xs"
+                  placeholder="Av. Salud #100, Ensanche Naco"
                   value={config?.direccion || ''}
                   onChange={(e) => setConfig({ ...config, direccion: e.target.value })}
                 />
               </div>
 
-              {/* Colores corporativos */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground">Color Primario</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      className="size-8 rounded border border-border cursor-pointer"
-                      value={config?.colorPrimario || '#0284c7'}
-                      onChange={(e) => setConfig({ ...config, colorPrimario: e.target.value })}
-                    />
-                    <Input
-                      className="font-mono text-xs"
-                      value={config?.colorPrimario || '#0284c7'}
-                      onChange={(e) => setConfig({ ...config, colorPrimario: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground">Color Secundario</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      className="size-8 rounded border border-border cursor-pointer"
-                      value={config?.colorSecundario || '#0f172a'}
-                      onChange={(e) => setConfig({ ...config, colorSecundario: e.target.value })}
-                    />
-                    <Input
-                      className="font-mono text-xs"
-                      value={config?.colorSecundario || '#0f172a'}
-                      onChange={(e) => setConfig({ ...config, colorSecundario: e.target.value })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Button type="submit" disabled={guardandoConfig} className="w-full mt-2">
-                {guardandoConfig ? 'Guardando...' : 'Guardar Cambios de Consultorio'}
+              <Button type="submit" disabled={guardandoConfig} className="w-full mt-2 h-7 text-xs font-semibold cursor-pointer">
+                {guardandoConfig ? 'Guardando...' : 'Guardar Información de la Clínica'}
               </Button>
             </form>
           </CardContent>
         </Card>
 
         {/* NÓMINA DE USUARIOS Y PERSONAL MÉDICO */}
-        <Card>
-          <CardHeader className="border-b border-border/60 pb-4 flex flex-row items-center justify-between">
+        <Card className="shadow-xs flex flex-col">
+          <CardHeader className="border-b border-border/60 py-2 px-3 flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Users className="size-4 text-emerald-500" />
+              <CardTitle className="text-xs flex items-center gap-1.5">
+                <Users className="size-3.5 text-emerald-500" />
                 Personal y Médicos de la Clínica
               </CardTitle>
-              <CardDescription>Gestión de usuarios y accesos autorizados</CardDescription>
+              <CardDescription className="text-[10px]">Gestión de usuarios y accesos autorizados</CardDescription>
             </div>
-            <Button size="sm" onClick={() => setShowModalCrearUsuario(true)}>
-              <UserPlus className="size-3.5 mr-1" />
+            <Button size="sm" onClick={() => setShowModalCrearUsuario(true)} className="h-6.5 text-[11px] px-2">
+              <UserPlus className="size-2.5 mr-1" />
               Nuevo Miembro
             </Button>
           </CardHeader>
-          <CardContent className="pt-6 p-0">
-            <div className="divide-y divide-border">
+          <CardContent className="p-0 flex-1">
+            <div className="divide-y divide-border max-h-[220px] overflow-y-auto">
               {usuarios.map((u) => (
-                <div key={u.id} className="p-4 flex items-center justify-between gap-3 text-sm">
-                  <div>
-                    <div className="font-semibold text-foreground">
+                <div key={u.id} className="py-1.5 px-3 flex items-center justify-between gap-2 text-xs hover:bg-muted/25 transition-colors">
+                  <div className="min-w-0 pr-1">
+                    <div className="font-semibold text-foreground truncate text-[11px]">
                       {u.nombre} {u.apellido || ''}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-[9.5px] text-muted-foreground truncate">
                       {u.email} • {u.especialidad || u.rolCodigo}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={u.activo ? 'default' : 'secondary'}>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Badge variant={u.activo ? 'default' : 'secondary'} className="text-[8.5px] py-0 px-1">
                       {u.activo ? 'Activo' : 'Suspendido'}
                     </Badge>
                     {u.id === user?.id && (
-                      <Badge variant="outline" className="text-[10px] border-primary/40 text-primary py-0.5">
-                        Tú (Sesión actual)
+                      <Badge variant="outline" className="text-[8.5px] border-primary/40 text-primary py-0 px-1">
+                        Tú
                       </Badge>
                     )}
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-0.5">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="text-xs h-7 gap-1 px-2.5"
+                        className="text-[9.5px] h-5.5 gap-0.5 px-1.5"
                         title="Editar datos del colaborador"
                         onClick={() => abrirModalEditar(u)}
                       >
-                        <Pencil className="size-3" />
+                        <Pencil className="size-2" />
                         Editar
                       </Button>
                       {u.id !== user?.id && (
@@ -527,7 +577,7 @@ export function ConfiguracionView() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-xs h-7"
+                            className="text-[9.5px] h-5.5 px-1.5"
                             onClick={() => cambiarEstadoUsuario(u.id, !u.activo)}
                           >
                             {u.activo ? 'Suspender' : 'Activar'}
@@ -535,11 +585,11 @@ export function ConfiguracionView() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-xs h-7 text-destructive hover:bg-destructive/10 hover:text-destructive px-2"
+                            className="text-[9.5px] h-5.5 text-destructive hover:bg-destructive/10 hover:text-destructive px-1"
                             title="Eliminar usuario"
                             onClick={() => setUsuarioAEliminar(u)}
                           >
-                            <Trash2 className="size-3.5" />
+                            <Trash2 className="size-2.5" />
                           </Button>
                         </>
                       )}
@@ -856,17 +906,17 @@ export function ConfiguracionView() {
         </div>
       )}
 
-      {/* Modal Cambiar Plan */}
+      {/* Modal Cambiar / Solicitar Plan con Transferencia Bancaria */}
       {showModalPlan && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <Card className="max-w-2xl w-full shadow-2xl border-border animate-in fade-in zoom-in-95 duration-150">
-            <CardHeader className="border-b border-border flex flex-row items-center justify-between">
+          <Card className="max-w-2xl w-full shadow-2xl border-border animate-in fade-in zoom-in-95 duration-150 my-8">
+            <CardHeader className="border-b border-border flex flex-row items-center justify-between pb-4">
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Zap className="size-5 text-primary" /> Cambiar o Mejorar Plan de la Clínica
                 </CardTitle>
-                <CardDescription>
-                  Actualiza tu suscripción para ampliar la capacidad de médicos, pacientes y funcionalidades
+                <CardDescription className="text-xs">
+                  Selecciona tu plan, realiza la transferencia bancaria y registra el comprobante para su activación inmediata.
                 </CardDescription>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setShowModalPlan(false)}>
@@ -874,53 +924,200 @@ export function ConfiguracionView() {
               </Button>
             </CardHeader>
 
-            <CardContent className="pt-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {planesDisponibles.map((p) => {
-                  const seleccionado = planSeleccionado === p.codigo;
-                  return (
-                    <div
-                      key={p.id}
-                      onClick={() => setPlanSeleccionado(p.codigo)}
-                      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                        seleccionado
-                          ? 'border-primary bg-primary/5 shadow-xs'
-                          : 'border-border hover:border-border/80 hover:bg-muted/30'
+            <form onSubmit={handleSolicitarPlan}>
+              <CardContent className="pt-5 space-y-5">
+                {/* 1. Selector de Periodicidad */}
+                <div className="flex items-center justify-between bg-muted/40 p-2.5 rounded-xl border border-border text-xs">
+                  <span className="font-semibold text-foreground">Ciclo de Facturación:</span>
+                  <div className="flex items-center gap-1.5 bg-background p-1 rounded-lg border border-border">
+                    <button
+                      type="button"
+                      onClick={() => setPeriodoSeleccionado('MENSUAL')}
+                      className={`px-3 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                        periodoSeleccionado === 'MENSUAL'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-sm">{p.nombre}</span>
-                        {p.destacado && (
-                          <Badge variant="default" className="text-[9px] py-0">
-                            Popular
-                          </Badge>
+                      Mensual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPeriodoSeleccionado('ANUAL')}
+                      className={`px-3 py-1 rounded-md font-semibold transition-all flex items-center gap-1 cursor-pointer ${
+                        periodoSeleccionado === 'ANUAL'
+                          ? 'bg-primary text-primary-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      Anual <Badge className="text-[9px] py-0 px-1 bg-emerald-500 text-white">Ahorra 15%</Badge>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 2. Planes Comerciales */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {planesDisponibles.map((p) => {
+                    const esPlanActual = suscripcionInfo?.plan?.codigo === p.codigo;
+                    const seleccionado = planSeleccionado === p.codigo;
+                    const precio = periodoSeleccionado === 'ANUAL' ? p.precioAnual : p.precioMensual;
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={esPlanActual ? undefined : () => setPlanSeleccionado(p.codigo)}
+                        className={`p-3.5 rounded-xl border-2 transition-all relative select-none ${
+                          esPlanActual
+                            ? 'border-border/60 bg-muted/40 opacity-75 cursor-not-allowed'
+                            : seleccionado
+                            ? 'border-primary bg-primary/5 shadow-xs ring-1 ring-primary/40 cursor-pointer'
+                            : 'border-border hover:border-border/80 hover:bg-muted/30 cursor-pointer'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-sm">{p.nombre}</span>
+                          {esPlanActual ? (
+                            <Badge variant="secondary" className="text-[10px] py-0 px-1.5 bg-primary/15 text-primary border-primary/25 font-semibold">
+                              ✓ Plan Actual
+                            </Badge>
+                          ) : p.destacado ? (
+                            <Badge variant="default" className="text-[9px] py-0">
+                              Popular
+                            </Badge>
+                          ) : null}
+                        </div>
+                        <div className="text-xl font-bold text-primary mt-1">
+                          ${precio}
+                          <span className="text-xs font-normal text-muted-foreground">
+                            /{periodoSeleccionado === 'ANUAL' ? 'año' : 'mes'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">
+                          {p.descripcion}
+                        </p>
+                        <div className="mt-2.5 pt-2.5 border-t border-border/60 text-[11px] space-y-1 text-muted-foreground">
+                          <div>👨‍⚕️ Hasta {p.maxMedicos} médicos</div>
+                          <div>👥 Hasta {p.maxPacientes.toLocaleString()} pacientes</div>
+                        </div>
+                        {esPlanActual && (
+                          <div className="mt-2 pt-1.5 border-t border-border/40 text-[10px] font-medium text-center text-muted-foreground bg-muted/30 rounded">
+                            Tu clínica ya cuenta con este plan
+                          </div>
                         )}
                       </div>
-                      <div className="text-xl font-bold text-primary mt-1">
-                        ${p.precioMensual}
-                        <span className="text-xs font-normal text-muted-foreground">/mes</span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-2 line-clamp-2">
-                        {p.descripcion}
-                      </p>
-                      <div className="mt-3 pt-3 border-t border-border/60 text-[11px] space-y-1 text-muted-foreground">
-                        <div>👨‍⚕️ Hasta {p.maxMedicos} médicos</div>
-                        <div>👥 Hasta {p.maxPacientes.toLocaleString()} pacientes</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
 
-              <div className="p-4 border-t border-border flex items-center justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => setShowModalPlan(false)}>
+                {/* 3. Datos de Transferencia Bancaria Oficial */}
+                <div className="p-3.5 rounded-xl bg-muted/40 border border-border space-y-2 text-xs">
+                  <div className="font-semibold text-foreground flex items-center justify-between">
+                    <span className="flex items-center gap-1.5 text-primary">
+                      🏦 Datos de la Cuenta para Transferencia Bancaria
+                    </span>
+                    <span className="font-bold text-foreground">
+                      Monto a transferir: $
+                      {(() => {
+                        const p = planesDisponibles.find((x) => x.codigo === planSeleccionado);
+                        if (!p) return 0;
+                        return periodoSeleccionado === 'ANUAL' ? p.precioAnual : p.precioMensual;
+                      })()}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] bg-background/80 p-2.5 rounded-lg border border-border/80">
+                    <div>
+                      <span className="text-muted-foreground">Banco Destino:</span>{' '}
+                      <span className="font-bold text-foreground">Banco Popular Dominicano</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Tipo de Cuenta:</span>{' '}
+                      <span className="font-bold text-foreground">Cuenta Corriente</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Número de Cuenta:</span>{' '}
+                      <span className="font-mono font-bold text-foreground">001-8492048-1</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Beneficiario / Titular:</span>{' '}
+                      <span className="font-bold text-foreground">Sistema Clínico SaaS S.R.L.</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Formulario de Registro de Comprobante */}
+                <div className="space-y-3 pt-1 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-foreground">
+                        Nº de Comprobante / Referencia Bancaria <span className="text-destructive">*</span>
+                      </label>
+                      <Input
+                        placeholder="Ej: 94820194 o REF-4029"
+                        value={formTransferencia.referencia}
+                        onChange={(e) =>
+                          setFormTransferencia({ ...formTransferencia, referencia: e.target.value })
+                        }
+                        required
+                        className="h-9 text-xs font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-semibold text-muted-foreground">
+                        Banco Emisor <span className="text-[10px] font-normal">(Opcional)</span>
+                      </label>
+                      <Input
+                        placeholder="Ej: Banreservas, BHD, Zelle"
+                        value={formTransferencia.bancoOrigen}
+                        onChange={(e) =>
+                          setFormTransferencia({ ...formTransferencia, bancoOrigen: e.target.value })
+                        }
+                        className="h-9 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-semibold text-muted-foreground">
+                      Notas o Comentarios Adicionales <span className="text-[10px] font-normal">(Opcional)</span>
+                    </label>
+                    <Input
+                      placeholder="Información adicional sobre el pago..."
+                      value={formTransferencia.notas}
+                      onChange={(e) =>
+                        setFormTransferencia({ ...formTransferencia, notas: e.target.value })
+                      }
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                </div>
+
+                {planSeleccionado === suscripcionInfo?.plan?.codigo && (
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs flex items-center gap-2">
+                    <AlertCircle className="size-4 shrink-0" />
+                    <span>
+                      Tu clínica ya tiene activo el plan <strong>{suscripcionInfo?.plan?.nombre}</strong>. Selecciona un plan diferente para cambiar o mejorar.
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+
+              <div className="p-4 border-t border-border flex items-center justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowModalPlan(false)}>
                   Cancelar
                 </Button>
-                <Button onClick={handleCambiarPlan} disabled={cambiandoPlan}>
-                  {cambiandoPlan ? 'Actualizando...' : 'Confirmar Cambio de Plan'}
+                <Button
+                  type="submit"
+                  disabled={
+                    cambiandoPlan ||
+                    planSeleccionado === suscripcionInfo?.plan?.codigo ||
+                    !formTransferencia.referencia.trim()
+                  }
+                  className="gap-2 font-semibold"
+                >
+                  {cambiandoPlan ? 'Enviando Solicitud...' : 'Enviar Comprobante y Solicitar Activación'}
                 </Button>
               </div>
-            </CardContent>
+            </form>
           </Card>
         </div>
       )}

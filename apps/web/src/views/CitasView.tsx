@@ -18,6 +18,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Banknote,
+  CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -35,6 +36,16 @@ export function CitasView() {
   const [citaACancelar, setCitaACancelar] = React.useState<any | null>(null);
   const [motivoCancelacion, setMotivoCancelacion] = React.useState('Paciente solicitó cancelación');
   const [cancelando, setCancelando] = React.useState(false);
+
+  // Estado para reprogramar cita
+  const [citaAReprogramar, setCitaAReprogramar] = React.useState<any | null>(null);
+  const [formReprogramar, setFormReprogramar] = React.useState({
+    fechaHoraInicio: '',
+    duracionMinutos: 30,
+    motivo: '',
+  });
+  const [reprogramando, setReprogramando] = React.useState(false);
+  const [reprogramarError, setReprogramarError] = React.useState<string | null>(null);
 
   // Estado para cobro rápido de cita
   const [citaACobrar, setCitaACobrar] = React.useState<any | null>(null);
@@ -76,6 +87,28 @@ export function CitasView() {
       alert(err.message || 'Error al registrar cobro. Verifica que la caja esté abierta en el menú Caja & Cobros.');
     } finally {
       setCobrandoCita(false);
+    }
+  };
+
+  const handleConfirmarReprogramacion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!citaAReprogramar) return;
+    setReprogramando(true);
+    setReprogramarError(null);
+    try {
+      const inicio = new Date(formReprogramar.fechaHoraInicio);
+      await api.patch(`/citas/${citaAReprogramar.id}`, {
+        fechaHoraInicio: inicio.toISOString(),
+        duracionMinutos: Number(formReprogramar.duracionMinutos),
+        motivo: formReprogramar.motivo.trim(),
+      });
+      setCitaAReprogramar(null);
+      setCobroExitosoMsg(`Cita reprogramada con éxito para el ${inicio.toLocaleDateString()} a las ${inicio.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+      cargarDatos();
+    } catch (err: any) {
+      setReprogramarError(err.message || 'Error al reprogramar la cita médica');
+    } finally {
+      setReprogramando(false);
     }
   };
 
@@ -167,9 +200,11 @@ export function CitasView() {
     }
   };
 
-  const citasFiltradas = citas.filter((c) =>
-    filtroEstado === 'TODOS' ? true : c.estado === filtroEstado,
-  );
+  const citasFiltradas = citas.filter((c) => {
+    if (filtroEstado === 'TODOS') return true;
+    if (filtroEstado === 'ATENDIDA') return c.estado === 'ATENDIDA' || c.estado === 'COMPLETADA';
+    return c.estado === filtroEstado;
+  });
 
   const formatearFechaHora = (iso: string) => {
     try {
@@ -197,6 +232,7 @@ export function CitasView() {
       case 'EN_CONSULTA':
         return <Badge variant="default">En Consulta</Badge>;
       case 'ATENDIDA':
+      case 'COMPLETADA':
         return <Badge variant="success">Atendida</Badge>;
       case 'CANCELADA':
         return <Badge variant="destructive">Cancelada</Badge>;
@@ -208,48 +244,48 @@ export function CitasView() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-2.5">
       {/* Cabecera */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Agenda y Flujo de Atención</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-base sm:text-lg font-bold tracking-tight">Agenda y Flujo de Atención</h1>
+          <p className="text-[11px] text-muted-foreground">
             Programación de turnos, gestión de sala de espera y ciclo de consulta
           </p>
         </div>
-        <Button onClick={() => setShowModalCrear(true)}>
-          <Plus className="size-4 mr-2" />
+        <Button size="sm" onClick={() => setShowModalCrear(true)} className="h-7 text-xs px-2.5">
+          <Plus className="size-3.5 mr-1" />
           Agendar Nueva Cita
         </Button>
       </div>
 
       {cobroExitosoMsg && (
-        <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-lg flex items-center justify-between text-sm">
+        <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-md flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
-            <CheckCircle className="size-4" />
+            <CheckCircle className="size-3.5" />
             <span>{cobroExitosoMsg}</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setCobroExitosoMsg(null)} className="h-6 px-2 text-xs">
+          <Button variant="ghost" size="sm" onClick={() => setCobroExitosoMsg(null)} className="h-5 px-1.5 text-[10px]">
             Cerrar
           </Button>
         </div>
       )}
 
       {/* Barra de filtros de estado */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         {['TODOS', 'PROGRAMADA', 'CONFIRMADA', 'EN_ESPERA', 'EN_CONSULTA', 'ATENDIDA', 'CANCELADA', 'NO_ASISTIO'].map((st) => (
           <Button
             key={st}
             variant={filtroEstado === st ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFiltroEstado(st)}
-            className="text-xs capitalize cursor-pointer"
+            className="text-[11px] h-6 px-2 capitalize cursor-pointer"
           >
             {st.replace('_', ' ').toLowerCase()}
           </Button>
         ))}
-        <Button variant="ghost" size="sm" onClick={cargarDatos} className="ml-auto">
-          <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />
+        <Button variant="ghost" size="sm" onClick={cargarDatos} className="ml-auto h-6 w-6 p-0">
+          <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
@@ -270,32 +306,32 @@ export function CitasView() {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs uppercase bg-muted/50 text-muted-foreground border-b border-border">
                   <tr>
-                    <th className="px-6 py-3 font-semibold">Horario</th>
-                    <th className="px-6 py-3 font-semibold">Paciente</th>
-                    <th className="px-6 py-3 font-semibold">Motivo</th>
-                    <th className="px-6 py-3 font-semibold">Profesional</th>
-                    <th className="px-6 py-3 font-semibold">Estado</th>
-                    <th className="px-6 py-3 font-semibold text-right">Acciones de Flujo</th>
+                    <th className="px-3.5 py-2 font-semibold text-xs">Horario</th>
+                    <th className="px-3.5 py-2 font-semibold text-xs">Paciente</th>
+                    <th className="px-3.5 py-2 font-semibold text-xs">Motivo</th>
+                    <th className="px-3.5 py-2 font-semibold text-xs">Profesional</th>
+                    <th className="px-3.5 py-2 font-semibold text-xs">Estado</th>
+                    <th className="px-3.5 py-2 font-semibold text-xs text-right">Acciones de Flujo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {citasFiltradas.map((c) => (
                     <tr key={c.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4 font-medium whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <Clock className="size-4 text-primary" />
+                      <td className="px-3.5 py-2.5 font-medium whitespace-nowrap text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="size-3.5 text-primary" />
                           <span>{formatearFechaHora(c.fechaHoraInicio)}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3.5 py-2.5 text-xs">
                         <div className="font-semibold text-foreground">
                           {c.paciente?.nombre} {c.paciente?.apellido || ''}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-[11px] text-muted-foreground">
                           {c.paciente?.tipoDocumento || 'Doc'}: {c.paciente?.documentoIdentidad || c.paciente?.dni || 'S/D'}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-muted-foreground max-w-xs">
+                      <td className="px-3.5 py-2.5 text-muted-foreground max-w-xs text-xs">
                         <div className="truncate">{c.motivo}</div>
                         {c.estado === 'CANCELADA' && c.motivoCancelacion && (
                           <div className="text-[11px] text-destructive italic mt-0.5">
@@ -303,13 +339,13 @@ export function CitasView() {
                           </div>
                         )}
                       </td>
-                      <td className="px-6 py-4 text-xs">
+                      <td className="px-3.5 py-2.5 text-xs">
                         {c.profesional?.nombre
                           ? `${c.profesional.nombre} ${c.profesional.apellido || ''}`
                           : 'Asignación General'}
                       </td>
-                      <td className="px-6 py-4">{getBadgeEstadoCita(c.estado)}</td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-3.5 py-2.5">{getBadgeEstadoCita(c.estado)}</td>
+                      <td className="px-3.5 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">
                           {c.estado === 'PROGRAMADA' && (
                             <>
@@ -417,6 +453,30 @@ export function CitasView() {
                             )
                           )}
 
+                          {['PROGRAMADA', 'CONFIRMADA'].includes(c.estado) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-7 border-sky-500/40 text-sky-600 hover:bg-sky-500/10 cursor-pointer"
+                              onClick={() => {
+                                setCitaAReprogramar(c);
+                                setReprogramarError(null);
+                                const d = new Date(c.fechaHoraInicio);
+                                const pad = (n: number) => n.toString().padStart(2, '0');
+                                const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                                setFormReprogramar({
+                                  fechaHoraInicio: formatted,
+                                  duracionMinutos: c.duracionMinutos || 30,
+                                  motivo: c.motivo || '',
+                                });
+                              }}
+                              title="Reprogramar fecha y hora de la cita"
+                            >
+                              <CalendarClock className="size-3.5 mr-1" />
+                              Reprogramar
+                            </Button>
+                          )}
+
                           {c.estado !== 'CANCELADA' && (isRecepcion || user?.rolCodigo === 'ADMIN') && (
                             <Button
                               variant="outline"
@@ -430,7 +490,14 @@ export function CitasView() {
                             </Button>
                           )}
 
-                          {!['ATENDIDA', 'CANCELADA', 'NO_ASISTIO'].includes(c.estado) && (
+                          {['ATENDIDA', 'COMPLETADA'].includes(c.estado) && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                              <CheckCircle className="size-3" />
+                              Atendida
+                            </span>
+                          )}
+
+                          {!['ATENDIDA', 'COMPLETADA', 'CANCELADA', 'NO_ASISTIO'].includes(c.estado) && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -763,6 +830,81 @@ export function CitasView() {
                       Confirmar y Emitir Recibo
                     </>
                   )}
+                </Button>
+              </div>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* MODAL REPROGRAMAR CITA */}
+      {citaAReprogramar && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full shadow-2xl border-border">
+            <div className="p-5 border-b border-border flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
+                  <CalendarClock className="size-4 text-sky-500" />
+                  Reprogramar Cita Médica
+                </h3>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Paciente: <strong className="text-foreground">{citaAReprogramar.paciente?.nombre} {citaAReprogramar.paciente?.apellido || ''}</strong>
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setCitaAReprogramar(null)}>
+                <X className="size-4" />
+              </Button>
+            </div>
+
+            <form onSubmit={handleConfirmarReprogramacion} className="p-5 space-y-4 text-xs">
+              {reprogramarError && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-xs rounded-lg flex items-center gap-2">
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span>{reprogramarError}</span>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Nueva Fecha y Hora *</label>
+                <Input
+                  type="datetime-local"
+                  required
+                  value={formReprogramar.fechaHoraInicio}
+                  onChange={(e) => setFormReprogramar({ ...formReprogramar, fechaHoraInicio: e.target.value })}
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Duración Estimada</label>
+                <select
+                  className="w-full h-9 px-3 rounded-md border border-input bg-background text-xs"
+                  value={formReprogramar.duracionMinutos}
+                  onChange={(e) => setFormReprogramar({ ...formReprogramar, duracionMinutos: Number(e.target.value) })}
+                >
+                  <option value={15}>15 minutos (Control rápido)</option>
+                  <option value={30}>30 minutos (Consulta estándar)</option>
+                  <option value={45}>45 minutos (Evaluación detallada)</option>
+                  <option value={60}>60 minutos (Procedimiento / Primera vez)</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground">Motivo / Nota de Reprogramación</label>
+                <Input
+                  placeholder="Ej: Paciente solicitó cambio por horario laboral"
+                  value={formReprogramar.motivo}
+                  onChange={(e) => setFormReprogramar({ ...formReprogramar, motivo: e.target.value })}
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2 border-t border-border">
+                <Button type="button" variant="outline" size="sm" onClick={() => setCitaAReprogramar(null)} disabled={reprogramando}>
+                  Cancelar
+                </Button>
+                <Button type="submit" size="sm" disabled={reprogramando} className="bg-sky-600 hover:bg-sky-700 text-white cursor-pointer">
+                  {reprogramando ? 'Guardando...' : 'Confirmar Nueva Fecha'}
                 </Button>
               </div>
             </form>
