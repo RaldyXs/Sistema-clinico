@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistema Clínico</title>
+    <script>
+      (function () {
+        try {
+          var theme = localStorage.getItem('theme_clinico');
+          if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-sQfTXVEF.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BEiV8T5u.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
