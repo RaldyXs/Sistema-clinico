@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestia • Especificación del Rediseño Multimódulo</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+    @page {
+      size: A4;
+      margin: 14mm 14mm 14mm 14mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.55;
+      font-size: 10pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .header-banner {
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 14px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+
+    .brand-title {
+      font-size: 22pt;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-badge {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 8.5pt;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      vertical-align: middle;
+    }
+
+    .subtitle {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #0284c7;
+      margin-top: 4px;
+    }
+
+    .meta-box {
+      text-align: right;
+      font-size: 8.5pt;
+      color: #64748b;
+      line-height: 1.4;
+    }
+
+    .meta-box strong {
+      color: #334155;
+    }
+
+    h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 18px;
+      margin-bottom: 10px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    h3 {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    p {
+      margin-bottom: 8px;
+      color: #334155;
+    }
+
+    .badge-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      font-size: 11pt;
+    }
+
+    .highlight-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #0284c7;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+    }
+
+    .highlight-card p {
+      margin-bottom: 0;
+      font-size: 9.5pt;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 16px 0;
+      font-size: 8.5pt;
+    }
+
+    th, td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .tag-allowed { background: #dcfce7; color: #15803d; }
+    .tag-denied { background: #fee2e2; color: #b91c1c; }
+    .tag-blue { background: #e0f2fe; color: #0369a1; }
+    .tag-purple { background: #f3e8ff; color: #7e22ce; }
+    .tag-amber { background: #fef3c7; color: #b45309; }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 10px;
+      margin-bottom: 14px;
+    }
+
+    .module-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 11px 13px;
+      background: #ffffff;
+      page-break-inside: avoid;
+    }
+
+    .module-card.sky { border-top: 3px solid #0284c7; }
+    .module-card.emerald { border-top: 3px solid #059669; }
+    .module-card.violet { border-top: 3px solid #7c3aed; }
+    .module-card.amber { border-top: 3px solid #d97706; }
+    .module-card.rose { border-top: 3px solid #e11d48; }
+
+    .module-card-title {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .module-card ul {
+      padding-left: 16px;
+      font-size: 8.5pt;
+      color: #475569;
+    }
+
+    .module-card li {
+      margin-bottom: 4px;
+    }
+
+    .module-card li strong {
+      color: #1e293b;
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+
+    .security-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-top: 8px;
+      margin-bottom: 14px;
+    }
+
+    .security-item {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 9px 11px;
+      font-size: 8.5pt;
+    }
+
+    .security-item strong {
+      color: #0f172a;
+      display: block;
+      margin-bottom: 2px;
+      font-size: 9pt;
+    }
+
+    .git-block {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8pt;
+      line-height: 1.6;
+      margin: 10px 0;
+    }
+
+    .footer {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      margin-top: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 7.5pt;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ENCABEZADO EJECUTIVO -->
+  <div class="header-banner">
+    <div>
+      <div class="brand-title">
+        Gestia <span class="brand-badge">Versión 2.0 • Edición Clínica</span>
+      </div>
+      <div class="subtitle">Documento de Arquitectura y Especificación de Mejoras: Plataforma Multimódulo</div>
+    </div>
+    <div class="meta-box">
+      <strong>Fecha:</strong> Octubre 2026<br>
+      <strong>Estado:</strong> Aprobado / En Ejecución<br>
+      <strong>Enfoque:</strong> Despliegue en Clínica Médica
+    </div>
+  </div>
+
+  <!-- INTRODUCCIÓN Y VISIÓN -->
+  <div class="highlight-card">
+    <p>
+      <strong>Transformación de Arquitectura:</strong> El sistema evoluciona de un diseño plano de pestañas a una 
+      <strong>suite clínica multimódulo guiada por roles</strong>. Tras autenticarse, el usuario no aterriza arbitrariamente 
+      en un dashboard genérico, sino en el <strong>Portal Launcher</strong> que le muestra con claridad únicamente los 
+      módulos funcionales correspondientes a su perfil profesional (Médico, Facturación, Secretaría, Base de Datos o Administración).
+    </p>
+  </div>
+
+  <!-- MATRIZ RBAC -->
+  <h2>1. Matriz de Control de Acceso por Rol (RBAC)</h2>
+  <p style="font-size: 8.5pt; color: #64748b;">
+    Cada rol institucional cuenta con permisos de ejecución estrictos para garantizar la confidencialidad de la historia clínica y la segregación de funciones financieras.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Módulo Operativo</th>
+        <th style="text-align: center;">Médico</th>
+        <th style="text-align: center;">Facturador</th>
+        <th style="text-align: center;">Secretaría / Asistente</th>
+        <th style="text-align: center;">Director / Admin</th>
+        <th style="text-align: center;">SuperAdmin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>🏥 Gestión Médica</strong> (Consultas, Recetas, Pacientes de Hoy)</td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Acceso</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Acceso</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">N/A</span></td>
+      </tr>
+      <tr>
+        <td><strong>💳 Facturación</strong> (Consultas, Laboratorios, Imágenes)</td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Acceso</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Acceso</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">N/A</span></td>
+      </tr>
+      <tr>
+        <td><strong>📋 Secretaría</strong> (Agenda, Citas, Carga de Resultados)</td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Acceso</span></td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Acceso</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">N/A</span></td>
+      </tr>
+      <tr>
+        <td><strong>🗄️ Base de Datos</strong> (Expedientes, Cédula, Seguros, Estudios)</td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Acceso</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Lectura</span></td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Total</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">N/A</span></td>
+      </tr>
+      <tr>
+        <td><strong>⚙️ Administración</strong> (Métricas, Backups, Seguridad, Roles)</td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Acceso</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">N/A</span></td>
+      </tr>
+      <tr>
+        <td><strong>👑 Plataforma SaaS Global</strong> (Tenants, Planes, Monitoreo)</td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-denied">Bloqueado</span></td>
+        <td style="text-align: center;"><span class="tag tag-allowed">Acceso Total</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- DETALLE POR MÓDULO -->
+  <h2>2. Detalle y Capacidades de los Módulos Clínicos</h2>
+
+  <div class="module-grid">
+    <!-- GESTION MEDICA -->
+    <div class="module-card sky">
+      <div class="module-card-title">
+        <span>🏥 Gestión Médica</span>
+        <span class="tag tag-blue">Médico & Admin</span>
+      </div>
+      <ul>
+        <li><strong>Pacientes de Hoy en Tiempo Real:</strong> Monitor de citas del día con trazabilidad del estado: Esperando en sala, En atención, Atendido o Inasistencia.</li>
+        <li><strong>Ficha de Paciente Inline (Drawer lateral):</strong> El médico abre y edita el expediente clínico completo sin abandonar la pantalla de la consulta.</li>
+        <li><strong>Evolución y Diagnóstico:</strong> Registro de motivo de consulta, examen físico, diagnóstico CIE y evolución clínica.</li>
+        <li><strong>Tratamientos y Recetas:</strong> Indicación de medicamentos, posología, plazo de tratamiento y generación inmediata de receta médica digital en PDF.</li>
+      </ul>
+    </div>
+
+    <!-- FACTURACION -->
+    <div class="module-card emerald">
+      <div class="module-card-title">
+        <span>💳 Facturación Virtual</span>
+        <span class="tag tag-allowed">Facturador & Admin</span>
+      </div>
+      <ul>
+        <li><strong>Emisión Segmentada por Servicio:</strong> Facturación electrónica diferenciada para Consultas, Exámenes de Laboratorio, Estudios de Imagen y Procedimientos.</li>
+        <li><strong>Integración con Seguros Médicos:</strong> Cálculo automático de copagos según el porcentaje de cobertura y la aseguradora del paciente.</li>
+        <li><strong>Historial y Auditoría de Facturas:</strong> Filtros por rango de fechas, estado de cobro, médico tratante y método de pago (Efectivo, Tarjeta, Transferencia, Seguro).</li>
+        <li><strong>Panel de Cobros Pendientes:</strong> Control de cuentas por cobrar y gestión de saldos pendientes de liquidación.</li>
+      </ul>
+    </div>
+
+    <!-- SECRETARIA -->
+    <div class="module-card violet">
+      <div class="module-card-title">
+        <span>📋 Secretaría y Recepción</span>
+        <span class="tag tag-purple">Secretaría & Admin</span>
+      </div>
+      <ul>
+        <li><strong>Agenda Médica Integral:</strong> Programación, reprogramación y confirmación de turnos médicos en formato calendario y lista diaria.</li>
+        <li><strong>Recepción y Registro Exprés:</strong> Alta rápida de pacientes con validación de datos demográficos y póliza médica.</li>
+        <li><strong>Centro de Carga de Resultados:</strong> Subida directa de documentos diagnósticos (PDFs de laboratorio, resultados de biopsias, imágenes de ultrasonido) directamente al expediente del paciente.</li>
+      </ul>
+    </div>
+
+    <!-- BASE DE DATOS -->
+    <div class="module-card amber">
+      <div class="module-card-title">
+        <span>🗄️ Base de Datos de Pacientes</span>
+        <span class="tag tag-amber">Clínica Completa</span>
+      </div>
+      <ul>
+        <li><strong>Ficha Médica Maestra:</strong> Datos personales, número de cédula, aseguradora afiliada, número de póliza y médicos tratantes asignados.</li>
+        <li><strong>Filtros Avanzados:</strong> Búsqueda alfabética instantánea, filtro por aseguradora, por médico de cabecera y por fecha de última atención.</li>
+        <li><strong>Trazabilidad de Estudios Especiales:</strong> Historial estructurado de pruebas clave como Papanicolao (fecha y resultado citológico), laboratorios anteriores e imágenes diagnósticas históricas.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- MODULO ADMIN Y SHELL -->
+  <h2>3. Arquitectura del Shell de Navegación y Usabilidad</h2>
+  <div class="module-grid">
+    <div class="module-card rose" style="grid-column: span 2;">
+      <div class="module-card-title">
+        <span>⚙️ Administración Central (Dirección Médica)</span>
+        <span class="tag tag-denied" style="background:#ffe4e6; color:#9f1239;">Solo Administrador</span>
+      </div>
+      <p style="font-size: 8.5pt; margin-bottom: 6px;">
+        Espacio dedicado exclusivamente a la dirección de la clínica para toma de decisiones, supervisión financiera, cumplimiento normativo y seguridad técnica.
+      </p>
+      <ul>
+        <li><strong>Dashboard de Rendimiento:</strong> Indicadores de ocupación, total de pacientes atendidos, métricas de consultas y facturación global.</li>
+        <li><strong>Reportes y Exportaciones:</strong> Generación de reportes clínicos y estadísticos detallados.</li>
+        <li><strong>Seguridad y Copias de Seguridad:</strong> Auditoría de accesos por usuario, gestión de sesiones activas, doble factor de autenticación (2FA) y generación de backups de la base de datos PostgreSQL.</li>
+        <li><strong>Gestión de Personal:</strong> Alta y edición de cuentas de médicos, secretarias y facturadores con control estricto de roles.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight-card" style="border-left-color: #7c3aed; margin-top: 10px;">
+    <p>
+      <strong>Experiencia de Usuario con ModuleShell:</strong> 
+      La anterior barra lateral fija que acumulaba todas las opciones ha sido reemplazada por una barra de navegación superior horizontal por módulo. Incluye un botón persistente <code>← Volver a Módulos</code> para regresar al Launcher, selector de modo oscuro/claro, identidad del profesional en sesión y sub-pestañas temáticas organizadas.
+    </p>
+  </div>
+
+  <!-- BLINDAJES DE SEGURIDAD IMPLEMENTADOS -->
+  <h2>4. Auditoría y Blindajes de Seguridad Implementados</h2>
+  <div class="security-list">
+    <div class="security-item">
+      <strong>Anti-Escalada de Privilegios (CWE-269)</strong>
+      Se implementó el objeto estricto <code>RolTenant</code> excluyendo a <code>SUPERADMIN</code> de los DTOs de creación y edición. Ni médicos ni recepcionistas pueden promover roles.
+    </div>
+    <div class="security-item">
+      <strong>Bloqueo de Auto-Edición de Rol</strong>
+      Si un colaborador actualiza sus propios datos de perfil, el controlador intercepta y anula cualquier mutación sobre <code>rolCodigo</code>, <code>rolId</code> o <code>activo</code>.
+    </div>
+    <div class="security-item">
+      <strong>Protección Contra Fuerza Bruta</strong>
+      Se incorporaron las columnas <code>intentos_fallidos</code> y <code>bloqueado_hasta</code> en la entidad Usuario. Tras 5 fallos consecutivos, la cuenta se suspende 15 minutos automáticamente.
+    </div>
+    <div class="security-item">
+      <strong>Rate Limiting Estricto y CORS Seguro</strong>
+      Límite de solicitudes reducido a 10 req/min en login y 5 req/min en 2FA. Se eliminó el comodín <code>*</code> con credenciales, restringiendo CORS a orígenes verificados.
+    </div>
+  </div>
+
+  <!-- PROTOCOLO GIT Y GESTIÓN DE PROYECTO -->
+  <h2>5. Buenas Prácticas de Ingeniería y Gestión con Git</h2>
+  <p style="font-size: 8.5pt;">
+    Siguiendo las pautas profesionales para el resguardo de la propiedad intelectual y el ciclo de vida del software:
+  </p>
+
+  <div class="git-block">
+# 1. Recomendación de Repositorio Privado en GitHub:
+# Para proteger la solución ante terceros y salvaguardar el código comercial de la clínica:
+# Ir a: GitHub -> Repositorio "Sistema-clinico" -> Settings -> Danger Zone -> Change visibility -> Private
+
+# 2. Flujo de Control de Versiones:
+git status                         # Verificación de archivos modificados
+git add apps/web/ apps/api/        # Stage de cambios verificados (multimódulo + seguridad)
+git commit -m "feat: arquitectura multimodulo con portal launcher y blindaje RBAC"
+git push origin main               # Sincronización con el repositorio privado
+
+# 3. Protocolo Estricto de Despliegue al Servidor Linux Mint:
+# Paso A: Compilación en taller Windows (tsc & vite build - 0 errores)
+# Paso B: Aprobación explícita del usuario
+# Paso C: Empaquetado tar.gz y transferencia segura SCP hacia 192.168.16.19
+# Paso D: Copia a contenedor Nginx sin interrupción de servicio
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div>Gestia Clinic OS • Documentación Técnica de Implementación</div>
+    <div>Monorepo: NestJS + React Vite + PostgreSQL • Confidencial</div>
+    <div>Página 1 de 1 (Resumen Ejecutivo)</div>
+  </div>
+
+</body>
+</html>

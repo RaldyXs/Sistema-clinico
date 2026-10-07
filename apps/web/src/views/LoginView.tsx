@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
-  Activity,
+  Layers,
   Lock,
   Mail,
   ShieldCheck,
@@ -16,10 +16,13 @@ import {
   EyeOff,
   ChevronDown,
   ChevronUp,
-  Stethoscope,
   CreditCard,
   ArrowRight,
   Users,
+  FileText,
+  HelpCircle,
+  X,
+  CheckCircle2,
 } from 'lucide-react';
 
 export function LoginView() {
@@ -34,6 +37,9 @@ export function LoginView() {
 
   // Modal para solicitar acceso comercial / información de alta
   const [showModalContacto, setShowModalContacto] = React.useState(false);
+
+  // Modales informativos legales y soporte
+  const [activeLegalModal, setActiveLegalModal] = React.useState<'privacidad' | 'terminos' | 'soporte' | null>(null);
 
   // Selector Demo colapsable
   const [showDemoPanel, setShowDemoPanel] = React.useState(true);
@@ -116,40 +122,40 @@ export function LoginView() {
           <div className="flex items-center gap-3">
             <div className="size-11 rounded-xl bg-gradient-to-tr from-primary to-sky-400 p-0.5 shadow-lg shadow-primary/25">
               <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <Activity className="size-6 text-primary animate-pulse" />
+                <Layers className="size-6 text-primary" />
               </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xl font-black tracking-tight text-white font-sans">
-                  Sistema Clínico
+                  Gestia
                 </span>
                 <Badge className="bg-primary/20 text-primary-foreground border-primary/30 text-[10px] uppercase font-mono tracking-wider">
-                  v2.4 SaaS
+                  Workspace
                 </Badge>
               </div>
               <p className="text-xs text-slate-400 font-medium">
-                Plataforma de Gestión Integral
+                Plataforma Multi-Tenant
               </p>
             </div>
           </div>
 
           <div className="pt-8 max-w-lg space-y-3">
             <h1 className="text-3xl xl:text-4xl font-extrabold tracking-tight text-white leading-tight">
-              Plataforma de Gestión Integral
+              Tu espacio de trabajo, unificado.
             </h1>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Espacio de trabajo unificado para la atención de pacientes, recepción, administración y control de operaciones.
+              Gestión centralizada de operaciones, administración, colaboradores y clientes para tu organización.
             </p>
           </div>
 
-          {/* Accesos y áreas: Etiquetas ligeras sin saturación de texto */}
+          {/* Accesos y áreas: Etiquetas ligeras y neutras para cualquier tipo de negocio */}
           <div className="flex flex-wrap gap-2.5 pt-4">
             <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-slate-300 font-medium backdrop-blur-sm">
-              <Users className="size-3.5 text-sky-400" /> Recepción y Agenda
+              <Building2 className="size-3.5 text-sky-400" /> Gestión Operativa
             </span>
             <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-slate-300 font-medium backdrop-blur-sm">
-              <Stethoscope className="size-3.5 text-emerald-400" /> Atención y Consultas
+              <Users className="size-3.5 text-emerald-400" /> Equipo y Clientes
             </span>
             <span className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-slate-300 font-medium backdrop-blur-sm">
               <CreditCard className="size-3.5 text-purple-400" /> Caja y Administración
@@ -185,10 +191,10 @@ export function LoginView() {
           {/* Logo visible solo en Mobile/Tablet */}
           <div className="flex lg:hidden items-center gap-2.5">
             <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <Activity className="size-4" />
+              <Layers className="size-4" />
             </div>
             <span className="font-bold text-base tracking-tight text-foreground">
-              Sistema Clínico
+              Gestia
             </span>
           </div>
 
@@ -227,7 +233,7 @@ export function LoginView() {
                   Iniciar Sesión
                 </h2>
                 <p className="text-xs text-muted-foreground">
-                  Ingresa tus credenciales para acceder a tu espacio de trabajo.
+                  Ingresa tus credenciales para acceder a tu organización.
                 </p>
               </div>
 
@@ -239,7 +245,7 @@ export function LoginView() {
                   <div className="relative">
                     <Input
                       type="email"
-                      placeholder="tu.correo@ejemplo.com"
+                      placeholder="tu.correo@empresa.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -257,7 +263,7 @@ export function LoginView() {
                       type="button"
                       onClick={() =>
                         alert(
-                          'Para restablecer tu contraseña, contacta al administrador de tu centro.'
+                          'Para restablecer tu contraseña, contacta al administrador de tu organización.'
                         )
                       }
                       className="text-[11px] text-primary hover:underline font-medium"
@@ -337,14 +343,14 @@ export function LoginView() {
 
                 {showDemoPanel && (
                   <div className="space-y-2.5 animate-in fade-in duration-200">
-                    {/* Perfiles de Clínica: Centro Médico Del Sol */}
+                    {/* Espacio de Organización Principal */}
                     <div>
                       <div className="text-[11px] font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                        <Building2 className="size-3 text-primary" /> Roles de Clínica (Centro Médico Del Sol):
+                        <Building2 className="size-3 text-primary" /> Organización A (Espacio Principal):
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {/* Dr. Carlos - Admin */}
+                        {/* Administrador */}
                         <button
                           type="button"
                           onClick={() => handleQuickLogin('carlos')}
@@ -353,21 +359,21 @@ export function LoginView() {
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <div className="size-6 rounded-md bg-sky-500/20 text-sky-600 dark:text-sky-400 flex items-center justify-center text-xs font-bold shrink-0">
-                              👨‍⚕️
+                              👔
                             </div>
                             <span className="text-[11px] font-bold text-foreground truncate">
-                              Dr. Carlos
+                              Carlos M.
                             </span>
                           </div>
                           <div className="text-[10px] text-muted-foreground leading-tight">
-                            Director / Admin
+                            Administrador
                           </div>
                           <span className="text-[9px] text-sky-600 dark:text-sky-400 font-medium mt-0.5">
                             Acceso Total
                           </span>
                         </button>
 
-                        {/* Dr. Roberto - Médico */}
+                        {/* Especialista / Profesional */}
                         <button
                           type="button"
                           onClick={() => handleQuickLogin('medico')}
@@ -376,21 +382,21 @@ export function LoginView() {
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <div className="size-6 rounded-md bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xs font-bold shrink-0">
-                              🩺
+                              💼
                             </div>
                             <span className="text-[11px] font-bold text-foreground truncate">
-                              Dr. Roberto
+                              Roberto R.
                             </span>
                           </div>
                           <div className="text-[10px] text-muted-foreground leading-tight">
                             Especialista
                           </div>
                           <span className="text-[9px] text-blue-600 dark:text-blue-400 font-medium mt-0.5">
-                            Historias & Recetas
+                            Operaciones
                           </span>
                         </button>
 
-                        {/* María - Secretaria */}
+                        {/* Recepción / Atención */}
                         <button
                           type="button"
                           onClick={() => handleQuickLogin('secretaria')}
@@ -399,23 +405,23 @@ export function LoginView() {
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <div className="size-6 rounded-md bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xs font-bold shrink-0">
-                              👩‍💼
+                              📋
                             </div>
                             <span className="text-[11px] font-bold text-foreground truncate">
-                              María
+                              Valeria S.
                             </span>
                           </div>
                           <div className="text-[10px] text-muted-foreground leading-tight">
-                            Recepción & Caja
+                            Recepción y Caja
                           </div>
                           <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium mt-0.5">
-                            Cobros & Citas
+                            Atención al Cliente
                           </span>
                         </button>
                       </div>
                     </div>
 
-                    {/* Clínica Aislada: San Rafael */}
+                    {/* Organización B: Tenant Separado */}
                     <button
                       type="button"
                       onClick={() => handleQuickLogin('elena')}
@@ -424,14 +430,14 @@ export function LoginView() {
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div className="size-7 rounded-lg bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xs font-bold shrink-0">
-                          🏥
+                          🏢
                         </div>
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-foreground truncate">
-                            Dra. Elena Ramos (Clínica San Rafael)
+                            Organización B (Tenant Independiente)
                           </div>
                           <p className="text-[10px] text-muted-foreground">
-                            Tenant completamente separado (aislamiento verificado)
+                            Espacio de datos completamente aislado (verificado)
                           </p>
                         </div>
                       </div>
@@ -450,7 +456,7 @@ export function LoginView() {
                   onClick={() => setShowModalContacto(true)}
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  ¿Tu centro aún no tiene cuenta?{' '}
+                  ¿Tu empresa u organización aún no tiene cuenta?{' '}
                   <span className="text-primary hover:underline font-medium">Solicitar acceso</span>
                 </button>
               </div>
@@ -468,10 +474,10 @@ export function LoginView() {
                   </div>
                   <div>
                     <h3 className="font-bold text-sm text-foreground">
-                      Adquisición y Alta de Clínicas
+                      Alta de Organizaciones en Gestia
                     </h3>
                     <p className="text-[11px] text-muted-foreground">
-                      Plataforma de gestión clínica privada
+                      Plataforma SaaS Multi-Tenant
                     </p>
                   </div>
                 </div>
@@ -480,13 +486,13 @@ export function LoginView() {
                   onClick={() => setShowModalContacto(false)}
                   className="size-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer text-xs font-bold"
                 >
-                  ✕
+                  <X className="size-4" />
                 </button>
               </div>
 
               <div className="space-y-3.5 text-xs text-muted-foreground">
                 <p className="text-foreground font-medium">
-                  Para registrar tu clínica o consultorio y coordinar la activación mediante transferencia bancaria, comunícate con nuestro equipo:
+                  Para registrar tu empresa u organización y coordinar la activación de tu espacio de trabajo en Gestia, comunícate con nuestro equipo:
                 </p>
 
                 <div className="p-3 rounded-xl bg-muted/50 border border-border space-y-2.5">
@@ -494,13 +500,13 @@ export function LoginView() {
                     <span className="font-semibold text-foreground flex items-center gap-2">
                       <Mail className="size-3.5 text-primary" /> Correo Comercial:
                     </span>
-                    <span className="font-mono text-foreground font-bold">ventas@sistemaclinico.com</span>
+                    <span className="font-mono text-foreground font-bold">ventas@gestia.io</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-foreground flex items-center gap-2">
-                      <Activity className="size-3.5 text-emerald-500" /> Atención / WhatsApp:
+                      <ShieldCheck className="size-3.5 text-emerald-500" /> Soporte Oficial:
                     </span>
-                    <span className="font-mono text-foreground font-bold">+1 (800) 555-CLINIC</span>
+                    <span className="font-mono text-foreground font-bold">soporte@gestia.io</span>
                   </div>
                 </div>
 
@@ -509,9 +515,9 @@ export function LoginView() {
                     <ShieldCheck className="size-3.5" /> Proceso de Aprovisionamiento:
                   </div>
                   <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>Solicitas la cotización según la cantidad de médicos y personal.</li>
-                    <li>Realizas la transferencia bancaria a la cuenta oficial.</li>
-                    <li>El Administrador da de alta tu centro médico y te entrega tus accesos de inmediato.</li>
+                    <li>Solicitas la cotización según la cantidad de usuarios y módulos requeridos.</li>
+                    <li>Coordinas el plan y método de facturación con el equipo administrativo.</li>
+                    <li>Recibes tus accesos inmediatos para tu espacio de datos completamente independiente.</li>
                   </ol>
                 </div>
               </div>
@@ -529,16 +535,205 @@ export function LoginView() {
           </div>
         )}
 
-        {/* Pie de página con copyright y legal */}
+        {/* Modal Legal y Soporte Técnico Dinámico */}
+        {activeLegalModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+            <div className="bg-card border border-border rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 text-left max-h-[85vh] flex flex-col">
+              {/* Header del modal */}
+              <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="size-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                    {activeLegalModal === 'privacidad' && <ShieldCheck className="size-5 text-emerald-500" />}
+                    {activeLegalModal === 'terminos' && <FileText className="size-5 text-sky-400" />}
+                    {activeLegalModal === 'soporte' && <HelpCircle className="size-5 text-purple-400" />}
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground">
+                      {activeLegalModal === 'privacidad' && 'Privacidad y Protección de Datos'}
+                      {activeLegalModal === 'terminos' && 'Términos y Condiciones de Uso'}
+                      {activeLegalModal === 'soporte' && 'Centro de Soporte y Asistencia Técnica'}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Gestia • Plataforma Multi-Tenant Segura
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setActiveLegalModal(null)}
+                  className="size-7 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer text-xs font-bold"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+
+              {/* Contenido scrolleable */}
+              <div className="overflow-y-auto space-y-4 text-xs text-muted-foreground pr-1">
+                {activeLegalModal === 'privacidad' && (
+                  <>
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-medium">
+                      Tu organización y sus datos están protegidos bajo aislamiento lógico multi-tenant permanente.
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                        <CheckCircle2 className="size-3.5 text-emerald-500" /> 1. Aislamiento Estricto por Organización (Tenant ID)
+                      </h4>
+                      <p className="leading-relaxed">
+                        Cada organización opera dentro de un espacio de datos estrictamente particionado. Ningún usuario, colaborador ni administrador de otra empresa puede acceder, visualizar ni consultar los registros de tu negocio.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                        <CheckCircle2 className="size-3.5 text-emerald-500" /> 2. Seguridad en Tránsito y Reposo
+                      </h4>
+                      <p className="leading-relaxed">
+                        Todas las comunicaciones entre tu navegador y nuestros servidores están cifradas mediante túneles seguros SSL/TLS de 256 bits. Las contraseñas se almacenan mediante derivación criptográfica de alta seguridad con salting (hashing unidireccional irreversible).
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                        <CheckCircle2 className="size-3.5 text-emerald-500" /> 3. Propiedad Total de la Información
+                      </h4>
+                      <p className="leading-relaxed">
+                        Tu empresa conserva en todo momento la titularidad absoluta de los datos ingresados (clientes, transacciones, historiales y colaboradores). Gestia nunca comercializará ni compartirá información con terceros.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                        <CheckCircle2 className="size-3.5 text-emerald-500" /> 4. Respaldos Continuos
+                      </h4>
+                      <p className="leading-relaxed">
+                        Se ejecutan copias de seguridad continuas y automáticas en el clúster de base de datos para garantizar la recuperación oportuna ante cualquier contingencia física o de hardware.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {activeLegalModal === 'terminos' && (
+                  <>
+                    <div className="p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-300 font-medium">
+                      Términos de servicio para el uso del ecosistema Gestia.
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                        <FileText className="size-3.5 text-sky-400" /> 1. Naturaleza del Servicio
+                      </h4>
+                      <p className="leading-relaxed">
+                        Gestia es un software empresarial como servicio (SaaS) diseñado para la administración operativa, gestión de clientes, control de transacciones y coordinación de equipos de trabajo.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                        <FileText className="size-3.5 text-sky-400" /> 2. Administración y Control de Cuentas
+                      </h4>
+                      <p className="leading-relaxed">
+                        El administrador de cada organización es el responsable directo de conceder, editar o revocar credenciales de acceso a sus colaboradores según los roles internos (Administración, Operaciones, Atención al Cliente).
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                        <FileText className="size-3.5 text-sky-400" /> 3. Disponibilidad y Acuerdos de Nivel de Servicio (SLA)
+                      </h4>
+                      <p className="leading-relaxed">
+                        El sistema opera sobre una arquitectura en contenedores con monitoreo continuo. Buscamos mantener una disponibilidad del 99.9%, con ventanas de mantenimiento programadas fuera del horario laboral estándar.
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                        <FileText className="size-3.5 text-sky-400" /> 4. Uso Legítimo de la Plataforma
+                      </h4>
+                      <p className="leading-relaxed">
+                        Queda prohibido cualquier intento de vulnerar el aislamiento multi-tenant, realizar pruebas de penetración sin consentimiento previo o usar el servicio para almacenamiento o difusión de actividades ilícitas.
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {activeLegalModal === 'soporte' && (
+                  <>
+                    <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-700 dark:text-purple-300 font-medium">
+                      Atención técnica personalizada y canales de asistencia operativa.
+                    </div>
+                    <div className="p-3 rounded-xl bg-muted/50 border border-border space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground flex items-center gap-2">
+                          <Mail className="size-3.5 text-primary" /> Mesa de Ayuda:
+                        </span>
+                        <span className="font-mono text-foreground font-bold">soporte@gestia.io</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground flex items-center gap-2">
+                          <HelpCircle className="size-3.5 text-purple-400" /> Horario de Atención:
+                        </span>
+                        <span className="text-foreground">Lunes a Viernes, 8:00 AM – 7:00 PM</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground flex items-center gap-2">
+                          <ShieldCheck className="size-3.5 text-emerald-500" /> Servidores y Red:
+                        </span>
+                        <span className="text-emerald-500 font-medium">Monitoreo Activo 24/7</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-semibold text-foreground text-xs">Preguntas Frecuentes Rápidas:</h4>
+                      <div className="space-y-2 text-[11px]">
+                        <div className="p-2.5 rounded-lg bg-card border border-border">
+                          <p className="font-semibold text-foreground">¿Cómo recupero mi acceso si olvidé la contraseña?</p>
+                          <p className="mt-1">Pídele al administrador general de tu organización que restablezca tu usuario o comunícate con la mesa de ayuda con tu correo corporativo.</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-card border border-border">
+                          <p className="font-semibold text-foreground">¿Cómo agrego una nueva sucursal o sede independiente?</p>
+                          <p className="mt-1">Los administradores con privilegios de suscripción pueden activar nuevas organizaciones o tenants desde el panel de control central.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Botón de cierre */}
+              <div className="pt-2 border-t border-border shrink-0">
+                <Button
+                  type="button"
+                  onClick={() => setActiveLegalModal(null)}
+                  className="w-full text-xs font-semibold"
+                >
+                  Cerrar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pie de página con copyright y legal interactivo */}
         <div className="pt-8 text-center text-[11px] text-muted-foreground space-y-1">
           <div className="flex items-center justify-center gap-3">
-            <span className="hover:underline cursor-pointer">Privacidad</span>
+            <button
+              type="button"
+              onClick={() => setActiveLegalModal('privacidad')}
+              className="hover:underline cursor-pointer bg-transparent border-0 p-0 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Privacidad
+            </button>
             <span>•</span>
-            <span className="hover:underline cursor-pointer">Términos</span>
+            <button
+              type="button"
+              onClick={() => setActiveLegalModal('terminos')}
+              className="hover:underline cursor-pointer bg-transparent border-0 p-0 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Términos
+            </button>
             <span>•</span>
-            <span className="hover:underline cursor-pointer">Soporte Técnico</span>
+            <button
+              type="button"
+              onClick={() => setActiveLegalModal('soporte')}
+              className="hover:underline cursor-pointer bg-transparent border-0 p-0 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Soporte Técnico
+            </button>
           </div>
-          <p>© 2026 Sistema Clínico. Todos los derechos reservados.</p>
+          <p>© 2026 Gestia. Todos los derechos reservados.</p>
         </div>
       </div>
     </div>

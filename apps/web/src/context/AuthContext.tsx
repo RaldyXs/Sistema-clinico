@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     localStorage.removeItem('token_clinico');
     localStorage.removeItem('usuario_clinico');
+    localStorage.removeItem('tab_clinica');
   }, []);
 
   const clearSessionExpiredMsg = React.useCallback(() => {
@@ -120,6 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setSessionExpiredMsg(null);
     try {
+      localStorage.removeItem('tab_clinica');
       const res = await api.post('/auth/login', { email, password });
       if (!res.accessToken) throw new Error('Token no recibido');
 

@@ -3,9 +3,7 @@
  * Gestiona automáticamente el token JWT y los encabezados de autenticación.
  */
 
-const defaultHost = typeof window !== 'undefined' && window.location.hostname ? window.location.hostname : 'localhost';
-const isStandardWebPort = typeof window !== 'undefined' && (window.location.port === '' || window.location.port === '80');
-const API_BASE_URL = import.meta.env.VITE_API_URL || (isStandardWebPort ? '/api' : `http://${defaultHost}:3000`);
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 export class ApiError extends Error {
   statusCode: number;
