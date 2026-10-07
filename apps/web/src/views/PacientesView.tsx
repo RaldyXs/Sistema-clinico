@@ -23,13 +23,22 @@ import {
   Trash2,
   FolderOpen,
   Paperclip,
+  ArrowUpDown,
+  Stethoscope,
+  Shield,
+  FileText,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { ARS_DOMINICANAS } from '@/data/ars-dominicanas';
+import { FichaPacienteDrawer } from '@/components/pacientes/FichaPacienteDrawer';
 
 export function PacientesView() {
   const { user } = useAuth();
   const isRecepcion = user?.rolCodigo === 'RECEPCION';
   const [pacientes, setPacientes] = React.useState<any[]>([]);
+  const [medicos, setMedicos] = React.useState<any[]>([]);
+  const [citas, setCitas] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
   const [showModalCrear, setShowModalCrear] = React.useState(false);
@@ -37,6 +46,12 @@ export function PacientesView() {
   const [historiaGinecologica, setHistoriaGinecologica] = React.useState<any | null>(null);
   const [embarazoActivo, setEmbarazoActivo] = React.useState<any | null>(null);
   const [loadingFicha, setLoadingFicha] = React.useState(false);
+
+  // Estados para multi-filtros A-Z, ARS, Médico y Ficha Drawer
+  const [filtroOrden, setFiltroOrden] = React.useState<'A-Z' | 'Z-A' | 'RECIENTES'>('A-Z');
+  const [filtroArs, setFiltroArs] = React.useState<string>('TODAS');
+  const [filtroMedico, setFiltroMedico] = React.useState<string>('TODOS');
+  const [drawerPacienteId, setDrawerPacienteId] = React.useState<string | null>(null);
 
   // Estados para repositorio de documentos y estudios
   const [tabFicha, setTabFicha] = React.useState<'clinica' | 'documentos'>('clinica');
@@ -51,17 +66,21 @@ export function PacientesView() {
   const [subiendoDoc, setSubiendoDoc] = React.useState(false);
   const [descargandoDocId, setDescargandoDocId] = React.useState<string | null>(null);
 
-  // Formulario nuevo paciente
+  // Formulario nuevo paciente con campos dominicanos (ARS, Póliza, No. Historia)
   const [form, setForm] = React.useState({
     nombre: '',
     apellido: '',
-    tipoDocumento: 'DNI',
+    tipoDocumento: 'CEDULA',
     documentoIdentidad: '',
     fechaNacimiento: '1995-05-15',
     genero: 'FEMENINO',
     telefono: '',
     email: '',
     grupoSanguineo: 'O+',
+    numeroHistoria: '',
+    ars: 'SeNaSa (Contributivo)',
+    numeroPoliza: '',
+    planSeguro: 'Básico',
     alergias: '',
     antecedentesMedicos: '',
   });
@@ -74,7 +93,7 @@ export function PacientesView() {
   const [formEditar, setFormEditar] = React.useState({
     nombre: '',
     apellido: '',
-    tipoDocumento: 'DNI',
+    tipoDocumento: 'CEDULA',
     documentoIdentidad: '',
     fechaNacimiento: '1995-05-15',
     genero: 'FEMENINO',
@@ -82,6 +101,10 @@ export function PacientesView() {
     email: '',
     direccion: '',
     grupoSanguineo: 'O+',
+    numeroHistoria: '',
+    ars: 'SeNaSa (Contributivo)',
+    numeroPoliza: '',
+    planSeguro: 'Básico',
     alergias: '',
     antecedentesMedicos: '',
     antecedentesFamiliares: '',
@@ -97,11 +120,29 @@ export function PacientesView() {
     setLoading(true);
     try {
       const endpoint = search
-        ? `/pacientes?termino=${encodeURIComponent(search)}&busqueda=${encodeURIComponent(search)}&limite=100`
-        : '/pacientes?limite=100';
-      const data = await api.get(endpoint);
-      const lista = Array.isArray(data) ? data : (data?.datos || data?.data || []);
-      setPacientes(lista);
+        ? `/pacientes?termino=${encodeURIComponent(search)}&busqueda=${encodeURIComponent(search)}&limite=150`
+        : '/pacientes?limite=150';
+
+      const [pacientesRes, medicosRes, citasRes] = await Promise.allSettled([
+        api.get(endpoint),
+        api.get('/usuarios/medicos'),
+        api.get('/citas?limite=200'),
+      ]);
+
+      if (pacientesRes.status === 'fulfilled') {
+        const data = pacientesRes.value;
+        const lista = Array.isArray(data) ? data : (data?.datos || data?.data || []);
+        setPacientes(lista);
+      }
+      if (medicosRes.status === 'fulfilled') {
+        const listaMed = Array.isArray(medicosRes.value) ? medicosRes.value : [];
+        setMedicos(listaMed);
+      }
+      if (citasRes.status === 'fulfilled') {
+        const dataCitas = citasRes.value;
+        const listaCitas = Array.isArray(dataCitas) ? dataCitas : (dataCitas?.datos || []);
+        setCitas(listaCitas);
+      }
     } catch (err: any) {
       console.error(err);
     } finally {
@@ -260,6 +301,10 @@ export function PacientesView() {
         telefono: form.telefono.trim() || undefined,
         email: form.email.trim() || undefined,
         grupoSanguineo: form.grupoSanguineo || undefined,
+        numeroHistoria: form.numeroHistoria.trim() || undefined,
+        ars: form.ars || undefined,
+        numeroPoliza: form.numeroPoliza.trim() || undefined,
+        planSeguro: form.planSeguro.trim() || undefined,
         alergias: form.alergias.trim() || undefined,
         antecedentesMedicos: form.antecedentesMedicos.trim() || undefined,
       };
@@ -269,13 +314,17 @@ export function PacientesView() {
       setForm({
         nombre: '',
         apellido: '',
-        tipoDocumento: 'DNI',
+        tipoDocumento: 'CEDULA',
         documentoIdentidad: '',
         fechaNacimiento: '1995-05-15',
         genero: 'FEMENINO',
         telefono: '',
         email: '',
         grupoSanguineo: 'O+',
+        numeroHistoria: '',
+        ars: 'SeNaSa (Contributivo)',
+        numeroPoliza: '',
+        planSeguro: 'Básico',
         alergias: '',
         antecedentesMedicos: '',
       });
@@ -293,7 +342,7 @@ export function PacientesView() {
     setFormEditar({
       nombre: p.nombre || '',
       apellido: p.apellido || '',
-      tipoDocumento: p.tipoDocumento || 'DNI',
+      tipoDocumento: p.tipoDocumento || 'CEDULA',
       documentoIdentidad: p.documentoIdentidad || p.dni || '',
       fechaNacimiento: p.fechaNacimiento ? String(p.fechaNacimiento).slice(0, 10) : '1995-05-15',
       genero: p.genero || p.sexo || 'FEMENINO',
@@ -301,6 +350,10 @@ export function PacientesView() {
       email: p.email || '',
       direccion: p.direccion || '',
       grupoSanguineo: p.grupoSanguineo || 'O+',
+      numeroHistoria: p.numeroHistoria || '',
+      ars: p.ars || 'SeNaSa (Contributivo)',
+      numeroPoliza: p.numeroPoliza || '',
+      planSeguro: p.planSeguro || 'Básico',
       alergias: p.alergias || '',
       antecedentesMedicos: p.antecedentesMedicos || '',
       antecedentesFamiliares: p.antecedentesFamiliares || '',
@@ -329,6 +382,10 @@ export function PacientesView() {
         email: formEditar.email.trim() || null,
         direccion: formEditar.direccion.trim() || null,
         grupoSanguineo: formEditar.grupoSanguineo || undefined,
+        numeroHistoria: formEditar.numeroHistoria.trim() || null,
+        ars: formEditar.ars || null,
+        numeroPoliza: formEditar.numeroPoliza.trim() || null,
+        planSeguro: formEditar.planSeguro.trim() || null,
         alergias: formEditar.alergias.trim() || null,
         antecedentesMedicos: formEditar.antecedentesMedicos.trim() || null,
         antecedentesFamiliares: formEditar.antecedentesFamiliares.trim() || null,
@@ -352,6 +409,129 @@ export function PacientesView() {
     } finally {
       setGuardandoEdicion(false);
     }
+  };
+
+  // Mapeo de citas para asociar médicos tratantes a cada paciente
+  const medicosPorPaciente = React.useMemo(() => {
+    const map = new Map<string, Array<{ id: string; nombre: string; apellido: string }>>();
+    citas.forEach((c: any) => {
+      const pacId = c.paciente?.id || c.pacienteId;
+      const prof = c.profesional;
+      if (pacId && prof?.id) {
+        const existing = map.get(pacId) || [];
+        if (!existing.some((m) => m.id === prof.id)) {
+          existing.push({
+            id: prof.id,
+            nombre: prof.nombre || '',
+            apellido: prof.apellido || '',
+          });
+          map.set(pacId, existing);
+        }
+      }
+    });
+    return map;
+  }, [citas]);
+
+  // Lista de pacientes con multi-filtros A-Z, ARS y Médico aplicados
+  const pacientesFiltrados = React.useMemo(() => {
+    let resultado = [...pacientes];
+
+    // Filtro por ARS
+    if (filtroArs !== 'TODAS') {
+      resultado = resultado.filter((p) => {
+        const arsVal = p.ars || 'Privado / Sin Seguro (Particular)';
+        return arsVal === filtroArs || arsVal.toLowerCase().includes(filtroArs.toLowerCase());
+      });
+    }
+
+    // Filtro por Médico tratante
+    if (filtroMedico !== 'TODOS') {
+      resultado = resultado.filter((p) => {
+        const docs = medicosPorPaciente.get(p.id) || [];
+        return docs.some((m) => m.id === filtroMedico);
+      });
+    }
+
+    // Ordenamiento
+    if (filtroOrden === 'A-Z') {
+      resultado.sort((a, b) =>
+        `${a.nombre || ''} ${a.apellido || ''}`.localeCompare(`${b.nombre || ''} ${b.apellido || ''}`, 'es', {
+          sensitivity: 'base',
+        })
+      );
+    } else if (filtroOrden === 'Z-A') {
+      resultado.sort((a, b) =>
+        `${b.nombre || ''} ${b.apellido || ''}`.localeCompare(`${a.nombre || ''} ${a.apellido || ''}`, 'es', {
+          sensitivity: 'base',
+        })
+      );
+    } else if (filtroOrden === 'RECIENTES') {
+      resultado.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+    }
+
+    return resultado;
+  }, [pacientes, filtroArs, filtroMedico, filtroOrden, medicosPorPaciente]);
+
+  const calcularEdad = (fechaNac: string | undefined) => {
+    if (!fechaNac) return null;
+    const nac = new Date(fechaNac);
+    if (isNaN(nac.getTime())) return null;
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const m = hoy.getMonth() - nac.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) {
+      edad--;
+    }
+    return edad >= 0 ? `${edad} a.` : null;
+  };
+
+  const renderBadgeArs = (ars: string | undefined) => {
+    const val = ars || 'Particular';
+    const valLower = val.toLowerCase();
+    if (valLower.includes('particular') || valLower.includes('privado')) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+          Particular
+        </span>
+      );
+    }
+    if (valLower.includes('senasa')) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/25">
+          {val}
+        </span>
+      );
+    }
+    if (valLower.includes('humano')) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
+          {val}
+        </span>
+      );
+    }
+    if (valLower.includes('mapfre')) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-500/25">
+          {val}
+        </span>
+      );
+    }
+    if (valLower.includes('universal')) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/25">
+          {val}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border">
+        {val}
+      </span>
+    );
   };
 
   return (
@@ -386,21 +566,165 @@ export function PacientesView() {
         </div>
       )}
 
-      {/* Buscador */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-md">
-          <Search className="size-3.5 absolute left-2.5 top-2 text-muted-foreground" />
-          <Input
-            className="pl-8 h-7 text-xs"
-            placeholder="Buscar por nombre, apellido o DNI..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <Button variant="outline" size="sm" onClick={cargarPacientes} className="h-7 px-2">
-          <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
-        </Button>
-      </div>
+      {/* Barra de Filtros Clínicos Multi-Criterio */}
+      <Card className="bg-muted/30 border-border/70 shadow-xs">
+        <CardContent className="p-3 space-y-2.5">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
+            {/* Buscador de texto libre */}
+            <div className="relative flex-1 min-w-[240px]">
+              <Search className="size-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
+              <Input
+                className="pl-8 h-8 text-xs bg-background"
+                placeholder="Buscar por nombre, cédula, póliza, No. historia..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Selector de Orden Alfabético A-Z / Z-A / Recientes */}
+            <div className="flex items-center gap-1 bg-background p-0.5 rounded-lg border border-border shrink-0">
+              <span className="text-[11px] font-medium text-muted-foreground px-2 flex items-center gap-1">
+                <ArrowUpDown className="size-3" /> Orden:
+              </span>
+              <button
+                type="button"
+                onClick={() => setFiltroOrden('A-Z')}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                  filtroOrden === 'A-Z'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Ordenar de la A a la Z"
+              >
+                A - Z
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltroOrden('Z-A')}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                  filtroOrden === 'Z-A'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Ordenar de la Z a la A"
+              >
+                Z - A
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiltroOrden('RECIENTES')}
+                className={`px-2 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
+                  filtroOrden === 'RECIENTES'
+                    ? 'bg-primary text-primary-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Más recientes primero"
+              >
+                Recientes
+              </button>
+            </div>
+
+            {/* Filtro por ARS Dominicana */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="relative min-w-[190px]">
+                <Shield className="size-3.5 absolute left-2.5 top-2.5 text-muted-foreground pointer-events-none" />
+                <select
+                  value={filtroArs}
+                  onChange={(e) => setFiltroArs(e.target.value)}
+                  className="w-full h-8 pl-8 pr-3 rounded-md border border-input bg-background text-xs shadow-xs outline-none focus:border-primary"
+                >
+                  <option value="TODAS">Todas las ARS (Seguros)</option>
+                  {ARS_DOMINICANAS.map((ars) => (
+                    <option key={ars.id} value={ars.nombre}>
+                      {ars.nombre}
+                    </option>
+                  ))}
+                  <option value="Particular">Particular / Sin Seguro</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Filtro por Médico Tratante */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <div className="relative min-w-[180px]">
+                <Stethoscope className="size-3.5 absolute left-2.5 top-2.5 text-muted-foreground pointer-events-none" />
+                <select
+                  value={filtroMedico}
+                  onChange={(e) => setFiltroMedico(e.target.value)}
+                  className="w-full h-8 pl-8 pr-3 rounded-md border border-input bg-background text-xs shadow-xs outline-none focus:border-primary"
+                >
+                  <option value="TODOS">Todos los Médicos</option>
+                  {medicos.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      Dr(a). {m.nombre} {m.apellido || ''} {m.especialidad ? `(${m.especialidad})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={cargarPacientes}
+              className="h-8 px-2.5 shrink-0"
+              title="Recargar expedientes"
+            >
+              <RefreshCw className={`size-3.5 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
+
+          {/* Barra de información de filtros activos */}
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/50">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>
+                Mostrando <strong className="text-foreground">{pacientesFiltrados.length}</strong> de{' '}
+                <strong className="text-foreground">{pacientes.length}</strong> expedientes
+              </span>
+              {filtroArs !== 'TODAS' && (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px]">
+                  ARS: {filtroArs}
+                  <button type="button" onClick={() => setFiltroArs('TODAS')} className="hover:text-foreground cursor-pointer">
+                    ✕
+                  </button>
+                </span>
+              )}
+              {filtroMedico !== 'TODOS' && (
+                <span className="inline-flex items-center gap-1 bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[10px]">
+                  Médico: {medicos.find((m) => m.id === filtroMedico)?.nombre || 'Asignado'}
+                  <button type="button" onClick={() => setFiltroMedico('TODOS')} className="hover:text-foreground cursor-pointer">
+                    ✕
+                  </button>
+                </span>
+              )}
+            </div>
+
+            {(filtroArs !== 'TODAS' || filtroMedico !== 'TODOS' || search !== '' || filtroOrden !== 'A-Z') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFiltroArs('TODAS');
+                  setFiltroMedico('TODOS');
+                  setFiltroOrden('A-Z');
+                  setSearch('');
+                }}
+                className="text-primary hover:underline cursor-pointer font-medium"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Lista de pacientes */}
       <Card>
@@ -410,86 +734,159 @@ export function PacientesView() {
               <RefreshCw className="size-6 animate-spin mx-auto mb-2 text-primary" />
               Cargando nómina de pacientes...
             </div>
-          ) : pacientes.length === 0 ? (
+          ) : pacientesFiltrados.length === 0 ? (
             <div className="p-12 text-center text-muted-foreground">
-              No se encontraron pacientes registrados con los criterios de búsqueda.
+              No se encontraron expedientes con los criterios seleccionados.
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
                 <thead className="text-[11px] uppercase bg-muted/50 text-muted-foreground border-b border-border">
                   <tr>
-                    <th className="px-3.5 py-2 font-semibold">Paciente</th>
-                    <th className="px-3.5 py-2 font-semibold">DNI / Documento</th>
-                    <th className="px-3.5 py-2 font-semibold">Contacto</th>
-                    <th className="px-3.5 py-2 font-semibold">Grupo Sang.</th>
-                    <th className="px-3.5 py-2 font-semibold">Estado</th>
-                    <th className="px-3.5 py-2 font-semibold text-right">Acciones</th>
+                    <th className="px-3.5 py-2.5 font-semibold">Paciente & No. Historia</th>
+                    <th className="px-3.5 py-2.5 font-semibold">Cédula / Documento</th>
+                    <th className="px-3.5 py-2.5 font-semibold">ARS & Póliza</th>
+                    <th className="px-3.5 py-2.5 font-semibold">Médico(s) Tratante(s)</th>
+                    <th className="px-3.5 py-2.5 font-semibold">Contacto</th>
+                    <th className="px-3.5 py-2.5 font-semibold">Estado</th>
+                    <th className="px-3.5 py-2.5 font-semibold text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {pacientes.map((p) => (
-                    <tr key={p.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="px-3.5 py-2.5 font-medium text-foreground">
-                        <div className="flex items-center gap-2">
-                          <div className="size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-                            {p.nombre[0]}
-                            {p.apellido?.[0] || ''}
-                          </div>
-                          <div>
-                            <div className="font-semibold">
-                              {p.nombre} {p.apellido || ''}
+                  {pacientesFiltrados.map((p) => {
+                    const docsTratantes = medicosPorPaciente.get(p.id) || [];
+                    const edadTexto = calcularEdad(p.fechaNacimiento);
+
+                    return (
+                      <tr key={p.id} className="hover:bg-muted/30 transition-colors group">
+                        {/* Nombre del paciente cliqueable para abrir FichaDrawer */}
+                        <td className="px-3.5 py-2.5 font-medium text-foreground">
+                          <div className="flex items-center gap-2.5">
+                            <button
+                              type="button"
+                              onClick={() => setDrawerPacienteId(p.id)}
+                              className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0 hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+                              title="Abrir Ficha de Paciente"
+                            >
+                              {p.nombre[0]}
+                              {p.apellido?.[0] || ''}
+                            </button>
+                            <div className="min-w-0">
+                              <button
+                                type="button"
+                                onClick={() => setDrawerPacienteId(p.id)}
+                                className="font-semibold text-foreground hover:text-primary transition-colors text-left flex items-center gap-1 group-hover:underline cursor-pointer"
+                              >
+                                <span>
+                                  {p.nombre} {p.apellido || ''}
+                                </span>
+                                <ExternalLink className="size-3 opacity-0 group-hover:opacity-70 transition-opacity" />
+                              </button>
+                              <div className="text-[11px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                                <span className="font-mono text-[10px] bg-muted px-1.5 py-0.2 rounded border border-border/50">
+                                  {p.numeroHistoria ? `HC-${p.numeroHistoria}` : `HC-${p.id.slice(0, 6).toUpperCase()}`}
+                                </span>
+                                <span>•</span>
+                                <span>
+                                  {edadTexto ? `${edadTexto} • ` : ''}
+                                  {p.genero || p.sexo || 'Femenino'}
+                                </span>
+                              </div>
                             </div>
-                            <div className="text-[11px] text-muted-foreground">{p.genero || p.sexo || 'Femenino'}</div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-3.5 py-2.5 font-mono text-muted-foreground">{p.documentoIdentidad || p.dni || 'S/D'}</td>
-                      <td className="px-3.5 py-2.5 text-[11px] text-muted-foreground space-y-0.5">
-                        {p.telefono && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="size-3" /> {p.telefono}
+                        </td>
+
+                        {/* Cédula */}
+                        <td className="px-3.5 py-2.5 font-mono text-muted-foreground whitespace-nowrap">
+                          {p.documentoIdentidad || p.dni || 'S/D'}
+                        </td>
+
+                        {/* ARS y Póliza */}
+                        <td className="px-3.5 py-2.5 space-y-0.5 whitespace-nowrap">
+                          <div>{renderBadgeArs(p.ars)}</div>
+                          <div className="text-[10px] font-mono text-muted-foreground">
+                            {p.numeroPoliza ? `Póliza: ${p.numeroPoliza}` : 'Sin póliza'}
                           </div>
-                        )}
-                        {p.email && (
-                          <div className="flex items-center gap-1">
-                            <Mail className="size-3" /> {p.email}
+                        </td>
+
+                        {/* Médicos Tratantes */}
+                        <td className="px-3.5 py-2.5">
+                          {docsTratantes.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 max-w-[220px]">
+                              {docsTratantes.map((m) => (
+                                <span
+                                  key={m.id}
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20"
+                                >
+                                  Dr(a). {m.nombre} {m.apellido?.[0] || ''}.
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-[11px] italic">Sin registro previo</span>
+                          )}
+                        </td>
+
+                        {/* Contacto */}
+                        <td className="px-3.5 py-2.5 text-[11px] text-muted-foreground space-y-0.5">
+                          {p.telefono && (
+                            <div className="flex items-center gap-1">
+                              <Phone className="size-3 shrink-0" /> {p.telefono}
+                            </div>
+                          )}
+                          {p.email && (
+                            <div className="flex items-center gap-1 truncate max-w-[140px]">
+                              <Mail className="size-3 shrink-0" /> {p.email}
+                            </div>
+                          )}
+                          {!p.telefono && !p.email && <span className="italic">Sin contacto</span>}
+                        </td>
+
+                        {/* Estado */}
+                        <td className="px-3.5 py-2.5">
+                          <Badge variant={p.activo ? 'success' : 'secondary'} className="text-[10px] py-0 px-2">
+                            {p.activo ? 'Activo' : 'Inactivo'}
+                          </Badge>
+                        </td>
+
+                        {/* Acciones */}
+                        <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="h-7 gap-1 text-xs cursor-pointer shadow-xs"
+                              title="Abrir Ficha Clínica Completa en panel lateral"
+                              onClick={() => setDrawerPacienteId(p.id)}
+                            >
+                              <FileText className="size-3.5" />
+                              Ficha
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 gap-1 text-xs cursor-pointer"
+                              title="Editar datos del paciente"
+                              onClick={() => abrirModalEditar(p)}
+                            >
+                              <Pencil className="size-3.5" />
+                              Editar
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 gap-1 text-xs cursor-pointer text-primary hover:bg-primary/10"
+                              onClick={() => verFichaPaciente(p)}
+                              title="Expediente 360° clásico"
+                            >
+                              <Eye className="size-3.5" />
+                              360°
+                            </Button>
                           </div>
-                        )}
-                      </td>
-                      <td className="px-3.5 py-2.5">
-                        <Badge variant="outline" className="text-[10px] py-0 px-1.5">{p.grupoSanguineo || 'N/D'}</Badge>
-                      </td>
-                      <td className="px-3.5 py-2.5">
-                        <Badge variant={p.activo ? 'success' : 'secondary'} className="text-[10px] py-0 px-2">
-                          {p.activo ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                      </td>
-                      <td className="px-3.5 py-2.5 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 gap-1 text-xs cursor-pointer"
-                            title="Editar datos del paciente"
-                            onClick={() => abrirModalEditar(p)}
-                          >
-                            <Pencil className="size-3.5" />
-                            Editar
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1.5 text-xs cursor-pointer text-primary hover:bg-primary/10"
-                            onClick={() => verFichaPaciente(p)}
-                          >
-                            <Eye className="size-3.5" />
-                            Ficha 360°
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -975,6 +1372,64 @@ export function PacientesView() {
                   </div>
                 </div>
 
+                {/* Datos de ARS y Registro Clínico Dominicano */}
+                <div className="p-3 rounded-lg bg-muted/40 border border-border/80 space-y-3">
+                  <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                    <Shield className="size-3.5" />
+                    Cobertura Médica & Historia Clínica
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">No. Historia Clínica</label>
+                      <Input
+                        placeholder="Ej. HC-00452 (Opcional)"
+                        value={form.numeroHistoria}
+                        onChange={(e) => setForm({ ...form, numeroHistoria: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">ARS (Aseguradora) *</label>
+                      <select
+                        className="w-full h-9 rounded-md border border-input bg-background px-2.5 py-1 text-xs shadow-xs outline-none focus:border-primary"
+                        value={form.ars}
+                        onChange={(e) => {
+                          const nuevaArs = e.target.value;
+                          const encontrada = ARS_DOMINICANAS.find((a) => a.nombre === nuevaArs);
+                          setForm({
+                            ...form,
+                            ars: nuevaArs,
+                            planSeguro: encontrada?.planes[0] || 'Básico',
+                          });
+                        }}
+                      >
+                        {ARS_DOMINICANAS.map((ars) => (
+                          <option key={ars.id} value={ars.nombre}>
+                            {ars.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Número de Póliza / Afiliado</label>
+                      <Input
+                        placeholder="Ej. 10928374-1"
+                        value={form.numeroPoliza}
+                        onChange={(e) => setForm({ ...form, numeroPoliza: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Plan de Cobertura</label>
+                      <Input
+                        placeholder="Ej. Básico, Complementario, Élite"
+                        value={form.planSeguro}
+                        onChange={(e) => setForm({ ...form, planSeguro: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground">Teléfono</label>
@@ -1209,6 +1664,64 @@ export function PacientesView() {
                   </div>
                 </div>
 
+                {/* Datos de ARS y Registro Clínico Dominicano */}
+                <div className="p-3 rounded-lg bg-muted/40 border border-border/80 space-y-3">
+                  <div className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                    <Shield className="size-3.5" />
+                    Cobertura Médica & Historia Clínica
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">No. Historia Clínica</label>
+                      <Input
+                        placeholder="Ej. HC-00452"
+                        value={formEditar.numeroHistoria}
+                        onChange={(e) => setFormEditar({ ...formEditar, numeroHistoria: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">ARS (Aseguradora) *</label>
+                      <select
+                        className="w-full h-9 rounded-md border border-input bg-background px-2.5 py-1 text-xs shadow-xs outline-none focus:border-primary"
+                        value={formEditar.ars}
+                        onChange={(e) => {
+                          const nuevaArs = e.target.value;
+                          const encontrada = ARS_DOMINICANAS.find((a) => a.nombre === nuevaArs);
+                          setFormEditar({
+                            ...formEditar,
+                            ars: nuevaArs,
+                            planSeguro: encontrada?.planes[0] || 'Básico',
+                          });
+                        }}
+                      >
+                        {ARS_DOMINICANAS.map((ars) => (
+                          <option key={ars.id} value={ars.nombre}>
+                            {ars.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Número de Póliza / Afiliado</label>
+                      <Input
+                        placeholder="Ej. 10928374-1"
+                        value={formEditar.numeroPoliza}
+                        onChange={(e) => setFormEditar({ ...formEditar, numeroPoliza: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Plan de Cobertura</label>
+                      <Input
+                        placeholder="Ej. Básico, Complementario, Élite"
+                        value={formEditar.planSeguro}
+                        onChange={(e) => setFormEditar({ ...formEditar, planSeguro: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Contacto: Teléfono y Email */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
@@ -1361,6 +1874,16 @@ export function PacientesView() {
           </Card>
         </div>
       )}
+
+      {/* Drawer Lateral Deslizante: Ficha Clínica Completa Inline */}
+      <FichaPacienteDrawer
+        pacienteId={drawerPacienteId}
+        isOpen={Boolean(drawerPacienteId)}
+        onClose={() => setDrawerPacienteId(null)}
+        onPacienteActualizado={() => {
+          cargarPacientes();
+        }}
+      />
     </div>
   );
 }
