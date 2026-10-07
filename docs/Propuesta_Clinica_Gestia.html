@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestia • Propuesta de Plataforma Clínica Integral</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    @page {
+      size: A4 portrait;
+      margin: 12mm 14mm 12mm 14mm;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #1e293b;
+      background: #ffffff;
+      line-height: 1.45;
+      font-size: 9pt;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* PÁGINA Y CONTENEDOR */
+    .page {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      page-break-after: always;
+    }
+
+    .page:last-child {
+      page-break-after: avoid;
+    }
+
+    /* ENCABEZADO */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1.5px solid #0284c7;
+      margin-bottom: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: #0284c7;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+    }
+
+    .brand-logo svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2.2;
+    }
+
+    .brand-text h1 {
+      font-size: 15pt;
+      font-weight: 800;
+      letter-spacing: -0.4px;
+      color: #0f172a;
+      line-height: 1.1;
+    }
+
+    .brand-text p {
+      font-size: 7.5pt;
+      font-weight: 600;
+      color: #0284c7;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    .meta {
+      text-align: right;
+      font-size: 7.5pt;
+      color: #64748b;
+      line-height: 1.35;
+    }
+
+    .meta strong {
+      color: #0f172a;
+    }
+
+    /* BANNER DE INTRODUCCIÓN */
+    .intro-banner {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 3.5px solid #0284c7;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+
+    .intro-banner h2 {
+      font-size: 10.5pt;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 3px;
+    }
+
+    .intro-banner p {
+      font-size: 8.2pt;
+      color: #475569;
+      line-height: 1.4;
+    }
+
+    /* SECCIONES Y TARJETAS */
+    .section-title {
+      font-size: 8pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #0284c7;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e2e8f0;
+    }
+
+    .module-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 11px 13px;
+      margin-bottom: 10px;
+    }
+
+    .module-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .module-title-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .icon-box {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon-box svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    .icon-sky { background: #e0f2fe; color: #0284c7; }
+    .icon-emerald { background: #dcfce7; color: #059669; }
+    .icon-violet { background: #ede9fe; color: #7c3aed; }
+    .icon-amber { background: #fef3c7; color: #d97706; }
+    .icon-blue { background: #eff6ff; color: #2563eb; }
+
+    .module-name {
+      font-size: 10pt;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .role-badge {
+      font-size: 7pt;
+      font-weight: 700;
+      padding: 2.5px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .badge-med { background: #e0f2fe; color: #0369a1; }
+    .badge-fac { background: #dcfce7; color: #15803d; }
+    .badge-sec { background: #ede9fe; color: #6d28d9; }
+    .badge-bd { background: #fef3c7; color: #b45309; }
+
+    .feature-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      font-size: 8.3pt;
+      line-height: 1.35;
+    }
+
+    .feature-bullet {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #0284c7;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    .feature-bullet.emerald { background: #059669; }
+    .feature-bullet.violet { background: #7c3aed; }
+    .feature-bullet.amber { background: #d97706; }
+
+    .feature-item strong {
+      color: #0f172a;
+      font-weight: 600;
+    }
+
+    .feature-item span {
+      color: #475569;
+    }
+
+    /* SEGURIDAD & GARANTÍAS */
+    .security-banner {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-top: 6px;
+    }
+
+    .security-header {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 9pt;
+      font-weight: 700;
+      color: #166534;
+      margin-bottom: 5px;
+    }
+
+    .security-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      font-size: 7.8pt;
+      color: #15803d;
+      line-height: 1.35;
+    }
+
+    .security-grid strong {
+      color: #14532d;
+    }
+
+    /* FOOTER */
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 8px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 7.2pt;
+      color: #94a3b8;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== PÁGINA 1 ==================== -->
+  <div class="page">
+    <div>
+      <!-- HEADER -->
+      <div class="header">
+        <div class="brand">
+          <div class="brand-logo">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1>Gestia</h1>
+            <p>Suite de Gestión Hospitalaria y Consultorios</p>
+          </div>
+        </div>
+        <div class="meta">
+          <strong>Propuesta de Solución Clínica</strong><br>
+          Enfoque: Organización Modular por Roles<br>
+          Fecha: Octubre 2026 • Documento Oficial
+        </div>
+      </div>
+
+      <!-- BANNER DE INTRODUCCIÓN -->
+      <div class="intro-banner">
+        <h2>Estructura de Trabajo por Carpetas Especializadas</h2>
+        <p>
+          Al iniciar sesión, el sistema presenta un portal de carpetas funcionales. Cada colaborador accede 
+          únicamente a su área de trabajo, garantizando rapidez en la atención, eliminación de errores y estricta 
+          confidencialidad entre el área médica y administrativa.
+        </p>
+      </div>
+
+      <div class="section-title">Áreas Clínicas Principales</div>
+
+      <!-- CARPETA 1: GESTIÓN MÉDICA -->
+      <div class="module-card">
+        <div class="module-header">
+          <div class="module-title-box">
+            <div class="icon-box icon-sky">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.5 12.75l6 6 9-13.5"></path>
+              </svg>
+            </div>
+            <div class="module-name">Carpeta 1: Gestión Médica</div>
+          </div>
+          <span class="role-badge badge-med">Uso Exclusivo: Médicos</span>
+        </div>
+        <div class="feature-list">
+          <div class="feature-item">
+            <div class="feature-bullet"></div>
+            <div>
+              <strong>Monitor de Sala en Tiempo Real:</strong>
+              <span>Visualización inmediata de pacientes citados hoy con estatus en vivo (Esperando en sala, En consulta, Atendido o Inasistencia).</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet"></div>
+            <div>
+              <strong>Ficha del Paciente Integrada en la Consulta:</strong>
+              <span>El médico accede y actualiza el expediente del paciente directamente desde la cita, sin salir del módulo ni perder el contexto de atención.</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet"></div>
+            <div>
+              <strong>Diagnóstico y Trazabilidad Clínica:</strong>
+              <span>Registro ágil de motivo de consulta, observaciones clínicas, diagnósticos y revisión de atenciones previas en tiempo real.</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet"></div>
+            <div>
+              <strong>Prescripciones y Plazos de Medicación:</strong>
+              <span>Detalle de fármacos prescritos, posología y plazo exacto de tratamiento, con emisión inmediata de receta médica digital imprimible.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARPETA 2: FACTURACIÓN -->
+      <div class="module-card">
+        <div class="module-header">
+          <div class="module-title-box">
+            <div class="icon-box icon-emerald">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+            </div>
+            <div class="module-name">Carpeta 2: Facturación</div>
+          </div>
+          <span class="role-badge badge-fac">Uso Exclusivo: Facturador / Caja</span>
+        </div>
+        <div class="feature-list">
+          <div class="feature-item">
+            <div class="feature-bullet emerald"></div>
+            <div>
+              <strong>Acceso Administrativo Reservado:</strong>
+              <span>Carpeta restringida exclusivamente al personal de facturación y cobranza; el facturador no visualiza notas médicas confidenciales.</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet emerald"></div>
+            <div>
+              <strong>Facturación por Tipo de Prestación:</strong>
+              <span>Generación de facturas virtuales diferenciadas: Consultas Médicas, Pruebas de Laboratorio, Imagenología (Rayos X, Ultrasonidos) y Procedimientos.</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet emerald"></div>
+            <div>
+              <strong>Integración con Seguros y Copagos:</strong>
+              <span>Registro de la aseguradora del paciente, cálculo automatizado del porcentaje cubierto y determinación transparente del copago.</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet emerald"></div>
+            <div>
+              <strong>Historial de Facturas y Saldos Pendientes:</strong>
+              <span>Control detallado de comprobantes emitidos, métodos de pago y panel de cuentas pendientes por cobrar.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER PÁGINA 1 -->
+    <div class="footer">
+      <span>Gestia Clinic OS • Documento Confidencial para Presentación a Cliente</span>
+      <span>Página 1 de 2</span>
+    </div>
+  </div>
+
+  <!-- ==================== PÁGINA 2 ==================== -->
+  <div class="page">
+    <div>
+      <!-- HEADER PÁGINA 2 -->
+      <div class="header">
+        <div class="brand">
+          <div class="brand-logo">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1>Gestia</h1>
+            <p>Suite de Gestión Hospitalaria y Consultorios</p>
+          </div>
+        </div>
+        <div class="meta">
+          <strong>Propuesta de Solución Clínica</strong><br>
+          Recepción, Archivo y Resguardo de Datos<br>
+          Fecha: Octubre 2026 • Documento Oficial
+        </div>
+      </div>
+
+      <div class="section-title">Recepción, Expedientes y Seguridad</div>
+
+      <!-- CARPETA 3: SECRETARÍA / ASISTENTE -->
+      <div class="module-card">
+        <div class="module-header">
+          <div class="module-title-box">
+            <div class="icon-box icon-violet">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+              </svg>
+            </div>
+            <div class="module-name">Carpeta 3: Secretaría / Asistente</div>
+          </div>
+          <span class="role-badge badge-sec">Uso: Recepción & Asistentes</span>
+        </div>
+        <div class="feature-list">
+          <div class="feature-item">
+            <div class="feature-bullet violet"></div>
+            <div>
+              <strong>Agenda Centralizada de Citas:</strong>
+              <span>Programación rápida de citas por médico y especialidad, confirmación de asistencia y reprogramación de turnos.</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet violet"></div>
+            <div>
+              <strong>Admisión Rápida y Verificación de Datos:</strong>
+              <span>Consulta y edición ágil de datos de contacto, teléfonos y aseguradora antes de que el paciente pase a consulta.</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet violet"></div>
+            <div>
+              <strong>Carga de Resultados Externos:</strong>
+              <span>Recepción y subida directa de informes externos (PDFs de laboratorio, resultados de biopsias, imágenes) directo a la ficha del paciente.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CARPETA 4: BASE DE DATOS DE PACIENTES -->
+      <div class="module-card">
+        <div class="module-header">
+          <div class="module-title-box">
+            <div class="icon-box icon-amber">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+              </svg>
+            </div>
+            <div class="module-name">Carpeta 4: Base de Datos de Pacientes</div>
+          </div>
+          <span class="role-badge badge-bd">Archivo Central de la Clínica</span>
+        </div>
+        <div class="feature-list">
+          <div class="feature-item">
+            <div class="feature-bullet amber"></div>
+            <div>
+              <strong>Filtros y Búsqueda Avanzada:</strong>
+              <span>Localización inmediata de pacientes por orden alfabético, por médico tratante, por aseguradora o por fecha de registro.</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet amber"></div>
+            <div>
+              <strong>Ficha Integral al Hacer Clic:</strong>
+              <span>Despliegue ordenado de datos clave: Nombre completo, edad, número de cédula, número de póliza, aseguradora afiliada y médicos que le atienden.</span>
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-bullet amber"></div>
+            <div>
+              <strong>Historial de Pruebas Diagnósticas Clave:</strong>
+              <span>Trazabilidad histórica de estudios específicos con fecha y resultado (por ejemplo: resultado de Papanicolao de hace 6 meses, laboratorios anteriores e imágenes diagnósticas).</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEGURIDAD Y PRIVACIDAD MÉDICA -->
+      <div class="security-banner">
+        <div class="security-header">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+          </svg>
+          Garantías de Seguridad y Confidencialidad de la Información
+        </div>
+        <div class="security-grid">
+          <div>
+            <strong>• Segregación Estricta de Funciones:</strong>
+            El personal administrativo solo accede a tareas de cobro y agenda, protegiendo las notas médicas confidenciales.
+          </div>
+          <div>
+            <strong>• Protección y Continuidad 24/7:</strong>
+            Copias de seguridad automáticas del expediente clínico, control de accesos por usuario y máxima velocidad de respuesta.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER PÁGINA 2 -->
+    <div class="footer">
+      <span>Gestia Clinic OS • Documento Confidencial para Presentación a Cliente</span>
+      <span>Página 2 de 2</span>
+    </div>
+  </div>
+
+</body>
+</html>
