@@ -477,7 +477,7 @@ export class SaasService implements OnModuleInit {
   /**
    * Permite a un consultorio ascender o modificar su plan contratado.
    */
-  async cambiarPlan(consultorioId: string, dto: CambiarPlanDto) {
+  async cambiarPlan(consultorioId: string, dto: CambiarPlanDto, usuarioSolicitante?: any) {
     const nuevoPlan = await this.planRepo.findOne({
       where: { codigo: dto.planCodigo.toUpperCase(), activo: true },
     });
@@ -513,6 +513,9 @@ export class SaasService implements OnModuleInit {
 
     await this.auditoriaService.registrar({
       consultorioId,
+      usuarioId: usuarioSolicitante?.id ?? null,
+      usuarioEmail: usuarioSolicitante?.email ?? 'sistema',
+      usuarioNombre: `${usuarioSolicitante?.nombre ?? ''} ${usuarioSolicitante?.apellido ?? ''}`.trim() || 'Administrador',
       modulo: 'SAAS',
       accion: 'CAMBIAR_PLAN',
       entidadTipo: 'Plan',

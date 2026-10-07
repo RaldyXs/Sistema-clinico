@@ -152,10 +152,46 @@ export class AuthService {
       throw new UnauthorizedException('Correo electrónico o contraseña incorrectos');
     }
 
+    // 1. Verificar si la cuenta se encuentra bloqueada temporalmente por seguridad
+    if (usuario.bloqueadoHasta && new Date(usuario.bloqueadoHasta) > new Date()) {
+      const minutosRestantes = Math.ceil(
+        (new Date(usuario.bloqueadoHasta).getTime() - Date.now()) / (60 * 1000),
+      );
+      throw new UnauthorizedException(
+        `Cuenta bloqueada temporalmente por múltiples intentos fallidos. Intenta nuevamente en ${minutosRestantes} minuto(s).`,
+      );
+    }
+
     const passwordValida = await bcrypt.compare(dto.password, usuario.passwordHash);
 
     if (!passwordValida) {
+      const intentos = (usuario.intentosFallidos || 0) + 1;
+      let nuevoBloqueo: Date | null = null;
+
+      if (intentos >= 5) {
+        nuevoBloqueo = new Date(Date.now() + 15 * 60 * 1000);
+      }
+
+      await this.usuarioRepo.update(usuario.id, {
+        intentosFallidos: intentos >= 5 ? 0 : intentos,
+        bloqueadoHasta: nuevoBloqueo,
+      });
+
+      if (nuevoBloqueo) {
+        throw new UnauthorizedException(
+          'Has superado el límite de 5 intentos fallidos. Tu cuenta ha sido bloqueada temporalmente por 15 minutos.',
+        );
+      }
+
       throw new UnauthorizedException('Correo electrónico o contraseña incorrectos');
+    }
+
+    // Reiniciar contador de intentos fallidos al tener éxito
+    if (usuario.intentosFallidos > 0 || usuario.bloqueadoHasta) {
+      await this.usuarioRepo.update(usuario.id, {
+        intentosFallidos: 0,
+        bloqueadoHasta: null,
+      });
     }
 
     if (usuario.consultorio && !usuario.consultorio.activo) {

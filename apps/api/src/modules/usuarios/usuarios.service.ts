@@ -79,6 +79,9 @@ export class UsuariosService {
 
     // 3. Regla de negocio: Solo puede existir un único Administrador por consultorio/clínica
     const rolSolicitado = dto.rolCodigo || RolUsuario.MEDICO;
+    if ((rolSolicitado as string) === 'SUPERADMIN') {
+      throw new BadRequestException('No se permite crear usuarios con rol SuperAdmin desde el consultorio.');
+    }
     if (rolSolicitado === RolUsuario.ADMIN) {
       const adminExistente = await this.usuarioRepo.findOne({
         where: { consultorioId, rolCodigo: 'ADMIN', eliminado: false },
@@ -240,6 +243,10 @@ export class UsuariosService {
 
     if (!usuario) {
       throw new NotFoundException(`Usuario con ID "${id}" no encontrado`);
+    }
+
+    if (dto.rolCodigo && (dto.rolCodigo as string) === 'SUPERADMIN') {
+      throw new BadRequestException('No se permite asignar el rol SuperAdmin desde el consultorio.');
     }
 
     // Regla de seguridad: Si el usuario es el único ADMIN activo, no permitir cambiarlo a otro rol

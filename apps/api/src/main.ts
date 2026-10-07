@@ -24,26 +24,38 @@ async function bootstrap() {
     }),
   );
 
-  // 2. CORS dinámico compatible con credentials: true
+  // 2. CORS endurecido compatible con credentials: true
   const corsOrigins = configService.get<string>('CORS_ORIGINS');
   const allowedOrigins = corsOrigins
-    ? corsOrigins.split(',').map((o) => o.trim().toLowerCase())
-    : ['*'];
+    ? corsOrigins.split(',').map((o) => o.trim().toLowerCase()).filter((o) => o !== '*')
+    : [];
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Peticiones sin origen (herramientas locales, curl, etc.)
+      // Peticiones sin origen (herramientas del servidor, curl, SSR, extensiones)
       if (!origin) return callback(null, true);
 
-      // Si está configurado wildcard '*', reflejar el origen para permitir credentials
-      if (allowedOrigins.includes('*')) {
+      const originLower = origin.toLowerCase();
+
+      // 1. Origen explícitamente configurado en la lista blanca
+      if (allowedOrigins.includes(originLower)) {
         return callback(null, true);
       }
 
-      if (allowedOrigins.includes(origin.toLowerCase())) {
+      // 2. Orígenes de desarrollo local, red LAN de pruebas o túneles de Cloudflare
+      const esOrigenConfiable =
+        originLower.startsWith('http://localhost:') ||
+        originLower.startsWith('https://localhost:') ||
+        originLower.startsWith('http://127.0.0.1:') ||
+        originLower.startsWith('http://192.168.') ||
+        originLower.startsWith('https://192.168.') ||
+        originLower.endsWith('.trycloudflare.com');
+
+      if (esOrigenConfiable) {
         return callback(null, true);
       }
 
+      // Denegar cualquier otro origen no confiable
       return callback(null, false);
     },
     credentials: true,

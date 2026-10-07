@@ -120,6 +120,12 @@ export class Usuario {
   @Column({ name: 'two_factor_recovery_codes', type: 'jsonb', nullable: true })
   twoFactorRecoveryCodes: string[] | null;
 
+  @Column({ name: 'intentos_fallidos', type: 'int', default: 0 })
+  intentosFallidos: number;
+
+  @Column({ name: 'bloqueado_hasta', type: 'timestamp', nullable: true })
+  bloqueadoHasta: Date | null;
+
   @CreateDateColumn({ name: 'creado_en' })
   creadoEn: Date;
 

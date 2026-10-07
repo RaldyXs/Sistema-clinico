@@ -38,6 +38,18 @@ export class SaasController {
     }
   }
 
+  /**
+   * Helper para verificar que quien gestiona suscripciones sea Administrador de la clínica o SuperAdmin
+   */
+  private verificarAdminOPlatform(req: any) {
+    const rol = req.user?.rol?.codigo || req.user?.rolCodigo;
+    if (rol !== 'ADMIN' && rol !== 'SUPERADMIN') {
+      throw new ForbiddenException(
+        'Acceso denegado: Solo el Administrador de la organización puede gestionar suscripciones o planes.',
+      );
+    }
+  }
+
   // ==================== ENDPOINTS PÚBLICOS ====================
 
   /**
@@ -81,6 +93,7 @@ export class SaasController {
     @Body() dto: SolicitarPlanDto,
     @Request() req: any,
   ) {
+    this.verificarAdminOPlatform(req);
     return this.saasService.solicitarPlan(consultorioId, dto, req.user);
   }
 
@@ -95,15 +108,18 @@ export class SaasController {
 
   /**
    * Permite al consultorio ascender o modificar su plan directamente.
+   * Restringido estrictamente a Administradores de la clínica o SuperAdmin.
    */
   @UseGuards(JwtAuthGuard)
   @Post('cambiar-plan')
   @HttpCode(HttpStatus.OK)
   async cambiarPlan(
     @ConsultorioActual() consultorioId: string,
+    @Request() req: any,
     @Body() dto: CambiarPlanDto,
   ) {
-    return this.saasService.cambiarPlan(consultorioId, dto);
+    this.verificarAdminOPlatform(req);
+    return this.saasService.cambiarPlan(consultorioId, dto, req.user);
   }
 
   // ==================== ENDPOINTS SUPERADMIN / PLATAFORMA ====================

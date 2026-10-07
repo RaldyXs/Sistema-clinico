@@ -54,6 +54,10 @@ export class UsuariosController {
     @Body() dto: CrearUsuarioDto,
   ) {
     this.verificarAdmin(req);
+    const rol = req.user?.rol?.codigo || req.user?.rolCodigo;
+    if (dto.rolCodigo && (dto.rolCodigo as string) === 'SUPERADMIN' && rol !== 'SUPERADMIN') {
+      throw new ForbiddenException('Solo el dueño de la plataforma puede asignar el rol SuperAdmin.');
+    }
     return this.usuariosService.crear(consultorioId, dto);
   }
 
@@ -102,9 +106,22 @@ export class UsuariosController {
     @Body() dto: ActualizarUsuarioDto,
   ) {
     const rol = req.user?.rol?.codigo || req.user?.rolCodigo;
-    if (rol !== 'ADMIN' && rol !== 'SUPERADMIN' && req.user?.id !== id) {
+    const esAdminOSuperAdmin = rol === 'ADMIN' || rol === 'SUPERADMIN';
+
+    if (!esAdminOSuperAdmin && req.user?.id !== id) {
       throw new ForbiddenException('No tienes permisos para modificar este usuario.');
     }
+
+    // Un colaborador ordinario que edita su propio perfil no puede alterar roles ni estado
+    if (!esAdminOSuperAdmin && (dto.rolCodigo !== undefined || dto.rolId !== undefined || dto.activo !== undefined)) {
+      throw new ForbiddenException('No tienes permisos para modificar el rol o estado de tu cuenta.');
+    }
+
+    // Ningún administrador ordinario puede asignar o promover a SuperAdmin
+    if (dto.rolCodigo && (dto.rolCodigo as string) === 'SUPERADMIN' && rol !== 'SUPERADMIN') {
+      throw new ForbiddenException('Solo el dueño de la plataforma puede asignar el rol SuperAdmin.');
+    }
+
     return this.usuariosService.actualizar(
       consultorioId,
       id,

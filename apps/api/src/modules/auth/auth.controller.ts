@@ -31,9 +31,9 @@ export class AuthController {
 
   /**
    * Endpoint de autenticación principal.
-   * Límite de 30 intentos por minuto para mitigar ataques de fuerza bruta sin bloquear usuarios legítimos.
+   * Límite estricto de 10 intentos por minuto por IP para mitigar ataques de fuerza bruta.
    */
-  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @Request() req: any) {
@@ -44,9 +44,9 @@ export class AuthController {
 
   /**
    * Verificación de segundo factor (2FA).
-   * Límite de 30 intentos por minuto.
+   * Límite estricto de 5 intentos por minuto para prevenir ataques a códigos TOTP de 6 dígitos.
    */
-  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login-2fa')
   @HttpCode(HttpStatus.OK)
   async login2fa(@Body() dto: Login2faDto, @Request() req: any) {

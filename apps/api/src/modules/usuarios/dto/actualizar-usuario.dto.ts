@@ -7,7 +7,7 @@ import {
   IsUUID,
   IsBoolean,
 } from 'class-validator';
-import { RolUsuario } from '../entities/usuario.entity.js';
+import { RolTenant } from './crear-usuario.dto.js';
 
 export class ActualizarUsuarioDto {
   @IsOptional()
@@ -27,8 +27,8 @@ export class ActualizarUsuarioDto {
   password?: string;
 
   @IsOptional()
-  @IsEnum(RolUsuario, { message: 'El rol debe ser ADMIN, MEDICO o RECEPCION' })
-  rolCodigo?: RolUsuario;
+  @IsEnum(RolTenant, { message: 'El rol debe ser ADMIN, MEDICO o RECEPCION' })
+  rolCodigo?: RolTenant;
 
   @IsOptional()
   @IsUUID('4', { message: 'El ID de rol debe ser un UUID válido' })

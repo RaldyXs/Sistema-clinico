@@ -10,6 +10,14 @@ import {
 } from 'class-validator';
 import { RolUsuario } from '../entities/usuario.entity.js';
 
+export const RolTenant = {
+  ADMIN: RolUsuario.ADMIN,
+  MEDICO: RolUsuario.MEDICO,
+  RECEPCION: RolUsuario.RECEPCION,
+} as const;
+
+export type RolTenant = (typeof RolTenant)[keyof typeof RolTenant];
+
 export class CrearUsuarioDto {
   @IsString()
   @IsNotEmpty({ message: 'El nombre es obligatorio' })
@@ -33,8 +41,8 @@ export class CrearUsuarioDto {
   password: string;
 
   @IsOptional()
-  @IsEnum(RolUsuario, { message: 'El rol debe ser ADMIN, MEDICO o RECEPCION' })
-  rolCodigo?: RolUsuario;
+  @IsEnum(RolTenant, { message: 'El rol debe ser ADMIN, MEDICO o RECEPCION' })
+  rolCodigo?: RolTenant;
 
   @IsOptional()
   @IsUUID('4', { message: 'El ID de rol debe ser un UUID válido' })
