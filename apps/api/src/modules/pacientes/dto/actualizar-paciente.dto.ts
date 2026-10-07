@@ -136,4 +136,24 @@ export class ActualizarPacienteDto {
   @IsOptional()
   @IsBoolean({ message: 'El estado activo debe ser un valor booleano' })
   activo?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  numeroHistoria?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  ars?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  numeroPoliza?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  planSeguro?: string;
 }

@@ -143,4 +143,24 @@ export class CrearPacienteDto {
   @IsString({ message: 'El teléfono del contacto de emergencia debe ser texto' })
   @MaxLength(50, { message: 'El teléfono de emergencia no puede exceder 50 caracteres' })
   contactoEmergenciaTelefono?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  numeroHistoria?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  ars?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  numeroPoliza?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  planSeguro?: string;
 }

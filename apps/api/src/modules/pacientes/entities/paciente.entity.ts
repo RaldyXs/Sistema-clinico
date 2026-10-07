@@ -96,6 +96,18 @@ export class Paciente extends TenantBaseEntity {
   @Column({ type: 'text', nullable: true })
   direccion: string | null;
 
+  @Column({ name: 'numero_historia', type: 'varchar', length: 50, nullable: true })
+  numeroHistoria: string | null;
+
+  @Column({ name: 'ars', type: 'varchar', length: 100, nullable: true })
+  ars: string | null;
+
+  @Column({ name: 'numero_poliza', type: 'varchar', length: 50, nullable: true })
+  numeroPoliza: string | null;
+
+  @Column({ name: 'plan_seguro', type: 'varchar', length: 50, nullable: true })
+  planSeguro: string | null;
+
   /**
    * Información Médica Transversal
    */

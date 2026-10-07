@@ -4,7 +4,7 @@ import type { ModuloId } from '@/views/ModuleLauncher';
 import { DashboardView } from '@/views/DashboardView';
 import { ConsultasView } from '@/views/ConsultasView';
 import { RecetasView } from '@/views/RecetasView';
-import { CitasView } from '@/views/CitasView';
+import { MonitorSalaHoy } from './MonitorSalaHoy';
 import {
   LayoutDashboard,
   Stethoscope,
@@ -44,26 +44,14 @@ export function GestionMedicaModule({ onVolverLauncher }: Props) {
       onSelectTab={cambiarTab}
       onVolverLauncher={onVolverLauncher}
     >
-      {tab === 'hoy' && <PacientesDelDia />}
+      {tab === 'hoy' && (
+        <MonitorSalaHoy
+          onIniciarConsultaDirecta={() => cambiarTab('consultas')}
+        />
+      )}
       {tab === 'consultas' && <ConsultasView />}
       {tab === 'recetas' && <RecetasView />}
       {tab === 'dashboard' && <DashboardView onNavigate={(t) => cambiarTab(t)} />}
     </ModuleShell>
-  );
-}
-
-// ── Pacientes del Día (placeholder — se ampliará en Fase 3) ──
-function PacientesDelDia() {
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold">Pacientes de Hoy</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Lista de citas del día con estado de asistencia.
-        </p>
-      </div>
-      {/* Redirige a la vista de citas filtrada por hoy */}
-      <CitasView />
-    </div>
   );
 }

@@ -29,6 +29,7 @@ import {
   Check,
 } from 'lucide-react';
 import { CATALOGO_CIE10 } from '@/data/cie10';
+import { FichaPacienteDrawer } from '@/components/pacientes/FichaPacienteDrawer';
 
 export function ConsultasView() {
   const { user } = useAuth();
@@ -39,6 +40,7 @@ export function ConsultasView() {
   const [loading, setLoading] = React.useState(true);
   const [showModalCrear, setShowModalCrear] = React.useState(false);
   const [showModalCalculadora, setShowModalCalculadora] = React.useState(false);
+  const [drawerPacienteId, setDrawerPacienteId] = React.useState<string | null>(null);
 
   // Asistente Obstétrico integrado
   const [mostrarHerramientasObstetricas, setMostrarHerramientasObstetricas] = React.useState(false);
@@ -392,6 +394,20 @@ export function ConsultasView() {
                       </option>
                     ))}
                   </select>
+                  {form.pacienteId && (
+                    <div className="flex justify-end pt-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-6 text-primary hover:bg-primary/10 gap-1.5 px-2 font-medium"
+                        onClick={() => setDrawerPacienteId(form.pacienteId)}
+                      >
+                        <Eye className="size-3.5" />
+                        Ver / Editar Ficha y Antecedentes (Inline)
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -752,8 +768,17 @@ export function ConsultasView() {
                 <Button
                   variant="outline"
                   size="sm"
+                  onClick={() => setDrawerPacienteId(consultaDetalle.pacienteId || consultaDetalle.paciente?.id)}
+                  className="h-8 text-xs cursor-pointer border-primary/40 text-primary hover:bg-primary/10 gap-1.5"
+                >
+                  <Eye className="size-3.5" />
+                  Ficha Paciente (Drawer)
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => window.print()}
-                  className="h-8 text-xs cursor-pointer border-primary/40 text-primary hover:bg-primary/10"
+                  className="h-8 text-xs cursor-pointer border-border text-foreground hover:bg-muted"
                 >
                   <Printer className="size-3.5 mr-1.5" />
                   Imprimir Resumen
@@ -1133,6 +1158,14 @@ export function ConsultasView() {
           </Card>
         </div>
       )}
+
+      {/* Drawer Lateral de Ficha de Paciente Inline */}
+      <FichaPacienteDrawer
+        pacienteId={drawerPacienteId}
+        isOpen={Boolean(drawerPacienteId)}
+        onClose={() => setDrawerPacienteId(null)}
+        onPacienteActualizado={() => cargarDatos()}
+      />
     </div>
   );
 }
