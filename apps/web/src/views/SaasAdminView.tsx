@@ -27,7 +27,6 @@ import {
   PieChart,
   ShieldCheck,
   Server,
-  LogOut,
 } from 'lucide-react';
 
 interface GlobalMetricas {
@@ -95,7 +94,7 @@ interface SolicitudPlanItem {
 type SaasSubTab = 'clinicas' | 'solicitudes' | 'planes' | 'metricas';
 
 export function SaasAdminView() {
-  const { token, logout } = useAuth();
+  const { token } = useAuth();
   const [activeSubTab, setActiveSubTab] = React.useState<SaasSubTab>('clinicas');
   const [metricas, setMetricas] = React.useState<GlobalMetricas | null>(null);
   const [distribucionPlanes, setDistribucionPlanes] = React.useState<Record<string, number>>({});
@@ -298,17 +297,6 @@ export function SaasAdminView() {
           <Button variant="outline" size="sm" onClick={fetchData} disabled={isLoading} className="gap-1.5 text-xs h-8 px-2.5 cursor-pointer">
             <RefreshCw className={`size-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             Actualizar
-          </Button>
-          <div className="h-4 w-px bg-border shrink-0 mx-0.5" />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => logout()}
-            className="gap-1.5 text-xs h-8 px-2.5 text-destructive hover:bg-destructive/10 border-destructive/20 cursor-pointer"
-            title="Cerrar sesión de SuperAdmin"
-          >
-            <LogOut className="size-3.5" />
-            <span>Cerrar Sesión</span>
           </Button>
         </div>
       </div>
