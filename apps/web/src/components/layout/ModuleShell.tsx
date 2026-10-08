@@ -15,6 +15,7 @@ export interface ModuleTab {
   id: string;
   label: string;
   icon: React.ReactNode;
+  badge?: React.ReactNode;
 }
 
 interface ModuleShellProps {
@@ -147,7 +148,8 @@ export function ModuleShell({
                   }`}
                 >
                   {tab.icon}
-                  {tab.label}
+                  <span>{tab.label}</span>
+                  {tab.badge && <span className="ml-1 shrink-0">{tab.badge}</span>}
                 </button>
               );
             })}
@@ -172,7 +174,8 @@ export function ModuleShell({
                     }`}
                   >
                     {tab.icon}
-                    {tab.label}
+                    <span>{tab.label}</span>
+                    {tab.badge && <span className="ml-auto shrink-0">{tab.badge}</span>}
                   </button>
                 );
               })}
