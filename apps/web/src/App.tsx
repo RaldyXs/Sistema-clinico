@@ -9,7 +9,7 @@ import { FacturacionModule } from '@/modules/facturacion/FacturacionModule';
 import { SecretariaModule } from '@/modules/secretaria/SecretariaModule';
 import { BaseDatosModule } from '@/modules/base-datos/BaseDatosModule';
 import { AdministracionModule } from '@/modules/administracion/AdministracionModule';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, LogOut } from 'lucide-react';
 
 // Roles y qué módulos pueden ver
 const ACCESO_POR_ROL: Record<string, ModuloId[]> = {
@@ -27,7 +27,7 @@ function getModuloInicial(rolCodigo: string): ModuloId | null {
 }
 
 function MainRouter() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading, user, logout } = useAuth();
   const isAdminRoute = window.location.pathname.startsWith('/admin');
 
   // null = mostrar launcher; string = módulo activo
@@ -116,8 +116,28 @@ function MainRouter() {
   // ── Módulos por rol ──
   if (moduloActivo === 'saas' && isSuperAdmin) {
     return (
-      <div className="h-full w-full flex flex-col">
-        <SaasAdminView />
+      <div className="min-h-screen w-full flex flex-col bg-background text-foreground">
+        <header className="h-14 border-b border-border bg-card/90 backdrop-blur-xs px-4 sm:px-6 flex items-center justify-between shrink-0 z-30">
+          <div className="flex items-center gap-2.5">
+            <span className="font-bold text-sm tracking-tight text-foreground">Gestia</span>
+            <span className="text-muted-foreground text-xs">•</span>
+            <span className="text-xs font-semibold text-primary">Plataforma SaaS</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
+            <button
+              type="button"
+              onClick={logout}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-destructive hover:bg-destructive/10 border border-destructive/20 transition-colors cursor-pointer"
+            >
+              <LogOut className="size-3.5" />
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
+        </header>
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+          <SaasAdminView />
+        </main>
       </div>
     );
   }
