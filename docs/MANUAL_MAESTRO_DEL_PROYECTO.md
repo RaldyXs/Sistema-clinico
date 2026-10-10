@@ -53,22 +53,21 @@ Sistema-clinico/
 
 ---
 
-## 🔐 3. Cuentas y Credenciales del Sistema
+## 🔐 3. Cuentas y Roles del Sistema
 
-Todos los usuarios de prueba y roles están configurados y verificados en la base de datos:
+Los roles configurados en la base de datos para pruebas locales son:
 
-| Rol | Correo Electrónico | Contraseña | Alcance / Permisos |
+| Rol | Correo Electrónico | Autenticación | Alcance / Permisos |
 | :--- | :--- | :--- | :--- |
-| **Director / Admin** | `dr.carlos@test.com` | `Test1234!` | Control total de su clínica: altas de médicos/secretarias, expedientes, recetas, caja, reportes y datos institucionales. |
-| **Médico Especialista** | `medico@test.com` | `Test1234!` | Consultas médicas, ginecología/embarazos, expedientes clínicos y emisión de recetas oficiales con firma digital. |
-| **Recepción y Caja** | `recepcion@test.com` | `Test1234!` | Agenda de turnos, registro de pacientes, cobros por consulta, emisión de recibos y arqueo de caja. |
-| **SuperAdmin (Dueño SaaS)** | `superadmin@saas.com` | `AdminSeguro2026!` | Dueño del software: acceso en `/admin` para crear clínicas, aprobar solicitudes de planes y ver métricas globales de ingresos (MRR). |
+| **Director / Admin** | `dr.carlos@test.com` | Variable `.env` | Control total de su clínica: altas de médicos/secretarias, expedientes, recetas, caja, reportes y datos institucionales. |
+| **Médico Especialista** | `medico@test.com` | Variable `.env` | Consultas médicas, ginecología/embarazos, expedientes clínicos y emisión de recetas oficiales con firma digital. |
+| **Recepción y Caja** | `recepcion@test.com` | Variable `.env` | Agenda de turnos, registro de pacientes, cobros por consulta, emisión de recibos y arqueo de caja. |
+| **SuperAdmin (Dueño SaaS)** | `superadmin@saas.com` | Variable `.env` | Dueño del software: acceso en `/admin` para crear clínicas, aprobar solicitudes de planes y ver métricas globales de ingresos (MRR). |
 
 ### Base de Datos PostgreSQL:
-* **Usuario:** `postgres`
-* **Contraseña:** `ClinicaSegura2026!`
-* **Base de Datos:** `sistema_clinico`
 * **Host interno Docker:** `db:5432`
+* **Base de Datos:** `sistema_clinico`
+* **Credenciales:** Configuradas en variables de entorno (`DB_USER`, `DB_PASSWORD` en `.env`).
 
 ---
 

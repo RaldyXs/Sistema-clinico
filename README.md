@@ -26,9 +26,13 @@ docker ps
 
 ---
 
-## 🔑 Credenciales de Acceso Rápidas
+## 🔐 Cuentas y Accesos
 
-* **Director / Admin:** `dr.carlos@test.com` / `Test1234!`
-* **Médico:** `medico@test.com` / `Test1234!`
-* **Recepción / Caja:** `recepcion@test.com` / `Test1234!`
-* **SuperAdmin SaaS:** `superadmin@saas.com` / `AdminSeguro2026!` (Portal en `/admin`)
+Las cuentas de demostración y administración se inicializan mediante variables de entorno y semillas locales:
+
+* **Director / Admin:** `dr.carlos@test.com` (Administración de clínica)
+* **Médico:** `medico@test.com` (Consultas y expedientes)
+* **Recepción / Caja:** `recepcion@test.com` (Citas y cobros)
+* **SuperAdmin SaaS:** `superadmin@saas.com` (Portal maestro en `/admin`)
+
+> Las contraseñas iniciales se configuran de forma segura a través del archivo `.env` (`ADMIN_PASSWORD`, `SEED_DEFAULT_PASSWORD`, etc.) y nunca deben ser versionadas en Git. Consulta `.env.example` para más detalles.
