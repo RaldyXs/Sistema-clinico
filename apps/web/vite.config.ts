@@ -29,7 +29,7 @@ export default defineConfig({
   },
   server: {
     host: true,
-    port: 5173,
+    port: 5180,
     proxy: {
       '/api': {
         target: 'http://192.168.16.19:3000',
