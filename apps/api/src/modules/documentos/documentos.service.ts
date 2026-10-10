@@ -140,6 +140,40 @@ export class DocumentosService {
   }
 
   /**
+   * Obtiene la lista general de documentos y estudios de la clínica con filtros.
+   */
+  async listarTodos(
+    consultorioId: string,
+    filtros: FiltrosDocumentosDto,
+  ) {
+    const { categoria, pagina = 1, limite = 25 } = filtros;
+
+    const qb = this.docRepo
+      .createQueryBuilder('doc')
+      .leftJoinAndSelect('doc.paciente', 'paciente')
+      .leftJoinAndSelect('doc.profesional', 'profesional')
+      .where('doc.consultorioId = :consultorioId', { consultorioId });
+
+    if (categoria) {
+      qb.andWhere('doc.categoria = :categoria', { categoria });
+    }
+
+    qb.orderBy('doc.creadoEn', 'DESC')
+      .skip((pagina - 1) * limite)
+      .take(limite);
+
+    const [datos, total] = await qb.getManyAndCount();
+
+    return {
+      datos,
+      total,
+      pagina,
+      limite,
+      totalPaginas: Math.ceil(total / limite),
+    };
+  }
+
+  /**
    * Obtiene los documentos adjuntos a una consulta clínica específica.
    */
   async listarPorConsulta(consultorioId: string, consultaId: string) {

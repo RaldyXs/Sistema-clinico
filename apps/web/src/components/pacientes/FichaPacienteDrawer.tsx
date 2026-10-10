@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   Activity,
   History,
+  Download,
+  FileText,
 } from 'lucide-react';
 import { ARS_DOMINICANAS } from '@/data/ars-dominicanas';
 
@@ -44,6 +46,7 @@ export function FichaPacienteDrawer({
   const [fichaData, setFichaData] = React.useState<any | null>(null);
   const [_gynData, setGynData] = React.useState<any | null>(null);
   const [historialConsultas, setHistorialConsultas] = React.useState<any[]>([]);
+  const [documentosAdjuntos, setDocumentosAdjuntos] = React.useState<any[]>([]);
 
   // Formulario editable del paciente
   const [formData, setFormData] = React.useState({
@@ -114,14 +117,20 @@ export function FichaPacienteDrawer({
 
     const fetchData = async () => {
       try {
-        const [fichaRes, pacRes, gynRes, consultasRes] = await Promise.all([
+        const [fichaRes, pacRes, gynRes, consultasRes, docsRes] = await Promise.all([
           api.get(`/pacientes/${pacienteId}/ficha`).catch(() => null),
           api.get(`/pacientes/${pacienteId}`).catch(() => null),
           api.get(`/ginecologia/pacientes/${pacienteId}/historia-ginecologica`).catch(() => null),
           api.get(`/consultas/paciente/${pacienteId}/historial`).catch(() => null),
+          api.get(`/documentos/paciente/${pacienteId}`).catch(() => null),
         ]);
 
         if (!mounted) return;
+
+        if (docsRes) {
+          const docsList = Array.isArray(docsRes) ? docsRes : docsRes?.datos || [];
+          setDocumentosAdjuntos(docsList);
+        }
 
         const pac = pacRes || fichaRes?.paciente;
         if (pac) {
@@ -732,6 +741,70 @@ export function FichaPacienteDrawer({
                         onChange={(e) => setDiagData({ ...diagData, ecografiaReciente: e.target.value })}
                       />
                     </div>
+                  </div>
+
+                  {/* Documentos y Estudios Adjuntos (Digitalizados por Secretaría o Laboratorio) */}
+                  <div className="p-3.5 rounded-xl border border-border bg-card space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-bold text-foreground flex items-center gap-2">
+                        <FileText className="size-4 text-violet-600 dark:text-violet-400" />
+                        Estudios & Archivos Digitales Adjuntos ({documentosAdjuntos.length})
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">
+                        Expediente
+                      </Badge>
+                    </div>
+
+                    {documentosAdjuntos.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground italic py-2 text-center">
+                        No hay archivos ni analíticas adjuntas para este paciente aún.
+                      </p>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {documentosAdjuntos.map((doc) => (
+                          <div
+                            key={doc.id}
+                            className="py-2 flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <div className="font-semibold text-foreground truncate" title={doc.nombreOriginal}>
+                                {doc.nombreOriginal}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                                <Badge variant="secondary" className="text-[9px] py-0 px-1.5">
+                                  {doc.categoria}
+                                </Badge>
+                                <span>
+                                  {doc.fechaDocumento
+                                    ? new Date(doc.fechaDocumento).toLocaleDateString('es-DO')
+                                    : new Date(doc.creadoEn).toLocaleDateString('es-DO')}
+                                </span>
+                                {doc.descripcion && <span>• {doc.descripcion}</span>}
+                              </div>
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-[11px] h-7 gap-1 shrink-0 text-primary hover:text-primary"
+                              onClick={async () => {
+                                try {
+                                  await api.downloadBlob(
+                                    `/documentos/${doc.id}/descargar`,
+                                    doc.nombreOriginal || 'estudio.pdf'
+                                  );
+                                } catch (err: any) {
+                                  alert(err.message || 'Error al descargar documento');
+                                }
+                              }}
+                            >
+                              <Download className="size-3" />
+                              Descargar
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

@@ -51,6 +51,17 @@ export class DocumentosController {
   }
 
   /**
+   * Obtiene la lista general de documentos clínicos con filtros.
+   */
+  @Get()
+  async listarTodos(
+    @ConsultorioActual() consultorioId: string,
+    @Query() filtros: FiltrosDocumentosDto,
+  ) {
+    return this.documentosService.listarTodos(consultorioId, filtros);
+  }
+
+  /**
    * Obtiene el listado de documentos asociados a un paciente con filtros por categoría.
    */
   @Get('paciente/:pacienteId')
