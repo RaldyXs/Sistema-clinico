@@ -16,9 +16,14 @@ import {
   XCircle,
   RefreshCw,
   Baby,
+  FileSpreadsheet,
 } from 'lucide-react';
 
-export function ReportesView() {
+interface Props {
+  onIrAReclamaciones?: () => void;
+}
+
+export function ReportesView({ onIrAReclamaciones }: Props = {}) {
   const [reporteOperativo, setReporteOperativo] = React.useState<any | null>(null);
   const [reporteMedicos, setReporteMedicos] = React.useState<any[]>([]);
   const [reporteEpidemio, setReporteEpidemio] = React.useState<any | null>(null);
@@ -99,10 +104,23 @@ export function ReportesView() {
             Productividad médica, ausentismo de citas, horas pico y epidemiología
           </p>
         </div>
-        <Button onClick={descargarCsv} disabled={exportando} variant="outline" size="sm" className="h-7 text-xs px-2.5">
-          <Download className="size-3.5 mr-1" />
-          {exportando ? 'Generando...' : 'Exportar CSV'}
-        </Button>
+        <div className="flex items-center gap-2">
+          {onIrAReclamaciones && (
+            <Button
+              onClick={onIrAReclamaciones}
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs px-2.5 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+            >
+              <FileSpreadsheet className="size-3.5 mr-1" />
+              Reclamaciones ARS & Seguros
+            </Button>
+          )}
+          <Button onClick={descargarCsv} disabled={exportando} variant="outline" size="sm" className="h-7 text-xs px-2.5">
+            <Download className="size-3.5 mr-1" />
+            {exportando ? 'Generando...' : 'Exportar CSV'}
+          </Button>
+        </div>
       </div>
 
       {/* Barra de Filtros Temporales y de Profesional */}

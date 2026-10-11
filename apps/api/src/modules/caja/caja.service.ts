@@ -447,6 +447,7 @@ export class CajaService {
       .leftJoinAndSelect('p.paciente', 'paciente')
       .leftJoinAndSelect('p.registradoPor', 'registradoPor')
       .leftJoinAndSelect('p.cita', 'cita')
+      .leftJoinAndSelect('cita.profesional', 'profesional')
       .where('p.consultorioId = :consultorioId', { consultorioId });
 
     if (sesionCajaId) {
@@ -463,6 +464,21 @@ export class CajaService {
 
     if (estado) {
       qb.andWhere('p.estado = :estado', { estado });
+    }
+
+    if (filtros.ars && filtros.ars !== 'TODAS') {
+      qb.andWhere('p.nombreAseguradora ILIKE :ars', { ars: `%${filtros.ars}%` });
+    }
+
+    if (filtros.profesionalId) {
+      qb.andWhere('cita.profesionalId = :profesionalId', { profesionalId: filtros.profesionalId });
+    }
+
+    if (filtros.soloSeguros) {
+      qb.andWhere(
+        '(p.coberturaSeguro > 0 OR (p.nombreAseguradora IS NOT NULL AND p.nombreAseguradora != :part))',
+        { part: 'Privado / Sin Seguro (Particular)' },
+      );
     }
 
     if (desde) {
@@ -558,5 +574,219 @@ export class CajaService {
 
     const correlativo = String(siguiente).padStart(6, '0');
     return `REC-${añoActual}-${correlativo}`;
+  }
+
+  /**
+   * Obtiene el reporte y estado de liquidación de reclamaciones a ARS aseguradoras.
+   */
+  async obtenerReporteReclamacionesArs(
+    consultorioId: string,
+    filtros: {
+      desde?: string;
+      hasta?: string;
+      ars?: string;
+      profesionalId?: string;
+      estado?: string;
+      pagina?: number;
+      limite?: number;
+    },
+  ) {
+    const {
+      desde,
+      hasta,
+      ars,
+      profesionalId,
+      estado,
+      pagina = 1,
+      limite = 50,
+    } = filtros;
+
+    const qb = this.pagoRepo
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.paciente', 'paciente')
+      .leftJoinAndSelect('p.registradoPor', 'registradoPor')
+      .leftJoinAndSelect('p.cita', 'cita')
+      .leftJoinAndSelect('cita.profesional', 'profesional')
+      .where('p.consultorioId = :consultorioId', { consultorioId })
+      .andWhere(
+        '(p.coberturaSeguro > 0 OR (p.nombreAseguradora IS NOT NULL AND p.nombreAseguradora != :particular))',
+        { particular: 'Privado / Sin Seguro (Particular)' },
+      );
+
+    if (ars && ars !== 'TODAS') {
+      qb.andWhere('p.nombreAseguradora ILIKE :ars', { ars: `%${ars}%` });
+    }
+
+    if (profesionalId) {
+      qb.andWhere('cita.profesionalId = :profesionalId', { profesionalId });
+    }
+
+    if (estado) {
+      qb.andWhere('p.estado = :estado', { estado });
+    }
+
+    if (desde) {
+      qb.andWhere('p.creadoEn >= :desde', { desde: new Date(`${desde}T00:00:00.000Z`) });
+    }
+
+    if (hasta) {
+      qb.andWhere('p.creadoEn <= :hasta', { hasta: new Date(`${hasta}T23:59:59.999Z`) });
+    }
+
+    const todosPagos = await qb.orderBy('p.creadoEn', 'DESC').getMany();
+
+    const totalReclamaciones = todosPagos.length;
+    let totalMontoReclamado = 0;
+    let totalCopagoRecaudado = 0;
+    let totalMontoBruto = 0;
+    const conteoPorArs: Record<string, { cantidad: number; montoReclamado: number; copago: number }> = {};
+
+    for (const p of todosPagos) {
+      const cobSeg = Number(p.coberturaSeguro) || 0;
+      const copago = Number(p.montoCopago) || 0;
+      const bruto = Number(p.montoTotal) || 0;
+
+      if (p.estado !== EstadoPago.ANULADO) {
+        totalMontoReclamado += cobSeg;
+        totalCopagoRecaudado += copago;
+        totalMontoBruto += bruto;
+      }
+
+      const nombreArs = p.nombreAseguradora || 'Sin Especificar';
+      if (!conteoPorArs[nombreArs]) {
+        conteoPorArs[nombreArs] = { cantidad: 0, montoReclamado: 0, copago: 0 };
+      }
+      conteoPorArs[nombreArs].cantidad += 1;
+      if (p.estado !== EstadoPago.ANULADO) {
+        conteoPorArs[nombreArs].montoReclamado += cobSeg;
+        conteoPorArs[nombreArs].copago += copago;
+      }
+    }
+
+    const desgloseArs = Object.entries(conteoPorArs)
+      .map(([nombre, datos]) => ({
+        ars: nombre,
+        cantidad: datos.cantidad,
+        montoReclamado: datos.montoReclamado,
+        copago: datos.copago,
+      }))
+      .sort((a, b) => b.montoReclamado - a.montoReclamado);
+
+    const inicio = (pagina - 1) * limite;
+    const datosPaginados = todosPagos.slice(inicio, inicio + limite);
+
+    return {
+      datos: datosPaginados,
+      total: totalReclamaciones,
+      pagina,
+      limite,
+      totalPaginas: Math.ceil(totalReclamaciones / limite),
+      resumen: {
+        totalReclamaciones,
+        totalMontoReclamado,
+        totalCopagoRecaudado,
+        totalMontoBruto,
+      },
+      desgloseArs,
+    };
+  }
+
+  /**
+   * Exporta las reclamaciones de seguro a formato CSV compatible con Microsoft Excel.
+   */
+  async exportarReclamacionesArsCsv(
+    consultorioId: string,
+    filtros: {
+      desde?: string;
+      hasta?: string;
+      ars?: string;
+      profesionalId?: string;
+      estado?: string;
+    },
+  ): Promise<string> {
+    const qb = this.pagoRepo
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.paciente', 'paciente')
+      .leftJoinAndSelect('p.registradoPor', 'registradoPor')
+      .leftJoinAndSelect('p.cita', 'cita')
+      .leftJoinAndSelect('cita.profesional', 'profesional')
+      .where('p.consultorioId = :consultorioId', { consultorioId })
+      .andWhere(
+        '(p.coberturaSeguro > 0 OR (p.nombreAseguradora IS NOT NULL AND p.nombreAseguradora != :particular))',
+        { particular: 'Privado / Sin Seguro (Particular)' },
+      );
+
+    if (filtros.ars && filtros.ars !== 'TODAS') {
+      qb.andWhere('p.nombreAseguradora ILIKE :ars', { ars: `%${filtros.ars}%` });
+    }
+
+    if (filtros.profesionalId) {
+      qb.andWhere('cita.profesionalId = :profesionalId', { profesionalId: filtros.profesionalId });
+    }
+
+    if (filtros.estado) {
+      qb.andWhere('p.estado = :estado', { estado: filtros.estado });
+    }
+
+    if (filtros.desde) {
+      qb.andWhere('p.creadoEn >= :desde', { desde: new Date(`${filtros.desde}T00:00:00.000Z`) });
+    }
+
+    if (filtros.hasta) {
+      qb.andWhere('p.creadoEn <= :hasta', { hasta: new Date(`${filtros.hasta}T23:59:59.999Z`) });
+    }
+
+    const pagos = await qb.orderBy('p.creadoEn', 'ASC').getMany();
+
+    const encabezados = [
+      'No. Recibo',
+      'Fecha',
+      'Paciente',
+      'Cedula',
+      'Aseguradora (ARS)',
+      'No. Poliza / Afiliado',
+      'No. Autorizacion ARS',
+      'Medico Tratante',
+      'Concepto / Servicio',
+      'Valor Facturado (RD$)',
+      'Copago Paciente (RD$)',
+      'Reclamado ARS (RD$)',
+      'Estado',
+    ];
+
+    const filas = pagos.map((p) => {
+      const fecha = p.creadoEn ? new Date(p.creadoEn).toISOString().slice(0, 10) : '';
+      const paciente = `"${p.paciente?.nombre || ''} ${p.paciente?.apellido || ''}"`.trim();
+      const cedula = p.paciente?.documentoIdentidad || '';
+      const ars = `"${p.nombreAseguradora || ''}"`;
+      const poliza = p.numeroPoliza || '';
+      const autorizacion = p.numeroAutorizacion || 'S/A';
+      const medico = p.cita?.profesional
+        ? `"${p.cita.profesional.nombre} ${p.cita.profesional.apellido || ''}"`.trim()
+        : '""';
+      const concepto = `"${(p.concepto || '').replace(/"/g, '""')}"`;
+      const total = Number(p.montoTotal || 0).toFixed(2);
+      const copago = Number(p.montoCopago || 0).toFixed(2);
+      const cobertura = Number(p.coberturaSeguro || 0).toFixed(2);
+      const estado = p.estado;
+
+      return [
+        p.numeroRecibo,
+        fecha,
+        paciente,
+        cedula,
+        ars,
+        poliza,
+        autorizacion,
+        medico,
+        concepto,
+        total,
+        copago,
+        cobertura,
+        estado,
+      ].join(';');
+    });
+
+    return [encabezados.join(';'), ...filas].join('\r\n');
   }
 }

@@ -8,7 +8,9 @@ import {
   Query,
   UseGuards,
   Request,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { CajaService } from './caja.service.js';
 import { AbrirCajaDto } from './dto/abrir-caja.dto.js';
 import { CerrarCajaDto } from './dto/cerrar-caja.dto.js';
@@ -149,5 +151,56 @@ export class CajaController {
     @Query('limite') limite?: number,
   ) {
     return this.cajaService.listarSesiones(consultorioId, pagina ? Number(pagina) : 1, limite ? Number(limite) : 10);
+  }
+
+  /**
+   * Obtiene el reporte consolidado y expedientes de reclamación para ARS dominicanas.
+   */
+  @Get('reclamaciones-ars')
+  async obtenerReporteReclamacionesArs(
+    @ConsultorioActual() consultorioId: string,
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+    @Query('ars') ars?: string,
+    @Query('profesionalId') profesionalId?: string,
+    @Query('estado') estado?: string,
+    @Query('pagina') pagina?: number,
+    @Query('limite') limite?: number,
+  ) {
+    return this.cajaService.obtenerReporteReclamacionesArs(consultorioId, {
+      desde,
+      hasta,
+      ars,
+      profesionalId,
+      estado,
+      pagina: pagina ? Number(pagina) : 1,
+      limite: limite ? Number(limite) : 50,
+    });
+  }
+
+  /**
+   * Exporta las reclamaciones de ARS a archivo CSV compatible con Excel y portales de aseguradoras.
+   */
+  @Get('reclamaciones-ars/exportar-csv')
+  async exportarReclamacionesArsCsv(
+    @ConsultorioActual() consultorioId: string,
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+    @Query('ars') ars?: string,
+    @Query('profesionalId') profesionalId?: string,
+    @Query('estado') estado?: string,
+    @Res() res?: Response,
+  ) {
+    const csvContent = await this.cajaService.exportarReclamacionesArsCsv(consultorioId, {
+      desde,
+      hasta,
+      ars,
+      profesionalId,
+      estado,
+    });
+
+    res?.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res?.setHeader('Content-Disposition', `attachment; filename="reclamaciones_ars_${Date.now()}.csv"`);
+    res?.send(`\uFEFF${csvContent}`);
   }
 }

@@ -28,6 +28,17 @@ export class FiltrosCajaDto {
   hasta?: string;
 
   @IsOptional()
+  @IsString()
+  ars?: string;
+
+  @IsOptional()
+  @IsString()
+  profesionalId?: string;
+
+  @IsOptional()
+  soloSeguros?: boolean;
+
+  @IsOptional()
   @Type(() => Number)
   pagina?: number = 1;
 
